@@ -1,0 +1,29 @@
+import java.util.*;
+public class Pow {
+    public double myPow(double x, int n) {
+        long power = n;
+        if(power < 0){
+            x = 1 / x;
+            power = -power;
+        }
+        return helper(x, power);
+    }
+    public double helper(double x, long n){
+        if(n == 0)
+            return 1;
+        double half = helper(x, n / 2);
+        if(n % 2 == 0)
+            return half * half;
+        return half * half * x;
+    }
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Pow obj = new Pow();
+        System.out.print("Enter x: ");
+        double x = sc.nextDouble();
+        System.out.print("Enter n: ");
+        int n = sc.nextInt();
+        System.out.println("Result: " + obj.myPow(x, n));
+        sc.close();
+    }
+}
