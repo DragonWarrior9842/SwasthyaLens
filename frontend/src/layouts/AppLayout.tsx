@@ -1,0 +1,56 @@
+import { useEffect, useRef, useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
+import { Brand } from '../components/Brand'
+import { Button } from '../components/Button'
+import { Icon } from '../components/Icon'
+import { Sidebar } from '../components/Sidebar'
+import { ApiStatus } from '../features/system/ApiStatus'
+
+export function AppLayout() {
+  const [isNavigationOpen, setNavigationOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  const { pathname } = useLocation()
+  const previousPath = useRef(pathname)
+
+  useEffect(() => {
+    if (previousPath.current !== pathname) {
+      previousPath.current = pathname
+      mainRef.current?.focus()
+    }
+  }, [pathname])
+
+  useEffect(() => {
+    if (!isNavigationOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNavigationOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isNavigationOpen])
+
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <header className="mobile-header">
+        <Brand />
+        <Button ref={menuButtonRef} variant="ghost" className="menu-toggle" aria-label={isNavigationOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={isNavigationOpen} aria-controls="primary-navigation" onClick={() => setNavigationOpen((open) => !open)}>
+          <Icon name={isNavigationOpen ? 'close' : 'menu'} />
+        </Button>
+      </header>
+      <Sidebar isOpen={isNavigationOpen} onNavigate={() => setNavigationOpen(false)} footer={<ApiStatus />} />
+      <div className="app-main">
+        <main id="main-content" ref={mainRef} tabIndex={-1}>
+          <Outlet />
+        </main>
+        <footer className="app-footer">
+          <Icon name="info" />
+          <p>SwasthyaLens is for health information and understanding. It does not provide medical diagnoses.</p>
+        </footer>
+      </div>
+    </div>
+  )
+}
