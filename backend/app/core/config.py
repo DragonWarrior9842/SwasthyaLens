@@ -74,16 +74,22 @@ class Settings(BaseSettings):
             if not self.supabase_publishable_key.get_secret_value().startswith("sb_publishable_"):
                 raise ValueError("Only a Supabase publishable key is accepted")
             if len(self.csrf_signing_key.get_secret_value()) < 43:
-                raise ValueError("CSRF_SIGNING_KEY requires at least 32 random bytes encoded as text")
+                raise ValueError(
+                    "CSRF_SIGNING_KEY requires at least 32 random bytes encoded as text"
+                )
             parsed = urlsplit(self.app_origin)
             if self.environment == "development" and (
                 parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
             ):
-                raise ValueError("Development authentication is restricted to an HTTP loopback origin")
+                raise ValueError(
+                    "Development authentication is restricted to an HTTP loopback origin"
+                )
             if self.environment == "production" and (
                 parsed.scheme != "https" or self.auth_rate_limit_mode != "edge"
             ):
-                raise ValueError("Production requires HTTPS and externally enforced auth rate limits")
+                raise ValueError(
+                    "Production requires HTTPS and externally enforced auth rate limits"
+                )
             if set(self.cors_allowed_origins) - {self.app_origin}:
                 raise ValueError("Authenticated CORS origins must match APP_ORIGIN exactly")
         elif self.environment == "production":

@@ -41,8 +41,14 @@ export function accountRead<T>(path: string, decode: (payload: unknown) => T, si
   return requestJson(path, decode, { credentials: 'include', timeoutMs: 15_000, ...(signal ? { signal } : {}) })
 }
 
-export function accountPatch<T>(path: string, body: object, decode: (payload: unknown) => T): Promise<T> {
-  return withSessionLock(() => writeWithCsrf(path, body, decode, 'PATCH'))
+export function accountPatch<T>(path: string, body: object, decode: (payload: unknown) => T, expectedOwnerId: string): Promise<T> {
+  return withSessionLock(async () => {
+    // Preserve the editor's intent if a different tab changed accounts while this write waited.
+    // This ID is never sent as authorization; the server remains the authority for ownership.
+    const current = await accountRead('/auth/me', decodeSession)
+    if (current.user.id !== expectedOwnerId) throw new ApiError('account_changed', 'The signed-in account changed. Please review the current account before saving again.')
+    return writeWithCsrf(path, body, decode, 'PATCH')
+  })
 }
 
 /** One refresh attempt, with another-tab recheck, and no replay of account mutations. */
@@ -89,7 +95,7 @@ export function signOut(): Promise<'revoked' | 'local-only'> {
       return 'revoked'
     } catch (error) {
       // Only the logout endpoint's 503 guarantees local cookies were cleared.
-      if (error instanceof ApiError && error.status === 503) return 'local-only'
+      if (error instanceof ApiError && error.status === 503 && error.code === 'logout_incomplete') return 'local-only'
       throw error
     }
   })

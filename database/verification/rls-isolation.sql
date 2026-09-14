@@ -192,7 +192,25 @@ select pg_temp.assert_true((select count(*) from public.user_settings s
   'both stored settings survived IDOR attempts');
 
 -- Actual session rows are time-limited inside this transaction only.
-update auth.sessions set created_at = statement_timestamp() - interval '9 hours'
+update auth.sessions set not_after = statement_timestamp() + interval '30 minutes'
+where id = (select session_id from phase2_test_context where label = 'B');
+set local role authenticated;
+do $$
+declare actor record;
+begin
+  select * into actor from pg_temp.phase2_test_context where label = 'B';
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', actor.user_id,
+    'role', 'authenticated', 'session_id', actor.session_id, 'is_anonymous', false)::text, true);
+  perform pg_temp.assert_true((public.session_context() ->> 'active')::boolean,
+    'future provider not_after still permits the session');
+  perform pg_temp.assert_true((public.session_context() ->> 'expires_at')::bigint
+    between extract(epoch from statement_timestamp() + interval '29 minutes')::bigint
+    and extract(epoch from statement_timestamp() + interval '31 minutes')::bigint,
+    'earlier future provider not_after bounds the returned expiry');
+end;
+$$;
+reset role;
+update auth.sessions set created_at = statement_timestamp() - interval '8 hours'
 where id = (select session_id from phase2_test_context where label = 'A');
 update auth.sessions set not_after = statement_timestamp() - interval '1 second'
 where id = (select session_id from phase2_test_context where label = 'B');
@@ -229,6 +247,23 @@ $$;
 reset role;
 
 -- Revocation removes actual provider-session rows. Replayed claims must fail.
+-- First restore and prove these sessions are ACTIVE, so timeout cannot mask a
+-- broken revocation check. Only the two random fixtures are affected.
+update auth.sessions set created_at = statement_timestamp() - interval '5 minutes', not_after = null
+where id in (select session_id from phase2_test_context);
+set local role authenticated;
+do $$
+declare actor record;
+begin
+  for actor in select * from pg_temp.phase2_test_context loop
+    perform set_config('request.jwt.claims', jsonb_build_object('sub', actor.user_id,
+      'role', 'authenticated', 'session_id', actor.session_id, 'is_anonymous', false)::text, true);
+    perform pg_temp.assert_true((public.session_context() ->> 'active')::boolean,
+      'revocation fixture starts active');
+  end loop;
+end;
+$$;
+reset role;
 delete from auth.sessions where id in (select session_id from phase2_test_context);
 set local role authenticated;
 do $$

@@ -218,7 +218,10 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
                 expect_status(forged, 403, "Forged-owner insert")
                 if object_body(forged).get("code") != "42501":
                     raise AssertionError("Forged insert must fail a database permission/RLS check")
-                for forbidden in ({owner_key: other.user_id}, {"created_at": "2000-01-01"}):
+                forbidden_updates: tuple[dict[str, object], ...] = (
+                    {owner_key: other.user_id}, {"created_at": "2000-01-01"}
+                )
+                for forbidden in forbidden_updates:
                     expect_status(
                         live.data(user, "PATCH", own_route, forbidden),
                         403,

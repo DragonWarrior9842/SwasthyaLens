@@ -21,5 +21,5 @@ export function decodeSettings(value: unknown): UserSettings {
 
 export function getProfile(signal?: AbortSignal) { return accountRead('/profile', decodeProfile, signal) }
 export function getSettings(signal?: AbortSignal) { return accountRead('/settings', decodeSettings, signal) }
-export function saveProfile(displayName: string | null) { return accountPatch('/profile', { display_name: displayName }, decodeProfile) }
-export function saveSettings(settings: Pick<UserSettings, 'preferred_language' | 'timezone'>) { return accountPatch('/settings', settings, decodeSettings) }
+export function saveProfile(displayName: string | null, expectedOwnerId: string) { return accountPatch('/profile', { display_name: displayName }, decodeProfile, expectedOwnerId) }
+export function saveSettings({ preferred_language, timezone }: Pick<UserSettings, 'preferred_language' | 'timezone'>, expectedOwnerId: string) { return accountPatch('/settings', { preferred_language, timezone }, decodeSettings, expectedOwnerId) }

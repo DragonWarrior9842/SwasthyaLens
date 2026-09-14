@@ -9,7 +9,7 @@ export function SessionGate() {
   const { state, checkSession } = useAuth()
   const location = useLocation()
   if (state.status === 'anonymous') return <Navigate to="/auth/sign-in" state={{ returnTo: safeReturnTo(location.pathname) }} replace />
-  if (state.status === 'authenticated') return <Outlet />
+  if (state.status === 'authenticated') return <Outlet key={state.session.user.id} />
   return (
     <div className="session-screen">
       <div className="auth-brand"><Brand /></div>

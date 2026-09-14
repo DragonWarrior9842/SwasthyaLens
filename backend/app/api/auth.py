@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.dependencies import Auth, CurrentUser, auth_attempt
 from app.core.browser_security import clear_session_cookies
-from app.core.errors import ApiProblem
+from app.core.errors import ApiProblem, unavailable
 from app.schemas.accounts import (
     CsrfResponse,
     EmailInput,
@@ -29,22 +29,31 @@ def csrf(request: Request, response: Response, auth: Auth) -> CsrfResponse:
 
 @router.post("/signup", status_code=202, response_model=MessageResponse, dependencies=writes)
 def signup(body: SignupInput, auth: Auth) -> MessageResponse:
-    auth.gateway.object(
-        "POST", "/auth/v1/signup",
+    data = auth.gateway.object(
+        "POST",
+        "/auth/v1/signup",
         payload={"email": str(body.email), "password": body.password.get_secret_value()},
         purpose="signup",
     )
+    if data.get("access_token") is not None:
+        # The approved product flow requires email confirmation before account access.
+        raise unavailable()
     return MessageResponse(
         message="If this address can register, a confirmation code will be sent. Check your email."
     )
 
 
 @router.post(
-    "/resend-verification", status_code=202, response_model=MessageResponse, dependencies=writes,
+    "/resend-verification",
+    status_code=202,
+    response_model=MessageResponse,
+    dependencies=writes,
 )
 def resend(body: EmailInput, auth: Auth) -> MessageResponse:
     auth.gateway.object(
-        "POST", "/auth/v1/resend", payload={"type": "signup", "email": str(body.email)},
+        "POST",
+        "/auth/v1/resend",
+        payload={"type": "signup", "email": str(body.email)},
         purpose="resend",
     )
     return MessageResponse(message="If confirmation is pending, a new code will be sent.")
@@ -53,9 +62,11 @@ def resend(body: EmailInput, auth: Auth) -> MessageResponse:
 @router.post("/login", response_model=SessionResponse, dependencies=writes)
 def login(body: LoginInput, response: Response, auth: Auth) -> SessionResponse:
     data = auth.gateway.object(
-        "POST", "/auth/v1/token",
+        "POST",
+        "/auth/v1/token",
         payload={"email": str(body.email), "password": body.password.get_secret_value()},
-        params={"grant_type": "password"}, purpose="login",
+        params={"grant_type": "password"},
+        purpose="login",
     )
     return auth.set_session(response, auth.accept_tokens(data))
 
@@ -63,8 +74,9 @@ def login(body: LoginInput, response: Response, auth: Auth) -> SessionResponse:
 @router.post("/verify-email", response_model=SessionResponse, dependencies=writes)
 def verify_email(body: VerificationInput, response: Response, auth: Auth) -> SessionResponse:
     data = auth.gateway.object(
-        "POST", "/auth/v1/verify",
-        payload={"type": "signup", "email": str(body.email), "token": body.token},
+        "POST",
+        "/auth/v1/verify",
+        payload={"type": "email", "email": str(body.email), "token": body.token},
         purpose="verify",
     )
     return auth.set_session(response, auth.accept_tokens(data))
@@ -72,7 +84,12 @@ def verify_email(body: VerificationInput, response: Response, auth: Auth) -> Ses
 
 @router.post("/refresh", response_model=SessionResponse, dependencies=writes)
 def refresh(body: EmptyInput, request: Request, response: Response, auth: Auth) -> SessionResponse:
-    return auth.set_session(response, auth.refresh(request))
+    try:
+        return auth.set_session(response, auth.refresh(request))
+    except ApiProblem as error:
+        if error.status == 401:
+            error.clear_session = True
+        raise
 
 
 @router.post("/logout", response_model=MessageResponse, dependencies=writes)
@@ -80,9 +97,10 @@ def logout(body: EmptyInput, request: Request, response: Response, auth: Auth) -
     try:
         auth.logout(request)
     except ApiProblem:
-        # Logout always drops browser credentials, but a provider outage is not successful revocation.
+        # Drop browser credentials while distinguishing uncertain remote revocation.
         raise ApiProblem(
-            503, "service_unavailable",
+            503,
+            "logout_incomplete",
             "Local sign-out completed. Remote session revocation could not be confirmed.",
             clear_session=True,
         ) from None

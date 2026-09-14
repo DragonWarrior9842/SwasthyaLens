@@ -10,6 +10,8 @@ const publicErrors = {
   csrf_failed: 'The security check expired. Please submit the form again.',
   validation_error: 'Check the information entered and try again.',
   rate_limited: 'Too many attempts. Please wait before trying again.',
+  logout_incomplete: 'You are signed out locally, but remote session revocation could not be confirmed.',
+  account_changed: 'The signed-in account changed. Please review the current account before saving again.',
 } as const
 
 export type ApiErrorCode = 'configuration' | 'network' | 'timeout' | 'http' | 'invalid-response' | keyof typeof publicErrors

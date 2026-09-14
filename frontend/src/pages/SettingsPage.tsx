@@ -4,7 +4,7 @@ import { ErrorState } from '../components/ErrorState'
 import { LoadingState } from '../components/LoadingState'
 import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../features/auth/auth-context'
-import { errorMessage, isUnauthorized } from '../services/api-client'
+import { ApiError, errorMessage, isUnauthorized } from '../services/api-client'
 import { getProfile, getSettings, saveProfile, saveSettings } from '../services/account'
 import type { Profile, UserSettings } from '../types/auth'
 
@@ -41,9 +41,9 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader eyebrow="YOUR ACCOUNT" title="Make yourself at home" description="Manage your name and preferences for your SwasthyaLens account." />
-      {data.status === 'loading' && <LoadingState title="Loading your account…" />}
+      {(data.status === 'loading' || (data.status === 'ready' && (data.profile.id !== userId || data.settings.user_id !== userId))) && <LoadingState title="Loading your account…" />}
       {data.status === 'error' && <ErrorState title="Unable to load your account" description={data.message} onRetry={() => { setData({ status: 'loading' }); setAttempt((value) => value + 1) }} />}
-      {data.status === 'ready' && <div className="settings-grid"><ProfileForm key={`${userId}-profile`} profile={data.profile} /><PreferencesForm key={`${userId}-settings`} settings={data.settings} /></div>}
+      {data.status === 'ready' && data.profile.id === userId && data.settings.user_id === userId && <div className="settings-grid"><ProfileForm key={`${userId}-profile`} profile={data.profile} /><PreferencesForm key={`${userId}-settings`} settings={data.settings} /></div>}
     </>
   )
 }
@@ -62,13 +62,13 @@ function ProfileForm({ profile }: { profile: Profile }) {
     setError(null)
     setSaved(false)
     try {
-      const updated = await saveProfile(displayName.trim() || null)
+      const updated = await saveProfile(displayName.trim() || null, profile.id)
       if (updated.id !== profile.id) throw new Error('Mismatched profile')
       setDisplayName(updated.display_name ?? '')
       setSaved(true)
     } catch (failure) {
       setError(errorMessage(failure))
-      if (isUnauthorized(failure)) await checkSession()
+      if (isUnauthorized(failure) || (failure instanceof ApiError && failure.code === 'account_changed')) await checkSession()
     } finally { setBusy(false) }
   }
 
@@ -105,14 +105,14 @@ function PreferencesForm({ settings }: { settings: UserSettings }) {
     catch { setError('Enter a valid time zone, such as Asia/Kolkata or UTC.'); return }
     setBusy(true)
     try {
-      const updated = await saveSettings({ preferred_language: language, timezone: selectedTimezone })
+      const updated = await saveSettings({ preferred_language: language, timezone: selectedTimezone }, settings.user_id)
       if (updated.user_id !== settings.user_id) throw new Error('Mismatched settings')
       setLanguage(updated.preferred_language)
       setTimezone(updated.timezone)
       setSaved(true)
     } catch (failure) {
       setError(errorMessage(failure))
-      if (isUnauthorized(failure)) await checkSession()
+      if (isUnauthorized(failure) || (failure instanceof ApiError && failure.code === 'account_changed')) await checkSession()
     } finally { setBusy(false) }
   }
 

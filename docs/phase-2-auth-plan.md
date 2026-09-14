@@ -1,8 +1,10 @@
 # Phase 2 — Authentication plan and external setup gate
 
-Date: 14 September 2026. Status: **preflight complete; implementation has not started**.
+Date: 14 September 2026. Status: **approved plan; implementation and acceptance testing in progress**.
 
-This document records the intended design before implementation, as requested in the owner's Phase 2 instructions. It is not an implementation handoff or evidence that authentication works. Work pauses for the owner to configure Supabase and confirm setup. Reports, storage, OCR, health metrics, AI, trends, voice, exports and notifications remain outside this phase.
+The owner confirmed Supabase setup and explicitly selected the built-in email service for development. The newly connected Supabase plugin subsequently allowed the reviewed migration and database verification to run directly, so the manual SQL Editor gate described in the original plan is no longer needed for this project. See the [Phase 2 handoff](phase-2-handoff.md) for current evidence and remaining live-account tests. The original preflight findings below are historical.
+
+This document records the intended design before implementation, as requested in the owner's Phase 2 instructions. It is not an implementation handoff or evidence that authentication works. The initial project-setup gate has been satisfied. Reports, storage, OCR, health metrics, AI, trends, voice, exports and notifications remain outside this phase.
 
 ## 1. Verified starting point
 
@@ -182,4 +184,4 @@ Required evidence includes:
 - Migration replay/schema/policy inspection and the privileged session helper's boundaries. Test timezones, language constraints, timestamp immutability, idempotent initialization and session lifetime.
 - Re-run all Phase 1 tests, frontend lint/typecheck/tests/build, backend lint/format/mypy/tests/startup, credential scans, and browser cookie/storage checks. Remote tests use separately opted-in real test accounts; unit tests must not consume local secrets or accidentally call Supabase.
 
-Current live-auth, migration, email and two-user results: **NOT RUN; external setup is pending**. No application source, environment example, lockfile or schema was changed during this preflight. Only this plan was added. Phase 2 is not complete, and Phase 3 has not started.
+At the end of the original preflight, live-auth, migration, email and two-user checks had not run, and only this plan had been added. Implementation was subsequently authorized. Current evidence is recorded in the Phase 2 handoff. Phase 3 has not started.

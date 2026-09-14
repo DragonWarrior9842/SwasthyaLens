@@ -1,5 +1,6 @@
 """Supabase REST boundary: request-scoped credentials, bounded I/O, safe errors."""
 
+import json
 from typing import cast
 
 import httpx
@@ -27,25 +28,35 @@ class SupabaseGateway:
         prefer: str | None = None,
         purpose: str = "data",
     ) -> object:
-        headers = {"apikey": self.publishable_key, "Accept": "application/json"}
+        headers = {"apikey": self.publishable_key, "Accept": "application/json", "Cookie": ""}
         if access_token is not None:
             headers["Authorization"] = f"Bearer {access_token}"
         if prefer is not None:
             headers["Prefer"] = prefer
         try:
-            response = self.client.request(
-                method, self.origin + path, json=payload, params=params, headers=headers,
-            )
+            with self.client.stream(
+                method,
+                self.origin + path,
+                json=payload,
+                params=params,
+                headers=headers,
+            ) as response:
+                status = response.status_code
+                content = bytearray()
+                for chunk in response.iter_bytes(chunk_size=16_384):
+                    if len(content) + len(chunk) > 1_000_000:
+                        raise unavailable()
+                    content.extend(chunk)
         except httpx.HTTPError:
             raise unavailable() from None
-        if response.status_code == 429:
+        if status == 429:
             raise ApiProblem(429, "rate_limited", "Too many attempts. Try again later.")
-        if response.status_code >= 500 or response.is_redirect:
+        if status >= 500 or 300 <= status < 400:
             raise unavailable()
-        if response.status_code >= 400:
+        if status >= 400:
             code = ""
             try:
-                error: object = response.json()
+                error: object = json.loads(content)
                 if isinstance(error, dict):
                     candidate = error.get("error_code", error.get("code"))
                     if isinstance(candidate, str):
@@ -54,42 +65,60 @@ class SupabaseGateway:
                 pass
             if purpose == "login":
                 if code == "email_not_confirmed":
-                    raise ApiProblem(401, "email_not_confirmed", "Confirm your email before signing in.")
-                if response.status_code in (400, 401, 403, 422):
+                    raise ApiProblem(
+                        401, "email_not_confirmed", "Confirm your email before signing in."
+                    )
+                if status in (400, 401, 403, 422) and code in {"invalid_credentials", "invalid_grant"}:
                     raise ApiProblem(401, "invalid_credentials", "Email or password is incorrect.")
-            if purpose == "verify" and response.status_code in (400, 401, 403, 422):
-                raise ApiProblem(400, "invalid_code", "The verification code is invalid or expired.")
+            if purpose == "verify" and status in (400, 401, 403, 422) and code in {"otp_expired", "invalid_token", "access_denied"}:
+                raise ApiProblem(
+                    400, "invalid_code", "The verification code is invalid or expired."
+                )
             if purpose in {"signup", "resend"}:
                 if code in {"user_already_exists", "email_exists"}:
                     return {}
                 if code == "email_address_not_authorized":
                     raise ApiProblem(
-                        503, "service_unavailable",
+                        503,
+                        "service_unavailable",
                         "Email delivery is restricted in this development environment.",
                     )
                 raise unavailable()
-            if purpose in {"refresh", "logout"} and response.status_code in (400, 401, 403):
+            if purpose == "logout" and code == "session_not_found":
+                return None
+            if purpose == "refresh" and code in {
+                "refresh_token_not_found", "refresh_token_already_used", "session_not_found",
+                "session_expired", "invalid_grant",
+            }:
                 raise unauthenticated()
-            if purpose == "data" and response.status_code == 401:
+            if purpose == "data" and status == 401 and code in {"PGRST301", "PGRST303"}:
                 raise unauthenticated()
             raise unavailable()
-        if not response.content:
+        if not content:
             return None
-        if len(response.content) > 1_000_000:
-            raise unavailable()
         try:
-            result: object = response.json()
+            result: object = json.loads(content)
             return result
         except ValueError:
             raise unavailable() from None
 
     def object(
-        self, method: str, path: str, *, payload: dict[str, object] | None = None,
-        access_token: str | None = None, params: dict[str, str] | None = None,
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: dict[str, object] | None = None,
+        access_token: str | None = None,
+        params: dict[str, str] | None = None,
         purpose: str = "data",
     ) -> dict[str, object]:
         value = self.request(
-            method, path, payload=payload, access_token=access_token, params=params, purpose=purpose,
+            method,
+            path,
+            payload=payload,
+            access_token=access_token,
+            params=params,
+            purpose=purpose,
         )
         if not isinstance(value, dict):
             raise unavailable()

@@ -2,13 +2,13 @@
 
 This directory owns the versioned Supabase PostgreSQL schema and its verification SQL. It contains no credentials, report tables, medical data, storage buckets or AI records. The initial migration does not modify provider-owned `auth.users` or `auth.sessions` data.
 
-**Execution status:** the SQL has been reviewed against PostgreSQL/Supabase documentation but has not yet been executed against a PostgreSQL engine or the owner's Supabase project. Writing a migration is not evidence that its policies passed. Record the actual application and verification results in the Phase 2 handoff after running the files below.
+**Execution status (14 September 2026):** applied to the verified `swasthyalens-dev` project through the connected Supabase migration tool, version `20260914164833`, name `auth_foundation`. Both `schema.sql` and the complete rollback-only `rls-isolation.sql` passed on hosted PostgreSQL 17.6. No fixture users/profile/settings rows remained afterward. Supabase security and performance advisors both returned no findings. These database results do not replace live browser/API authentication acceptance.
 
 ## Apply the initial migration
 
 1. Open the **development** Supabase project selected for SwasthyaLens. Check the project name before opening SQL Editor.
 2. In API settings, retain the public application schema as an exposed schema. Do **not** expose `auth` or `swasthyalens_private`.
-3. Open `migrations/202609140001_auth_foundation.sql` locally. Create a new query in Supabase SQL Editor, using the project's database-owner role (`postgres`). Paste the **entire file**, including `begin` and `commit`, and run it once.
+3. For a new, unapplied database, open `migrations/20260914164833_auth_foundation.sql` locally. Create a new query in Supabase SQL Editor, using the project's database-owner role (`postgres`). Paste the **entire file**, including `begin` and `commit`, and run it once. Do not rerun it on the current development project; its migration is already applied.
 4. If any statement fails, the transaction must not be committed. Run `rollback;` if the editor connection remains in an aborted transaction. Return the error's code and object name for review, without credentials. Do not fix errors by disabling RLS, broadening grants, deleting existing objects or skipping statements.
 5. Run the entire `verification/schema.sql` file. It performs read-only assertions and returns columns, constraints, policies and grants for review. The final result should say `Phase 2 schema assertions passed; review the result sets and API exposure settings.`
 6. In this development project, run the entire `verification/rls-isolation.sql` file. Read the testing boundaries below first. Its final result should say `Phase 2 database isolation assertions passed; all test fixtures are rolled back next.` The last statement is deliberately `rollback`.
@@ -23,7 +23,7 @@ Apply migration files in filename order **once per database**. This first migrat
 If a PostgreSQL client is already installed, use its existing secure connection mechanism (for example a configured libpq service and password file outside this repository):
 
 ```text
-psql service=swasthyalens_dev -v ON_ERROR_STOP=1 -f database/migrations/202609140001_auth_foundation.sql
+psql service=swasthyalens_dev -v ON_ERROR_STOP=1 -f database/migrations/20260914164833_auth_foundation.sql
 psql service=swasthyalens_dev -v ON_ERROR_STOP=1 -f database/verification/schema.sql
 psql service=swasthyalens_dev -v ON_ERROR_STOP=1 -f database/verification/rls-isolation.sql
 ```

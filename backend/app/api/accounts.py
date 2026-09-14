@@ -19,7 +19,9 @@ def update_profile(body: ProfilePatch, current: CurrentUser, auth: Auth) -> Prof
     if not body.model_fields_set:
         raise ApiProblem(422, "validation_error", "Provide at least one field to update.")
     return auth.accounts.profile(
-        current.identity, current.access_token, body.model_dump(exclude_unset=True),
+        current.identity,
+        current.access_token,
+        body.model_dump(exclude_unset=True),
     )
 
 
@@ -33,5 +35,7 @@ def update_settings(body: SettingsPatch, current: CurrentUser, auth: Auth) -> Us
     if not body.model_fields_set:
         raise ApiProblem(422, "validation_error", "Provide at least one field to update.")
     return auth.accounts.settings(
-        current.identity, current.access_token, body.model_dump(exclude_unset=True),
+        current.identity,
+        current.access_token,
+        body.model_dump(exclude_unset=True),
     )

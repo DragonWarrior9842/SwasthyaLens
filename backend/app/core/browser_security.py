@@ -28,8 +28,13 @@ def cookie_names(settings: Settings) -> CookieNames:
 
 def set_cookie(response: Response, settings: Settings, name: str, value: str, age: int) -> None:
     response.set_cookie(
-        name, value, max_age=max(0, age), path="/", secure=settings.secure_cookies,
-        httponly=True, samesite="lax",
+        name,
+        value,
+        max_age=max(0, age),
+        path="/",
+        secure=settings.secure_cookies,
+        httponly=True,
+        samesite="lax",
     )
 
 
@@ -50,7 +55,9 @@ class CsrfProtection:
     def issue(self, request: Request, response: Response) -> str:
         names = cookie_names(self.settings)
         nonce = request.cookies.get(names.nonce, "")
-        if len(nonce) != 43 or not all(character.isalnum() or character in "-_" for character in nonce):
+        if len(nonce) != 43 or not all(
+            character.isalnum() or character in "-_" for character in nonce
+        ):
             nonce = secrets.token_urlsafe(32)
         set_cookie(response, self.settings, names.nonce, nonce, CSRF_LIFETIME)
         timestamp = str(int(time.time()))
@@ -63,14 +70,20 @@ class CsrfProtection:
         failure = ApiProblem(403, "csrf_failed", "Reload this page and try again.")
         if request.headers.get("origin") != self.settings.app_origin:
             raise failure
-        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+        if (
+            request.headers.get("content-type", "").split(";")[0].strip().lower()
+            != "application/json"
+        ):
             raise failure
         token = request.headers.get("x-csrf-token", "")
         nonce = request.cookies.get(cookie_names(self.settings).nonce, "")
         if len(token) > 100 or len(nonce) != 43:
             raise failure
         parts = token.split(".")
-        if len(parts) != 2 or not parts[0].isascii() or not parts[0].isdigit():
+        if (
+            len(parts) != 2 or not parts[0].isascii() or not parts[0].isdigit()
+            or len(parts[1]) != 64 or any(character not in "0123456789abcdef" for character in parts[1])
+        ):
             raise failure
         timestamp = int(parts[0])
         age = int(time.time()) - timestamp

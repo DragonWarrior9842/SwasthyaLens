@@ -12,7 +12,7 @@ class ApiProblem(Exception):
 
 
 def unauthenticated() -> ApiProblem:
-    return ApiProblem(401, "unauthenticated", "Please sign in again.", clear_session=True)
+    return ApiProblem(401, "unauthenticated", "Please sign in again.")
 
 
 def unavailable() -> ApiProblem:

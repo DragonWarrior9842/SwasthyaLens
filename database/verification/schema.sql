@@ -45,6 +45,24 @@ begin
       or not has_table_privilege('authenticated', 'public.' || table_name, 'DELETE') then
       raise exception 'Required user-scoped privileges missing on %', table_name;
     end if;
+    if not exists (
+      select 1 from pg_catalog.pg_constraint con
+      join pg_catalog.pg_attribute att on att.attrelid = con.conrelid
+        and att.attnum = con.conkey[1]
+      where con.conrelid = ('public.' || table_name)::regclass
+        and con.contype = 'f' and con.confrelid = 'auth.users'::regclass
+        and con.confdeltype = 'c' and att.attname = owner_column
+    ) then
+      raise exception 'Authoritative auth.users cascade foreign key missing on %', table_name;
+    end if;
+    if not exists (
+      select 1 from pg_catalog.pg_trigger
+      where tgrelid = ('public.' || table_name)::regclass
+        and tgfoid = 'swasthyalens_private.set_updated_at()'::regprocedure
+        and not tgisinternal and tgenabled = 'O' and tgtype = 19
+    ) then
+      raise exception 'Enabled BEFORE UPDATE row timestamp trigger missing on %', table_name;
+    end if;
   end loop;
 
   if has_function_privilege('anon', 'public.session_context()', 'EXECUTE')

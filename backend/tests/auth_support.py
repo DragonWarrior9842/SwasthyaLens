@@ -10,6 +10,7 @@ import httpx
 import jwt
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import SecretStr
+from pydantic_settings import SettingsConfigDict
 
 from app.core.config import Settings
 
@@ -17,16 +18,20 @@ ORIGIN = "http://127.0.0.1:5173"
 PROJECT = "https://unit-test-project.supabase.co"
 
 
+class IsolatedSettings(Settings):
+    model_config = SettingsConfigDict(env_file=None)
+
+
 def auth_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
-        "cors_allowed_origins": (ORIGIN,), "app_origin": ORIGIN,
+        "cors_allowed_origins": (ORIGIN,),
+        "app_origin": ORIGIN,
         "supabase_url": PROJECT,
         "supabase_publishable_key": SecretStr("sb_publishable_isolated_test_value"),
         "csrf_signing_key": SecretStr("isolated-test-signing-key-" + "x" * 43),
     }
     values.update(overrides)
-    # model_validate avoids local .env; fields are always explicit test inputs.
-    return Settings.model_validate(values)
+    return IsolatedSettings.model_validate(values)
 
 
 @dataclass
@@ -51,9 +56,15 @@ class ProviderFixture:
     def claims(self) -> dict[str, object]:
         now = int(time.time())
         return {
-            "sub": self.user_id, "session_id": self.session_id,
-            "email": self.email, "role": "authenticated", "is_anonymous": False,
-            "iss": PROJECT + "/auth/v1", "aud": "authenticated", "iat": now, "exp": now + 3600,
+            "sub": self.user_id,
+            "session_id": self.session_id,
+            "email": self.email,
+            "role": "authenticated",
+            "is_anonymous": False,
+            "iss": PROJECT + "/auth/v1",
+            "aud": "authenticated",
+            "iat": now,
+            "exp": now + 3600,
         }
 
     def token(self, changes: dict[str, object] | None = None) -> str:
@@ -62,12 +73,18 @@ class ProviderFixture:
         return jwt.encode(claims, self.key, algorithm="ES256", headers={"kid": self.kid})
 
     def jwk(self) -> dict[str, object]:
-        key = cast(dict[str, object], json.loads(jwt.algorithms.ECAlgorithm.to_jwk(self.key.public_key())))
+        key = cast(
+            dict[str, object], json.loads(jwt.algorithms.ECAlgorithm.to_jwk(self.key.public_key()))
+        )
         key.update({"alg": "ES256", "kid": self.kid, "use": "sig"})
         return key
 
     def session_payload(self) -> dict[str, object]:
-        return {"access_token": self.token(), "refresh_token": "isolated-refresh-token", "token_type": "bearer"}
+        return {
+            "access_token": self.token(),
+            "refresh_token": "isolated-refresh-token",
+            "token_type": "bearer",
+        }
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -104,11 +121,17 @@ class ProviderFixture:
                     self.language = data.get("preferred_language", self.language)
                     self.timezone = data.get("timezone", self.timezone)
             row: dict[str, object] = {
-                "created_at": "2026-09-14T00:00:00Z", "updated_at": "2026-09-14T00:00:00Z",
+                "created_at": "2026-09-14T00:00:00Z",
+                "updated_at": "2026-09-14T00:00:00Z",
             }
             row.update(
-                {"id": self.user_id, "display_name": self.name} if profile else
-                {"user_id": self.user_id, "preferred_language": self.language, "timezone": self.timezone}
+                {"id": self.user_id, "display_name": self.name}
+                if profile
+                else {
+                    "user_id": self.user_id,
+                    "preferred_language": self.language,
+                    "timezone": self.timezone,
+                }
             )
             return httpx.Response(200, json=[row])
         raise AssertionError(f"Unexpected provider endpoint {request.method} {path}")

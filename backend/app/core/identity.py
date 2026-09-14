@@ -46,9 +46,12 @@ class TokenVerifier:
                         continue
                     raw_kid = raw.get("kid")
                     if (
-                        not isinstance(raw_kid, str) or not 1 <= len(raw_kid) <= 128
-                        or raw.get("alg") != "ES256" or raw.get("kty") != "EC"
-                        or raw.get("crv") != "P-256" or raw.get("use", "sig") != "sig"
+                        not isinstance(raw_kid, str)
+                        or not 1 <= len(raw_kid) <= 128
+                        or raw.get("alg") != "ES256"
+                        or raw.get("kty") != "EC"
+                        or raw.get("crv") != "P-256"
+                        or raw.get("use", "sig") != "sig"
                         or "d" in raw
                     ):
                         continue
@@ -72,32 +75,49 @@ class TokenVerifier:
             header = jwt.get_unverified_header(token)
             kid = header.get("kid")
             if (
-                header.get("alg") != "ES256" or not isinstance(kid, str)
-                or not 1 <= len(kid) <= 128 or not kid.isascii()
+                header.get("alg") != "ES256"
+                or not isinstance(kid, str)
+                or not 1 <= len(kid) <= 128
+                or not kid.isascii()
                 or any(name in header for name in ("jku", "x5u", "jwk", "crit"))
             ):
                 raise unauthenticated()
             key = self._key(kid)
             claims = jwt.decode(
-                token, key.key, algorithms=["ES256"], issuer=self.issuer,
+                token,
+                key.key,
+                algorithms=["ES256"],
+                issuer=self.issuer,
                 audience="authenticated",
                 options={
                     "require": ["exp", "iat", "sub", "iss", "aud", "session_id", "email"],
-                    "verify_exp": not allow_expired, "strict_aud": True,
+                    "verify_exp": not allow_expired,
+                    "strict_aud": True,
                 },
             )
             expiration, issued = claims["exp"], claims["iat"]
             subject, session = claims["sub"], claims["session_id"]
             email = claims["email"]
             if (
-                type(expiration) is not int or type(issued) is not int or expiration <= issued
-                or claims.get("role") != "authenticated" or claims.get("is_anonymous") is not False
-                or not isinstance(subject, str) or not isinstance(session, str)
-                or not isinstance(email, str) or not 3 <= len(email) <= 254 or "@" not in email
+                type(expiration) is not int
+                or type(issued) is not int
+                or expiration <= issued
+                or claims.get("role") != "authenticated"
+                or claims.get("is_anonymous") is not False
+                or not isinstance(subject, str)
+                or not isinstance(session, str)
+                or not isinstance(email, str)
+                or not 3 <= len(email) <= 254
+                or "@" not in email
             ):
                 raise unauthenticated()
             user_id, session_id = UUID(subject), UUID(session)
-            if str(user_id) != subject or str(session_id) != session or not user_id.int or not session_id.int:
+            if (
+                str(user_id) != subject
+                or str(session_id) != session
+                or not user_id.int
+                or not session_id.int
+            ):
                 raise unauthenticated()
             return VerifiedIdentity(user_id, session_id, email, expiration)
         except (jwt.PyJWTError, ValueError, TypeError, KeyError):

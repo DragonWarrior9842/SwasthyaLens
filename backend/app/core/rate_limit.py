@@ -17,7 +17,8 @@ class RateLimiter:
         with self._lock:
             if len(self._entries) >= 10_000:
                 self._entries = {
-                    entry: timestamps for entry, timestamps in self._entries.items()
+                    entry: timestamps
+                    for entry, timestamps in self._entries.items()
                     if timestamps and timestamps[-1] > now - 3600
                 }
                 if len(self._entries) >= 10_000 and key not in self._entries:

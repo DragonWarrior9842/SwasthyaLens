@@ -56,8 +56,10 @@ class AuthService:
     def accept_tokens(self, data: dict[str, object]) -> SessionTokens:
         access, refresh = data.get("access_token"), data.get("refresh_token")
         if (
-            not isinstance(access, str) or not isinstance(refresh, str)
-            or not 1 <= len(refresh) <= 4096 or data.get("token_type") != "bearer"
+            not isinstance(access, str)
+            or not isinstance(refresh, str)
+            or not 1 <= len(refresh) <= 4096
+            or data.get("token_type") != "bearer"
         ):
             raise unavailable()
         identity = self.verifier.verify(access)
@@ -71,11 +73,18 @@ class AuthService:
         if min(tokens.identity.expires_at, tokens.session_expires_at) <= now:
             raise unauthenticated()
         set_cookie(
-            response, self.settings, names.access, tokens.access,
+            response,
+            self.settings,
+            names.access,
+            tokens.access,
             min(tokens.identity.expires_at, tokens.session_expires_at) - now,
         )
         set_cookie(
-            response, self.settings, names.refresh, tokens.refresh, tokens.session_expires_at - now,
+            response,
+            self.settings,
+            names.refresh,
+            tokens.refresh,
+            tokens.session_expires_at - now,
         )
         return self.session_response(tokens.identity, tokens.session_expires_at)
 
@@ -104,8 +113,11 @@ class AuthService:
             if len(self._refreshed) >= 256:
                 raise ApiProblem(429, "rate_limited", "Too many attempts. Try again later.")
             data = self.gateway.object(
-                "POST", "/auth/v1/token", payload={"refresh_token": token},
-                params={"grant_type": "refresh_token"}, purpose="refresh",
+                "POST",
+                "/auth/v1/token",
+                payload={"refresh_token": token},
+                params={"grant_type": "refresh_token"},
+                purpose="refresh",
             )
             tokens = self.accept_tokens(data)
             self._refreshed[key] = (now, tokens)
@@ -127,25 +139,22 @@ class AuthService:
         if access is None:
             if not refresh:
                 return
-            try:
-                data = self.gateway.object(
-                    "POST", "/auth/v1/token", payload={"refresh_token": refresh},
-                    params={"grant_type": "refresh_token"}, purpose="refresh",
-                )
-            except ApiProblem as error:
-                if error.status == 401:
-                    return
-                raise
+            data = self.gateway.object(
+                "POST",
+                "/auth/v1/token",
+                payload={"refresh_token": refresh},
+                params={"grant_type": "refresh_token"},
+                purpose="refresh",
+            )
             candidate = data.get("access_token")
             if not isinstance(candidate, str):
                 raise unavailable()
             self.verifier.verify(candidate)
             access = candidate
-        try:
-            self.gateway.request(
-                "POST", "/auth/v1/logout", access_token=access, params={"scope": "local"},
-                purpose="logout",
-            )
-        except ApiProblem as error:
-            if error.status != 401:
-                raise
+        self.gateway.request(
+            "POST",
+            "/auth/v1/logout",
+            access_token=access,
+            params={"scope": "local"},
+            purpose="logout",
+        )

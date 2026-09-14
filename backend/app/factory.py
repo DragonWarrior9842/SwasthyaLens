@@ -21,7 +21,9 @@ from app.core.provider import SupabaseGateway
 
 
 def create_app(
-    settings: Settings | None = None, *, provider_transport: httpx.BaseTransport | None = None,
+    settings: Settings | None = None,
+    *,
+    provider_transport: httpx.BaseTransport | None = None,
 ) -> FastAPI:
     """Construct the API with validated configuration and a bounded CORS policy."""
     config = settings if settings is not None else Settings()
@@ -29,11 +31,16 @@ def create_app(
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         with httpx.Client(
-            timeout=httpx.Timeout(10, connect=5), follow_redirects=False, trust_env=False,
-            transport=provider_transport, limits=httpx.Limits(max_connections=20),
+            timeout=httpx.Timeout(10, connect=5),
+            follow_redirects=False,
+            trust_env=False,
+            transport=provider_transport,
+            limits=httpx.Limits(max_connections=20),
         ) as client:
             application.state.auth_service = (
-                AuthService(config, SupabaseGateway(config, client)) if config.auth_enabled else None
+                AuthService(config, SupabaseGateway(config, client))
+                if config.auth_enabled
+                else None
             )
             yield
 
@@ -55,7 +62,8 @@ def create_app(
     @application.exception_handler(ApiProblem)
     async def public_problem(request: Request, error: ApiProblem) -> JSONResponse:
         response = JSONResponse(
-            status_code=error.status, content={"code": error.code, "message": error.message},
+            status_code=error.status,
+            content={"code": error.code, "message": error.message},
         )
         if error.status == 429:
             response.headers["Retry-After"] = "60"
@@ -67,7 +75,10 @@ def create_app(
     async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"code": "validation_error", "message": "Check the submitted fields and try again."},
+            content={
+                "code": "validation_error",
+                "message": "Check the submitted fields and try again.",
+            },
         )
 
     application.include_router(health_router)
