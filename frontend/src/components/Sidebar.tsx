@@ -8,6 +8,7 @@ const destinations: { to: string; label: string; icon: IconName }[] = [
   { to: '/reports', label: 'Reports', icon: 'report' },
   { to: '/trends', label: 'Trends', icon: 'trends' },
   { to: '/assistant', label: 'AI Assistant', icon: 'assistant' },
+  { to: '/settings', label: 'Account settings', icon: 'info' },
 ]
 
 interface SidebarProps {

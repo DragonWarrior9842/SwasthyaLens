@@ -5,6 +5,7 @@ import { Button } from '../components/Button'
 import { Icon } from '../components/Icon'
 import { Sidebar } from '../components/Sidebar'
 import { ApiStatus } from '../features/system/ApiStatus'
+import { AccountMenu } from '../features/auth/AccountMenu'
 
 export function AppLayout() {
   const { pathname, key: locationKey } = useLocation()
@@ -51,6 +52,7 @@ export function AppLayout() {
       </header>
       <Sidebar isOpen={isNavigationOpen} onNavigate={() => setNavigationLocation(null)} footer={<ApiStatus />} />
       <div className="app-main">
+        <AccountMenu />
         <main id="main-content" ref={mainRef} tabIndex={-1}>
           <Outlet />
         </main>

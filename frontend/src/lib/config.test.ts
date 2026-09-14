@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { resolveApiBaseUrl } from './config'
 
 describe('public API configuration', () => {
-  it('uses a loopback-only default for empty configuration', () => {
-    expect(resolveApiBaseUrl(undefined)).toBe('http://127.0.0.1:8000')
-    expect(resolveApiBaseUrl('  ')).toBe('http://127.0.0.1:8000')
+  it('uses the same-origin API proxy for empty configuration', () => {
+    expect(resolveApiBaseUrl(undefined)).toBe('/api')
+    expect(resolveApiBaseUrl('  ')).toBe('/api')
+    expect(resolveApiBaseUrl('/api/')).toBe('/api')
   })
 
   it('preserves a configured API prefix and removes trailing slashes', () => {
@@ -12,7 +13,8 @@ describe('public API configuration', () => {
   })
 
   it.each([
-    '/api',
+    '//untrusted.example',
+    '/api/../other',
     'not a url',
     'javascript:alert(1)',
     'https://user:password@example.test',
