@@ -1,0 +1,30 @@
+# Local configuration; examples contain names, never secrets.
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Dependencies, generated output and tool caches.
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+coverage/
+.coverage
+htmlcov/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.log
+
+# Local editor/OS files.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

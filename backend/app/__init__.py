@@ -1,0 +1,1 @@
+"""SwasthyaLens API application."""
