@@ -12,6 +12,14 @@ const publicErrors = {
   rate_limited: 'Too many attempts. Please wait before trying again.',
   logout_incomplete: 'You are signed out locally, but remote session revocation could not be confirmed.',
   account_changed: 'The signed-in account changed. Please review the current account before saving again.',
+  report_not_found: 'This report is no longer available. Refresh your report history.',
+  invalid_file: 'This file could not be accepted. Choose a valid PDF, JPEG or PNG report.',
+  file_too_large: 'This file exceeds the upload limit. Choose a smaller report.',
+  unsupported_file_type: 'Choose a PDF, JPEG or PNG report with a matching file extension.',
+  filename_invalid: 'Rename the file using a short filename without paths or special characters.',
+  report_conflict: 'This report has changed or an operation is still in progress. Refresh its status before trying again.',
+  storage_unavailable: 'Private file storage is temporarily unavailable. Please try again shortly.',
+  cleanup_pending: 'Deletion is still pending. The report will remain listed until cleanup is confirmed.',
 } as const
 
 export type ApiErrorCode = 'configuration' | 'network' | 'timeout' | 'http' | 'invalid-response' | keyof typeof publicErrors
@@ -31,7 +39,7 @@ export class ApiError extends Error {
 export interface RequestOptions {
   signal?: AbortSignal
   baseUrl?: string
-  method?: 'GET' | 'POST' | 'PATCH'
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: object
   csrfToken?: string
   credentials?: RequestCredentials
@@ -52,6 +60,48 @@ export async function requestJson<T>(
   decode: (payload: unknown) => T,
   options: RequestOptions = {},
 ): Promise<T> {
+  return request(path, async (response) => decode(await response.json()), options)
+}
+
+const reportFilePath = /^\/reports\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/file$/i
+const reportMediaTypes = ['application/pdf', 'image/jpeg', 'image/png']
+
+/** Only the report byte-transfer route accepts a raw body. Auth writes stay JSON. */
+export async function requestReportUpload<T>(path: string, file: Blob, decode: (payload: unknown) => T, options: Omit<RequestOptions, 'body' | 'method'>): Promise<T> {
+  if (!reportFilePath.test(path) || !reportMediaTypes.includes(file.type) || options.credentials !== 'include' || !options.csrfToken) {
+    throw new ApiError('configuration', 'The report upload request is not configured correctly.')
+  }
+  return request(path, async (response) => decode(await response.json()), { ...options, method: 'PUT' }, file)
+}
+
+/** Download only the expected private attachment, with a bounded response body. */
+export async function requestReportBlob(path: string, expectedType: string, expectedBytes: number, options: Omit<RequestOptions, 'body' | 'method'>): Promise<Blob> {
+  if (!reportFilePath.test(path) || !reportMediaTypes.includes(expectedType) || !Number.isSafeInteger(expectedBytes) || expectedBytes < 1 || expectedBytes > 5 * 1024 * 1024 || options.credentials !== 'include') {
+    throw new ApiError('configuration', 'The report download request is not configured correctly.')
+  }
+  return request(path, async (response) => {
+    const mediaType = response.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase()
+    if (mediaType !== expectedType || !/^attachment(?:;|$)/i.test(response.headers.get('Content-Disposition') ?? '') || !response.body) throw new Error('Unexpected attachment')
+    const length = response.headers.get('Content-Length')
+    if (length !== null && (!/^\d+$/.test(length) || Number(length) !== expectedBytes)) throw new Error('Unexpected attachment size')
+    const reader = response.body.getReader()
+    const parts: Uint8Array<ArrayBuffer>[] = []
+    let received = 0
+    try {
+      while (true) {
+        const part = await reader.read()
+        if (part.done) break
+        received += part.value.byteLength
+        if (received > expectedBytes) throw new Error('Attachment exceeds expected size')
+        parts.push(new Uint8Array(part.value))
+      }
+      if (received !== expectedBytes) throw new Error('Incomplete attachment')
+      return new Blob(parts, { type: expectedType })
+    } finally { await reader.cancel().catch(() => undefined); reader.releaseLock() }
+  }, options, undefined, expectedType)
+}
+
+async function request<T>(path: string, decode: (response: Response) => Promise<T>, options: RequestOptions, rawBody?: Blob, accept = 'application/json'): Promise<T> {
   let baseUrl: string
 
   try {
@@ -80,11 +130,13 @@ export async function requestJson<T>(
     const response = await fetch(`${baseUrl}/${path.replace(/^\/+/, '')}`, {
       method: options.method ?? 'GET',
       headers: {
-        Accept: 'application/json',
+        Accept: accept,
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(rawBody ? { 'Content-Type': rawBody.type } : {}),
         ...(options.csrfToken ? { 'X-CSRF-Token': options.csrfToken } : {}),
       },
       ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+      ...(rawBody ? { body: rawBody } : {}),
       credentials: options.credentials ?? 'omit',
       cache: 'no-store',
       redirect: 'error',
@@ -104,8 +156,7 @@ export async function requestJson<T>(
     }
 
     try {
-      const payload: unknown = await response.json()
-      return decode(payload)
+      return await decode(response)
     } catch (error) {
       if (controller.signal.aborted) throw error
       throw new ApiError('invalid-response', 'The local API returned an unexpected response.')

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_CORS_ORIGINS = (
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     supabase_publishable_key: SecretStr | None = None
     csrf_signing_key: SecretStr | None = None
     auth_rate_limit_mode: Literal["local", "edge"] = "local"
+    report_max_upload_bytes: int = Field(default=5_242_880, ge=1, le=5_242_880)
 
     @property
     def auth_enabled(self) -> bool:

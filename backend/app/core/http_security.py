@@ -1,4 +1,6 @@
-"""Bound small JSON bodies and prevent authentication responses being cached."""
+"""Bound bodies by the exact upload route; retain small authentication JSON limits."""
+
+import re
 
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -9,21 +11,27 @@ class BodyTooLarge(Exception):
 
 
 class BrowserSecurityMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, report_max_upload_bytes: int = 5_242_880) -> None:
         self.app = app
+        self.report_max_upload_bytes = report_max_upload_bytes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         consumed = 0
+        is_upload = scope.get("method") == "PUT" and re.fullmatch(
+            r"/reports/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/file",
+            scope.get("path", ""),
+        )
+        body_limit = self.report_max_upload_bytes if is_upload else 16_384
 
         async def bounded_receive() -> Message:
             nonlocal consumed
             message = await receive()
             if message["type"] == "http.request":
                 consumed += len(message.get("body", b""))
-                if consumed > 16_384:
+                if consumed > body_limit:
                     raise BodyTooLarge
             return message
 
@@ -46,7 +54,7 @@ class BrowserSecurityMiddleware:
         except ValueError:
             declared_length = -1
         try:
-            if not 0 <= declared_length <= 16_384:
+            if not 0 <= declared_length <= body_limit:
                 raise BodyTooLarge
             await self.app(scope, bounded_receive, security_send)
         except BodyTooLarge:

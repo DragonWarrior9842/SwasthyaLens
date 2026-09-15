@@ -66,14 +66,13 @@ class CsrfProtection:
     def _signature(self, nonce: str, timestamp: str) -> str:
         return hmac.new(self.key, f"csrf:{nonce}:{timestamp}".encode(), hashlib.sha256).hexdigest()
 
-    def validate(self, request: Request) -> None:
+    def validate(
+        self, request: Request, *, media_types: frozenset[str] = frozenset({"application/json"})
+    ) -> None:
         failure = ApiProblem(403, "csrf_failed", "Reload this page and try again.")
         if request.headers.get("origin") != self.settings.app_origin:
             raise failure
-        if (
-            request.headers.get("content-type", "").split(";")[0].strip().lower()
-            != "application/json"
-        ):
+        if request.headers.get("content-type", "").split(";")[0].strip().lower() not in media_types:
             raise failure
         token = request.headers.get("x-csrf-token", "")
         nonce = request.cookies.get(cookie_names(self.settings).nonce, "")

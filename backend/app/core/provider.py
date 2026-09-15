@@ -55,14 +55,31 @@ class SupabaseGateway:
             raise unavailable()
         if status >= 400:
             code = ""
+            error: object = None
             try:
-                error: object = json.loads(content)
+                error = json.loads(content)
                 if isinstance(error, dict):
                     candidate = error.get("error_code", error.get("code"))
                     if isinstance(candidate, str):
                         code = candidate
             except ValueError:
                 pass
+            if purpose == "reports":
+                if code == "28000":
+                    raise unauthenticated()
+                if code == "P0001" and isinstance(error, dict):
+                    message = error.get("message")
+                    report_errors = {
+                        "report_not_found": (404, "Report not found."),
+                        "report_conflict": (
+                            409,
+                            "This report operation is already in progress or conflicts with an earlier request.",
+                        ),
+                        "invalid_file": (422, "The file or report metadata is invalid."),
+                    }
+                    if isinstance(message, str) and message in report_errors:
+                        status_code, public_message = report_errors[message]
+                        raise ApiProblem(status_code, message, public_message)
             if purpose == "login":
                 if code == "email_not_confirmed":
                     raise ApiProblem(
@@ -101,7 +118,7 @@ class SupabaseGateway:
                 "invalid_grant",
             }:
                 raise unauthenticated()
-            if purpose == "data" and status == 401 and code in {"PGRST301", "PGRST303"}:
+            if purpose in {"data", "reports"} and status == 401 and code in {"PGRST301", "PGRST303"}:
                 raise unauthenticated()
             raise unavailable()
         if not content:

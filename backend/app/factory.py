@@ -1,5 +1,6 @@
 """FastAPI application composition without import-time configuration side effects."""
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -12,12 +13,14 @@ from fastapi.responses import JSONResponse
 from app.api.accounts import router as accounts_router
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.reports import router as reports_router
 from app.core.auth_service import AuthService
 from app.core.browser_security import clear_session_cookies
 from app.core.config import Settings
 from app.core.errors import ApiProblem
 from app.core.http_security import BrowserSecurityMiddleware
 from app.core.provider import SupabaseGateway
+from app.core.reports import ReportsService
 
 
 def create_app(
@@ -42,22 +45,30 @@ def create_app(
                 if config.auth_enabled
                 else None
             )
+            application.state.reports_service = (
+                ReportsService(SupabaseGateway(config, client), config.report_max_upload_bytes)
+                if config.auth_enabled
+                else None
+            )
+            application.state.report_upload_slots = asyncio.Semaphore(4)
             yield
 
     application = FastAPI(
         title="SwasthyaLens API",
         version="0.1.0",
-        description="Local foundation. No health-data services are implemented yet.",
+        description="Private report storage and authentication. OCR and analysis are not implemented.",
         lifespan=lifespan,
     )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(config.cors_allowed_origins),
         allow_credentials=config.auth_enabled,
-        allow_methods=["GET", "POST", "PATCH"] if config.auth_enabled else ["GET"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"] if config.auth_enabled else ["GET"],
         allow_headers=["Content-Type", "X-CSRF-Token"] if config.auth_enabled else [],
     )
-    application.add_middleware(BrowserSecurityMiddleware)
+    application.add_middleware(
+        BrowserSecurityMiddleware, report_max_upload_bytes=config.report_max_upload_bytes
+    )
 
     @application.exception_handler(ApiProblem)
     async def public_problem(request: Request, error: ApiProblem) -> JSONResponse:
@@ -84,4 +95,5 @@ def create_app(
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(accounts_router)
+    application.include_router(reports_router)
     return application

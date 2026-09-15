@@ -19,6 +19,7 @@ def clear_cors_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "SUPABASE_PUBLISHABLE_KEY",
         "CSRF_SIGNING_KEY",
         "AUTH_RATE_LIMIT_MODE",
+        "REPORT_MAX_UPLOAD_BYTES",
     ):
         monkeypatch.delenv(name, raising=False)
         monkeypatch.delenv(name.lower(), raising=False)

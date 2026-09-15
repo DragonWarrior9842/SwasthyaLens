@@ -1,5 +1,5 @@
 import type { Session } from '../types/auth'
-import { ApiError, isUnauthorized, requestJson } from './api-client'
+import { ApiError, isUnauthorized, requestJson, requestReportBlob, requestReportUpload } from './api-client'
 
 const REFRESH_MARGIN_SECONDS = 60
 let refreshPromise: Promise<Session | null> | null = null
@@ -36,10 +36,11 @@ export function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
   return result
 }
 
-async function writeWithCsrf<T>(path: string, body: object, decode: (payload: unknown) => T, method: 'POST' | 'PATCH' = 'POST'): Promise<T> {
+async function writeWithCsrf<T>(path: string, body: object, decode: (payload: unknown) => T, method: 'POST' | 'PATCH' | 'DELETE' = 'POST', signal?: AbortSignal): Promise<T> {
   // Fetch inside the session lock: a token cannot be overtaken by another tab's cookie update.
-  const csrfToken = await requestJson('/auth/csrf', decodeCsrf, { credentials: 'include', timeoutMs: 15_000 })
-  return requestJson(path, decode, { credentials: 'include', method, body, csrfToken, timeoutMs: 15_000 })
+  const cancellation = signal ? { signal } : {}
+  const csrfToken = await requestJson('/auth/csrf', decodeCsrf, { credentials: 'include', timeoutMs: 15_000, ...cancellation })
+  return requestJson(path, decode, { credentials: 'include', method, body, csrfToken, timeoutMs: 15_000, ...cancellation })
 }
 
 export function accountRead<T>(path: string, decode: (payload: unknown) => T, signal?: AbortSignal): Promise<T> {
@@ -47,13 +48,39 @@ export function accountRead<T>(path: string, decode: (payload: unknown) => T, si
 }
 
 export function accountPatch<T>(path: string, body: object, decode: (payload: unknown) => T, expectedOwnerId: string): Promise<T> {
+  return accountMutation(path, body, decode, expectedOwnerId, 'PATCH')
+}
+
+function withCurrentAccount<T>(expectedOwnerId: string, operation: () => Promise<T>, signal?: AbortSignal): Promise<T> {
   return withSessionLock(async () => {
     // Preserve the editor's intent if a different tab changed accounts while this write waited.
     // This ID is never sent as authorization; the server remains the authority for ownership.
-    const current = await accountRead('/auth/me', decodeSession)
+    signal?.throwIfAborted()
+    const current = await accountRead('/auth/me', decodeSession, signal)
     if (current.user.id !== expectedOwnerId) throw new ApiError('account_changed', 'The signed-in account changed. Please review the current account before saving again.')
-    return writeWithCsrf(path, body, decode, 'PATCH')
+    signal?.throwIfAborted()
+    return operation()
   })
+}
+
+export function accountOwnedRead<T>(path: string, decode: (payload: unknown) => T, expectedOwnerId: string, signal?: AbortSignal): Promise<T> {
+  return withCurrentAccount(expectedOwnerId, () => accountRead(path, decode, signal), signal)
+}
+
+export function accountMutation<T>(path: string, body: object, decode: (payload: unknown) => T, expectedOwnerId: string, method: 'POST' | 'PATCH' | 'DELETE', signal?: AbortSignal): Promise<T> {
+  return withCurrentAccount(expectedOwnerId, () => writeWithCsrf(path, body, decode, method, signal), signal)
+}
+
+export function accountUpload<T>(path: string, file: Blob, decode: (payload: unknown) => T, expectedOwnerId: string, signal?: AbortSignal): Promise<T> {
+  return withCurrentAccount(expectedOwnerId, async () => {
+    const cancellation = signal ? { signal } : {}
+    const csrfToken = await requestJson('/auth/csrf', decodeCsrf, { credentials: 'include', timeoutMs: 15_000, ...cancellation })
+    return requestReportUpload(path, file, decode, { credentials: 'include', csrfToken, timeoutMs: 90_000, ...cancellation })
+  }, signal)
+}
+
+export function accountDownload(path: string, expectedType: string, expectedBytes: number, expectedOwnerId: string, signal?: AbortSignal): Promise<Blob> {
+  return withCurrentAccount(expectedOwnerId, () => requestReportBlob(path, expectedType, expectedBytes, { credentials: 'include', timeoutMs: 60_000, ...(signal ? { signal } : {}) }), signal)
 }
 
 /** One refresh attempt, with another-tab recheck, and no replay of account mutations. */
