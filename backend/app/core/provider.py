@@ -73,7 +73,7 @@ class SupabaseGateway:
                         "report_not_found": (404, "Report not found."),
                         "report_conflict": (
                             409,
-                            "This report operation is already in progress or conflicts with an earlier request.",
+                            "The report operation is in progress or conflicts with an earlier request.",
                         ),
                         "invalid_file": (422, "The file or report metadata is invalid."),
                     }
@@ -118,7 +118,11 @@ class SupabaseGateway:
                 "invalid_grant",
             }:
                 raise unauthenticated()
-            if purpose in {"data", "reports"} and status == 401 and code in {"PGRST301", "PGRST303"}:
+            if (
+                purpose in {"data", "reports"}
+                and status == 401
+                and code in {"PGRST301", "PGRST303"}
+            ):
                 raise unauthenticated()
             raise unavailable()
         if not content:

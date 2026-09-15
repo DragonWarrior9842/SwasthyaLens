@@ -48,6 +48,10 @@ begin
         or roles <> array['authenticated']::name[])) then
     raise exception 'Unexpected reports Storage policy surface';
   end if;
+  if exists (select 1 from pg_catalog.pg_policies where schemaname = 'storage'
+      and tablename = 'objects' and policyname not like 'swasthyalens_reports_%') then
+    raise exception 'Additional Storage policies need overlap review before isolation can be certified';
+  end if;
   foreach signature in array array[
     'report_reserve(text,text,bigint,uuid)',
     'report_begin_upload(uuid,text)',
@@ -59,7 +63,9 @@ begin
     'report_touch_cleanup(uuid)'
   ] loop
     if has_function_privilege('anon', 'public.' || signature, 'EXECUTE')
+      or has_function_privilege('anon', 'swasthyalens_private.' || signature, 'EXECUTE')
       or not has_function_privilege('authenticated', 'public.' || signature, 'EXECUTE')
+      or not has_function_privilege('authenticated', 'swasthyalens_private.' || signature, 'EXECUTE')
       or not exists (
         select 1 from pg_catalog.pg_proc
         where oid = ('public.' || signature)::regprocedure

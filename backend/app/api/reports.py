@@ -134,8 +134,6 @@ def download_report(report_id: UUID, current: CurrentUser, service: Reports) -> 
         headers={
             "Content-Disposition": f"attachment; filename=\"report\"; filename*=UTF-8''{filename}",
             "Content-Security-Policy": "sandbox; default-src 'none'",
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff",
         },
     )
 

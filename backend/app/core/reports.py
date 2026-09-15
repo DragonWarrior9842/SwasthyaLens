@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 from datetime import UTC, datetime
+from threading import BoundedSemaphore
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -13,7 +14,7 @@ from app.core.auth_service import AuthenticatedRequest
 from app.core.errors import ApiProblem
 from app.core.provider import SupabaseGateway
 from app.core.report_storage import ReportStorage, StoredFile
-from app.core.report_validation import validate_file
+from app.core.report_validation import safe_filename, validate_file
 from app.schemas.reports import (
     CleanupResult,
     DeleteResult,
@@ -38,7 +39,8 @@ class ReportsService:
     def __init__(self, gateway: SupabaseGateway, max_bytes: int) -> None:
         self.gateway = gateway
         self.max_bytes = max_bytes
-        self.storage = ReportStorage(gateway, max_bytes)
+        self.storage = ReportStorage(gateway, 5_242_880)
+        self._download_slots = BoundedSemaphore(4)
 
     @staticmethod
     def _row(value: object, current: AuthenticatedRequest) -> InternalReport:
@@ -243,6 +245,14 @@ class ReportsService:
         return self.public(finished)
 
     def download(self, row: InternalReport, current: AuthenticatedRequest) -> StoredFile:
+        if not self._download_slots.acquire(blocking=False):
+            raise ApiProblem(429, "rate_limited", "Too many file downloads. Try again shortly.")
+        try:
+            return self._download(row, current)
+        finally:
+            self._download_slots.release()
+
+    def _download(self, row: InternalReport, current: AuthenticatedRequest) -> StoredFile:
         if row.status != "uploaded":
             raise not_found()
         stored = self.storage.download(row.storage_path, current.access_token)
@@ -253,6 +263,14 @@ class ReportsService:
         ):
             logger.warning("report_download_integrity_failure")
             raise report_unavailable()
+        try:
+            if row.original_filename is None or row.size_bytes is None:
+                raise ValueError
+            safe_filename(row.original_filename)
+            validate_file(stored.data, stored.media_type, row.original_filename, row.size_bytes)
+        except ValueError:
+            logger.warning("report_download_validation_failure")
+            raise report_unavailable() from None
         return stored
 
     def delete(self, report_id: UUID, current: AuthenticatedRequest) -> DeleteResult:
@@ -290,13 +308,12 @@ class ReportsService:
             status = self._delete(row, current)
             if status.status == "deleted":
                 cleaned += 1
-                self.gateway.request(
-                    "POST",
-                    "/rest/v1/rpc/report_touch_cleanup",
-                    payload={"p_report_id": str(row.id)},
-                    access_token=current.access_token,
-                    purpose="reports",
-                )
             else:
                 pending += 1
+            # Rotate failed attempts too so one unavailable object cannot starve the batch.
+            self.gateway.request(
+                "POST", "/rest/v1/rpc/report_touch_cleanup",
+                payload={"p_report_id": str(row.id)},
+                access_token=current.access_token, purpose="reports",
+            )
         return CleanupResult(pending=pending, cleaned=cleaned)

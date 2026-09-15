@@ -12,6 +12,10 @@ from app.schemas.accounts import InputModel
 
 MediaType = Literal["application/pdf", "image/jpeg", "image/png"]
 ReportStatus = Literal["pending_upload", "uploading", "uploaded", "upload_failed", "deleting"]
+ErrorCategory = Literal[
+    "invalid_file", "file_too_large", "unsupported_file_type", "filename_invalid",
+    "storage_unavailable", "metadata_unavailable", "upload_interrupted", "integrity_mismatch",
+]
 
 
 class ReportReserve(InputModel):
@@ -53,7 +57,12 @@ class PublicReport(BaseModel):
     status: ReportStatus
     created_at: datetime
     updated_at: datetime
-    error_category: str | None
+    error_category: ErrorCategory | None
+
+    @field_validator("original_filename")
+    @classmethod
+    def filename(cls, value: str) -> str:
+        return safe_filename(value)
 
 
 class InternalReport(BaseModel):
@@ -70,7 +79,7 @@ class InternalReport(BaseModel):
     ]
     lease_token: UUID | None
     upload_lease_expires_at: datetime | None
-    error_category: str | None
+    error_category: ErrorCategory | None
     created_at: datetime
     updated_at: datetime
 
@@ -79,7 +88,8 @@ class InternalReport(BaseModel):
         if (
             re.fullmatch(
                 re.escape(f"{self.user_id}/{self.id}/")
-                + r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png)",
+                + r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                + r"\.(pdf|jpg|jpeg|png)",
                 self.storage_path,
             )
             is None

@@ -56,7 +56,7 @@ def create_app(
     application = FastAPI(
         title="SwasthyaLens API",
         version="0.1.0",
-        description="Private report storage and authentication. OCR and analysis are not implemented.",
+        description="Private reports and authentication. OCR and analysis are not implemented.",
         lifespan=lifespan,
     )
     application.add_middleware(

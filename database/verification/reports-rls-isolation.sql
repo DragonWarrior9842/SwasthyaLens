@@ -83,15 +83,29 @@ begin
     perform pg_temp.phase3_expect_error(
       'select public.report_reserve(''big.pdf'',''application/pdf'',5242881,gen_random_uuid())',
       'P0001', 'invalid_file', actor.label || ' database size cap');
+    perform pg_temp.phase3_expect_error(
+      'select public.report_reserve(repeat(''a'',117)||''.pdf'',''application/pdf'',128,gen_random_uuid())',
+      'P0001', 'invalid_file', actor.label || ' filename character cap');
+    perform pg_temp.phase3_expect_error(
+      'select public.report_reserve(''bad?.pdf'',''application/pdf'',128,gen_random_uuid())',
+      'P0001', 'invalid_file', actor.label || ' unsafe filename punctuation');
+    perform pg_temp.phase3_expect_error(format(
+      'select public.report_reserve(%L,''application/pdf'',128,gen_random_uuid())',
+      'bad' || chr(8238) || '.pdf'),
+      'P0001', 'invalid_file', actor.label || ' bidi filename control');
+    perform pg_temp.phase3_expect_error(format(
+      'select public.report_reserve(%L,''application/pdf'',128,gen_random_uuid())',
+      'cafe' || chr(769) || '.pdf'),
+      'P0001', 'invalid_file', actor.label || ' filename must already be NFC normalized');
   end loop;
 end;
 $$;
 
 do $$
-declare actor record; other_report uuid; other_owner uuid; document jsonb; lease uuid;
+declare actor record; other_report uuid; other_owner uuid; other_session uuid; document jsonb; lease uuid;
 begin
   for actor in select * from pg_temp.phase3_test_context order by label loop
-    select report_id, user_id into other_report, other_owner
+    select report_id, user_id, session_id into other_report, other_owner, other_session
       from pg_temp.phase3_test_context where label <> actor.label;
     perform set_config('request.jwt.claims', jsonb_build_object('sub', actor.user_id,
       'role', 'authenticated', 'session_id', actor.session_id, 'is_anonymous', false)::text, true);
@@ -114,11 +128,34 @@ begin
     perform pg_temp.phase3_expect_error(format(
       'select public.report_begin_upload(%L,%L)', other_report, repeat('a', 64)),
       'P0001', 'report_not_found', actor.label || ' cross-user upload hidden');
+    perform pg_temp.phase3_expect_error(format(
+      'select public.report_finish_upload(%L,gen_random_uuid())', other_report),
+      'P0001', 'report_not_found', actor.label || ' cross-user finish upload hidden');
+    perform pg_temp.phase3_expect_error(format(
+      'select public.report_fail_upload(%L,null,''storage_unavailable'')', other_report),
+      'P0001', 'report_not_found', actor.label || ' cross-user failure write hidden');
+    perform pg_temp.phase3_expect_error(format(
+      'select public.report_finish_delete(%L)', other_report),
+      'P0001', 'report_not_found', actor.label || ' cross-user finish delete hidden');
+    perform pg_temp.phase3_expect_error(format(
+      'select public.report_touch_cleanup(%L)', other_report),
+      'P0001', 'report_not_found', actor.label || ' cross-user cleanup cursor hidden');
     document := public.report_begin_upload(actor.report_id, repeat('a', 64));
     lease := (document ->> 'lease_token')::uuid;
     perform pg_temp.phase3_assert(document ->> 'status' = 'uploading'
       and lease is not null and (document ->> 'upload_lease_expires_at')::timestamptz
         > statement_timestamp(), actor.label || ' exclusive upload lease');
+    perform pg_temp.phase3_assert(swasthyalens_private.report_storage_access(
+      document ->> 'storage_path', 'upload'), actor.label || ' owner Storage upload allowed by lifecycle');
+    perform set_config('request.jwt.claims', jsonb_build_object('sub', other_owner,
+      'role', 'authenticated', 'session_id', other_session, 'is_anonymous', false)::text, true);
+    perform pg_temp.phase3_assert(not swasthyalens_private.report_storage_access(
+      document ->> 'storage_path', 'upload'),
+      actor.label || ' other active user denied same otherwise eligible Storage path');
+    perform set_config('request.jwt.claims', jsonb_build_object('sub', actor.user_id,
+      'role', 'authenticated', 'session_id', actor.session_id, 'is_anonymous', false)::text, true);
+    perform pg_temp.phase3_assert(not swasthyalens_private.report_storage_access(
+      document ->> 'storage_path', 'delete'), actor.label || ' pre-intent Storage deletion denied');
     perform pg_temp.phase3_expect_error(format(
       'select public.report_begin_upload(%L,%L)', actor.report_id, repeat('a', 64)),
       'P0001', 'report_conflict', actor.label || ' concurrent upload denied');
@@ -132,6 +169,11 @@ begin
     document := public.report_begin_delete(actor.report_id);
     perform pg_temp.phase3_assert(document ->> 'status' = 'deleting'
       and document ->> 'lease_token' = lease::text, actor.label || ' cancellation retains lease');
+    perform pg_temp.phase3_assert(not swasthyalens_private.report_storage_access(
+      document ->> 'storage_path', 'upload')
+      and not swasthyalens_private.report_storage_access(document ->> 'storage_path', 'read')
+      and swasthyalens_private.report_storage_access(document ->> 'storage_path', 'delete'),
+      actor.label || ' cancellation closes upload/read and permits cleanup');
     perform pg_temp.phase3_expect_error(format('select public.report_finish_delete(%L)', actor.report_id),
       'P0001', 'report_conflict', actor.label || ' deletion waits for possible in-flight upload');
     document := public.report_fail_upload(actor.report_id, lease, 'storage_unavailable');
@@ -166,6 +208,8 @@ begin
     perform pg_temp.phase3_assert(document ->> 'status' = 'deleted',
       actor.label || ' retry delete stays deleted');
     perform public.report_touch_cleanup(actor.report_id);
+    perform pg_temp.phase3_assert(jsonb_array_length(public.report_cleanup_candidates(10)) = 0,
+      actor.label || ' recently checked cleanup cursor does not monopolize the next batch');
     perform pg_temp.phase3_expect_error(format(
       'select public.report_reserve(''fixture.pdf'',''application/pdf'',128,%L)',
       actor.idempotency_key), 'P0001', 'report_conflict', actor.label || ' tombstone prevents resurrection');

@@ -1,5 +1,6 @@
 """Neutral, generated container fixtures: no patients, measurements or medical content."""
 
+import base64
 import struct
 import zlib
 
@@ -26,12 +27,35 @@ def valid_pdf() -> bytes:
 
 def valid_png() -> bytes:
     def chunk(kind: bytes, content: bytes) -> bytes:
-        return (struct.pack(">I", len(content)) + kind + content
-                + struct.pack(">I", zlib.crc32(kind + content) & 0xFFFFFFFF))
+        return (
+            struct.pack(">I", len(content))
+            + kind
+            + content
+            + struct.pack(">I", zlib.crc32(kind + content) & 0xFFFFFFFF)
+        )
 
     return (
         b"\x89PNG\r\n\x1a\n"
         + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
         + chunk(b"IDAT", zlib.compress(b"\x00\xff\xff\xff\xff"))
         + chunk(b"IEND", b"")
+    )
+
+
+def valid_jpeg() -> bytes:
+    # Neutral 2x2 image generated once with Pillow; Pillow is not a runtime dependency.
+    return base64.b64decode(
+        "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQ"
+        "FxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMK"
+        "ChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo"
+        "KCgoKCgoKCgoKCgoKCj/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAA"
+        "AAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhBy"
+        "JxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFV"
+        "WV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW"
+        "2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEB"
+        "AQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSE"
+        "xBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERU"
+        "ZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaan"
+        "qKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADA"
+        "MBAAIRAxEAPwD6cooooA//2Q=="
     )

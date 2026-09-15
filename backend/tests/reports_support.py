@@ -25,8 +25,11 @@ class ReportsProvider(ProviderFixture):
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if not (path.startswith("/rest/v1/rpc/report_") or path == "/rest/v1/reports"
-                or path.startswith("/storage/")):
+        if not (
+            path.startswith("/rest/v1/rpc/report_")
+            or path == "/rest/v1/reports"
+            or path.startswith("/storage/")
+        ):
             return super().handle(request)
         self.requests.append(request)
         assert request.headers.get("authorization", "").startswith("Bearer ")
@@ -77,19 +80,30 @@ class ReportsProvider(ProviderFixture):
             identifier = str(uuid4())
             extension = body["p_filename"].rsplit(".", 1)[-1].lower()
             row = {
-                "id": identifier, "user_id": self.user_id,
+                "id": identifier,
+                "user_id": self.user_id,
                 "idempotency_key": body["p_idempotency_key"],
                 "storage_path": f"{self.user_id}/{identifier}/{uuid4()}.{extension}",
-                "original_filename": body["p_filename"], "media_type": body["p_media_type"],
-                "size_bytes": body["p_size_bytes"], "sha256": None, "status": "pending_upload",
-                "lease_token": None, "upload_lease_expires_at": None, "error_category": None,
-                "created_at": now, "updated_at": now,
+                "original_filename": body["p_filename"],
+                "media_type": body["p_media_type"],
+                "size_bytes": body["p_size_bytes"],
+                "sha256": None,
+                "status": "pending_upload",
+                "lease_token": None,
+                "upload_lease_expires_at": None,
+                "error_category": None,
+                "created_at": now,
+                "updated_at": now,
             }
             self.rows[identifier] = row
             return httpx.Response(200, json=row)
         if operation == "report_cleanup_candidates":
-            return httpx.Response(200, json=[row for row in self.rows.values()
-                if row["status"] in {"deleting", "deleted"}][:10])
+            return httpx.Response(
+                200,
+                json=[
+                    row for row in self.rows.values() if row["status"] in {"deleting", "deleted"}
+                ][:10],
+            )
         identifier = body["p_report_id"]
         if identifier not in self.rows:
             return self.conflict("report_not_found")
@@ -104,15 +118,28 @@ class ReportsProvider(ProviderFixture):
             expiry = row["upload_lease_expires_at"]
             if isinstance(expiry, str) and datetime.fromisoformat(expiry) > datetime.now(UTC):
                 return self.conflict()
-            row.update({"status": "uploading", "sha256": body["p_sha256"],
-                        "lease_token": str(uuid4()),
-                        "upload_lease_expires_at": (datetime.now(UTC) + timedelta(seconds=120)).isoformat()})
+            row.update(
+                {
+                    "status": "uploading",
+                    "sha256": body["p_sha256"],
+                    "lease_token": str(uuid4()),
+                    "upload_lease_expires_at": (
+                        datetime.now(UTC) + timedelta(seconds=120)
+                    ).isoformat(),
+                }
+            )
         elif operation == "report_finish_upload":
             if self.finish_failure:
                 return httpx.Response(503, json={"message": "private database detail"})
             assert row["storage_path"] in self.objects
-            row.update({"status": "uploaded", "lease_token": None,
-                        "upload_lease_expires_at": None, "error_category": None})
+            row.update(
+                {
+                    "status": "uploaded",
+                    "lease_token": None,
+                    "upload_lease_expires_at": None,
+                    "error_category": None,
+                }
+            )
         elif operation == "report_fail_upload":
             if row["status"] != "deleting":
                 row.update({"status": "upload_failed", "error_category": body["p_error_category"]})
@@ -121,9 +148,17 @@ class ReportsProvider(ProviderFixture):
                 row["status"] = "deleting"
         elif operation == "report_finish_delete":
             assert row["storage_path"] not in self.objects
-            row.update({"status": "deleted", "original_filename": None,
-                        "media_type": None, "size_bytes": None, "sha256": None,
-                        "lease_token": None, "upload_lease_expires_at": None})
+            row.update(
+                {
+                    "status": "deleted",
+                    "original_filename": None,
+                    "media_type": None,
+                    "size_bytes": None,
+                    "sha256": None,
+                    "lease_token": None,
+                    "upload_lease_expires_at": None,
+                }
+            )
         elif operation == "report_touch_cleanup":
             return httpx.Response(204)
         else:

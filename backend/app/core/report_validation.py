@@ -52,12 +52,23 @@ def validate_file(data: bytes, media_type: str, filename: str, expected_size: in
     ):
         raise ValueError("File type or size does not match")
     if media_type == "application/pdf":
+        ending = re.search(rb"startxref\s+([0-9]+)\s+%%EOF\s*\Z", data[-2048:])
         if (
             not re.match(rb"%PDF-(?:1\.[0-7]|2\.0)(?:\r\n|\r|\n)", data)
             or re.search(rb"\b[0-9]+\s+[0-9]+\s+obj\b", data) is None
-            or re.search(rb"startxref\s+[0-9]+\s+%%EOF\s*\Z", data[-2048:]) is None
+            or ending is None
         ):
             raise ValueError("File does not have a supported PDF container")
+        offset = int(ending.group(1))
+        candidate = data[offset : offset + 4096]
+        if not 0 < offset < len(data) or not (
+            re.match(rb"xref(?:\s)", candidate)
+            or (
+                re.match(rb"[0-9]+\s+[0-9]+\s+obj\b", candidate)
+                and re.search(rb"/Type\s*/XRef\b", candidate)
+            )
+        ):
+            raise ValueError("Invalid PDF cross-reference offset")
     elif media_type == "image/png":
         _validate_png(data)
     elif media_type == "image/jpeg":
@@ -84,8 +95,12 @@ def _validate_png(data: bytes) -> None:
             if kind != b"IHDR" or size != 13:
                 raise ValueError("Missing PNG header")
             width, height = struct.unpack_from(">II", payload)
-            if not 0 < width <= 50_000 or not 0 < height <= 50_000:
+            if not 0 < width <= 50_000 or not 0 < height <= 50_000 or width * height > 40_000_000:
                 raise ValueError("Invalid PNG dimensions")
+            depth, color, compression, filtering, interlace = payload[8:]
+            depths = {0: {1, 2, 4, 8, 16}, 2: {8, 16}, 3: {1, 2, 4, 8}, 4: {8, 16}, 6: {8, 16}}
+            if depth not in depths.get(color, set()) or compression or filtering or interlace > 1:
+                raise ValueError("Invalid PNG image header")
         elif kind == b"IHDR":
             raise ValueError("Duplicate PNG header")
         if kind == b"IDAT" and size:
@@ -122,6 +137,10 @@ def _validate_jpeg(data: bytes) -> None:
                 or not any(data[offset + 5 : offset + 7])
             ):
                 raise ValueError("Invalid JPEG frame")
+            height = int.from_bytes(data[offset + 3 : offset + 5], "big")
+            width = int.from_bytes(data[offset + 5 : offset + 7], "big")
+            if width * height > 40_000_000:
+                raise ValueError("JPEG image dimensions exceed the limit")
             frame = True
         if marker == 0xDA:
             if not frame or offset + size >= len(data) - 2:
