@@ -2,7 +2,7 @@
 
 SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Phase 2 adds Supabase authentication through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. The four health destinations retain their honest empty states.
 
-**Phase 2 is awaiting live account/browser acceptance testing.** The database migration is applied, and schema and rollback-only RLS isolation tests passed on Supabase. This is not a claim that the complete hosted authentication path has passed. See the [Phase 2 handoff](docs/phase-2-handoff.md) for current results and the remaining owner setup.
+**Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for the full results and limitation. Phase 3 is on hold by the owner's instruction.
 
 Uploads, report storage, OCR, AI, health measurements, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
@@ -61,7 +61,7 @@ Both development servers bind to loopback rather than the local network. Vite us
 {"status":"ok","service":"swasthyalens-api"}
 ```
 
-This reports service liveness, not a person's health or readiness of future integrations. The sidebar connection indicator calls this endpoint through the centralized API client. An unavailable API leaves the pages usable and offers a manual retry.
+This reports service liveness, not a person's health or readiness of future integrations. The sidebar connection indicator calls this endpoint through the centralized API client and offers retry when unavailable. With Phase 2 enabled, protected content is hidden if authentication cannot be verified; a service outage is not treated as a confirmed logout.
 
 ## Configuration
 
@@ -94,15 +94,15 @@ The owner supplied project values in ignored `backend/.env.phase2`; implementati
 
 ## Supabase setup and migrations
 
-The [authentication plan](docs/phase-2-auth-plan.md) explains the approved design and initial project setup. Use email/password signup with confirmation enabled and an ES256 signing key. The Confirm signup email template must display `{{ .Token }}`; the application verifies the entered code through FastAPI.
+The [authentication plan](docs/phase-2-auth-plan.md) explains the approved design and initial project setup. Email confirmation remains enabled and the project uses an ES256 signing key. The implemented code-entry flow requires the Confirm signup email template to display `{{ .Token }}`. The owner confirmed that editing is locked on this Free project with the built-in sender, so this template requirement is unmet. Signup-email delivery and successful OTP-code verification must not be claimed as working. This matches [Supabase's Free/default-sender template restriction](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier). No OTP simulation, confirmation bypass, SMTP setup or alternative email flow has been added to resolve it; any future change requires separately agreed work.
 
-For this phase the owner selected Supabase's built-in email sender for development. It is restricted to eligible project-team addresses and has a low sending quota; production SMTP is not configured. Do not disable email confirmation or grant project access to work around mail delivery. Actual email verification must be tested with an eligible mailbox.
+For this phase the owner selected Supabase's built-in email sender for development. It is restricted to eligible project-team addresses and has a low sending quota; custom SMTP is not configured. Do not disable email confirmation or grant project access to work around mail delivery. Actual email verification remains a deferred acceptance item after a supported email flow is agreed and configured.
 
-Apply the exact versioned SQL and run the verification scripts using the [database instructions](database/README.md). Do not create tables manually, expose the private helper schema, or use a service-role client for normal requests. The runtime needs no database password.
+The reviewed migration is already applied to the current development project as `20260914164833 / auth_foundation`; do not rerun it there. For a fresh installation, apply the exact versioned SQL and run the verification scripts using the [database instructions](database/README.md). Do not create tables manually, expose the private helper schema, or use a service-role client for normal requests. The runtime needs no database password.
 
 ## Real two-user acceptance checks
 
-The normal unit suite makes no live provider calls. The optional integration harness uses two distinct, dedicated Supabase development accounts and the running local API. It changes/restores test display names and signs out only its test sessions; use accounts containing no real health data.
+The normal unit suite makes no live provider calls. The optional integration harness uses two distinct, dedicated Supabase development accounts and the running local API. It changes/restores test display names and preferences and signs out only its test sessions; use accounts containing no real health data. Do not run simultaneous acceptance runners against the same fixture accounts.
 
 Create the two test accounts using Supabase Authentication → Users → Add user → Create new user, using distinct addresses you control and strong passwords. For these dedicated fixtures, use the dashboard's auto-confirm option so a limited development email quota does not block database isolation testing. This does not disable confirmation for public signup and does not test email ownership or delivery.
 
@@ -114,7 +114,7 @@ try { .\.venv\Scripts\python.exe -m pytest tests/integration -q }
 finally { Remove-Item Env:RUN_SUPABASE_INTEGRATION -ErrorAction SilentlyContinue }
 ```
 
-This tests real login/refresh, API ownership, direct Data API A/B isolation, forged owner/audit fields and replay after logout. Separately test browser signup and confirmation using the built-in sender and an eligible mailbox. A skipped live test or a successful SQL role fixture is not proof of complete end-to-end authentication.
+This passed against the owner-provided accounts and tests real login/refresh, persistent profile/settings, anonymous denial, CSRF/Origin checks, private-schema exposure denial, direct Data API A/B isolation, forged owner/audit fields and replay after logout. Browser sign-in, reload/refresh, logout, cross-tab behavior and mobile navigation also passed against the production build. The two dedicated users were created with Auto Confirm for these tests only; they do not verify signup-email delivery or the OTP-code flow. Those checks remain deferred under the confirmed template limitation.
 
 ## Quality checks
 
@@ -162,7 +162,7 @@ With Phase 2 enabled, apply the migration and sign in first before checking prot
 3. Refresh each route directly; use browser back/forward and check the active navigation state.
 4. At a mobile viewport, open/close navigation, press Escape, and navigate. The menu should close, focus should remain usable, and the page should not scroll horizontally.
 5. Use Tab/Enter for the skip link, navigation, buttons and links. Focus indicators should be visible.
-6. Stop the backend, reload the page, and confirm **Local API unavailable**. Restart it and choose **Retry connection**; the indicator should recover.
+6. Stop the backend and reload. Phase 2 should show **Unable to check your session**; restart it and choose **Try again**. A separate `/health` request failure while the session can still be verified shows **Local API unavailable** in the sidebar with **Retry connection**.
 7. Visit an unknown frontend route to check the not-found page.
 8. Open `/health` on port 8000 and compare the exact JSON above. POST is rejected with 405.
 
@@ -173,24 +173,26 @@ frontend/
   src/
     components/       shared UI primitives and navigation
     layouts/          responsive application shell
-    pages/            four empty-state destinations and not-found page
+    pages/            auth/settings pages, four empty-state destinations, not-found page
+    features/auth/    session lifecycle, route protection and account controls
     features/system/  service connection indicator
     hooks/            API request lifecycle
     lib/              public configuration validation
-    services/         centralized transport and health response validation
-    types/            service contract
+    services/         centralized transport, health/auth/account contracts
+    types/            service and account types
     styles/           design tokens and responsive styling
 backend/
   app/
-    api/              endpoint routing
-    core/             validated server configuration
-    schemas/          response contract
-  tests/              health/CORS/configuration tests
+    api/              health/auth/profile/settings routes and verified-user dependency
+    core/             configuration, cookies/CSRF, JWT/provider/session, owner repositories
+    schemas/          strict request and response contracts
+  tests/              isolated unit/security tests and opt-in real two-user checks
+database/             versioned migration, schema assertions and rollback-only RLS tests
 docs/                 audit, roadmap and phase handoff
 .github/workflows/    checks only; no deployment
 ```
 
-Add models, domain services, persistence or provider adapters only when a later phase needs them. There are no empty architecture packages or fake integration implementations.
+Authentication and account persistence are real Supabase integrations. Add health-domain models and further provider adapters only when their approved phase needs them; there are no fake medical integrations.
 
 ## Planning and delivery
 
@@ -199,4 +201,4 @@ Add models, domain services, persistence or provider adapters only when a later 
 - [Phase 2 authentication plan](docs/phase-2-auth-plan.md) records the approved architecture and initial setup gate.
 - [Phase 2 handoff](docs/phase-2-handoff.md) records the current implementation, evidence and remaining setup.
 
-Phase 2 work stops at required external setup gates and after its acceptance checks. Phase 3 will not start until Phase 2 is complete and the owner explicitly says `continue`.
+The owner has requested that the email-template restriction remain a documented Phase 2 limitation for now. Phase 2 is not represented as fully verified for public signup. Phase 3 remains on hold and requires the owner's explicit instruction to proceed; recording this limitation does not authorize another phase.

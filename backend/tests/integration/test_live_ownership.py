@@ -114,6 +114,8 @@ def live() -> Iterator[LiveContext]:
             client = stack.enter_context(
                 httpx.Client(base_url=base_url, headers={"Origin": origin}, timeout=20)
             )
+            for route in ("/auth/me", "/profile", "/settings"):
+                expect_status(client.get(route), 401, "Anonymous API access")
             response = client.get("/auth/csrf")
             expect_status(response, 200, "CSRF bootstrap")
             csrf = object_body(response).get("csrf_token")
@@ -149,6 +151,10 @@ def live() -> Iterator[LiveContext]:
                 timeout=20,
             )
         )
+        private = database.get("profiles", headers={"Accept-Profile": "swasthyalens_private"})
+        expect_status(private, 406, "Private helper schema is not exposed")
+        if object_body(private).get("code") != "PGRST106":
+            pytest.fail("Private schema must be unavailable through the Data API")
         yield LiveContext((authenticated[0], authenticated[1]), database)
 
 
@@ -187,6 +193,20 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
     try:
         for index, user in enumerate(live.users):
             other = live.users[1 - index]
+            expect_status(
+                user.client.patch("/profile", json={"display_name": "Rejected missing CSRF"}),
+                403,
+                "Live mutation without CSRF token",
+            )
+            expect_status(
+                user.client.patch(
+                    "/profile",
+                    json={"display_name": "Rejected origin"},
+                    headers={"Origin": "https://untrusted.invalid", "X-CSRF-Token": user.csrf},
+                ),
+                403,
+                "Live mutation from an untrusted origin",
+            )
             response = user.write("PATCH", "/profile", {"display_name": f"Isolation test {index}"})
             expect_status(response, 200, "Owner profile update")
             persisted = user.client.get("/profile")

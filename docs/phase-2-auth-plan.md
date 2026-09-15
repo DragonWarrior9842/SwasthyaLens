@@ -1,8 +1,8 @@
 # Phase 2 — Authentication plan and external setup gate
 
-Date: 14 September 2026. Status: **approved plan; implementation and acceptance testing in progress**.
+Date: 14 September 2026. Current status as of 15 September: **implemented; confirmed-account live/API/RLS/browser checks passed; locked email template recorded as an owner-confirmed Phase 2 limitation**.
 
-The owner confirmed Supabase setup and explicitly selected the built-in email service for development. The newly connected Supabase plugin subsequently allowed the reviewed migration and database verification to run directly, so the manual SQL Editor gate described in the original plan is no longer needed for this project. See the [Phase 2 handoff](phase-2-handoff.md) for current evidence and remaining live-account tests. The original preflight findings below are historical.
+The owner confirmed Supabase setup and explicitly selected the built-in email service for development. The connected Supabase plugin allowed the reviewed migration and database verification to run directly, so the original manual SQL Editor gate is satisfied. The owner supplied two dedicated Auto Confirm test accounts; their live API/Data API and browser checks passed. The owner has since confirmed that the Free project's Confirm signup template is locked and cannot display `{{ .Token }}`. Confirm email is enabled; custom SMTP is absent. Actual signup-email delivery and OTP-code verification remain unverified and are recorded as a known limitation, with no fake flow or bypass. Phase 3 remains on hold. See the [Phase 2 handoff](phase-2-handoff.md) for current evidence and limitations. The original preflight and proposed implementation details below are historical; the template-editing step is not available on this project and is not a current setup request.
 
 This document records the intended design before implementation, as requested in the owner's Phase 2 instructions. It is not an implementation handoff or evidence that authentication works. The initial project-setup gate has been satisfied. Reports, storage, OCR, health metrics, AI, trends, voice, exports and notifications remain outside this phase.
 
@@ -126,7 +126,7 @@ Likely existing files affected: `frontend/src/App.tsx`, `main.tsx`, `layouts/App
 2. Under **Authentication → URL Configuration**, set **Site URL** to `http://127.0.0.1:5173`. The proposed code-entry flow needs no callback redirect entry. Leave additional redirects empty for this new project; do not add wildcards. A future recovery/OAuth flow will define its own exact URLs before implementation. [Redirect configuration](https://supabase.com/docs/guides/auth/redirect-urls).
 3. Open **JWT Signing Keys** and check that the current signing algorithm is **ES256**. If this new, unused development project is on the legacy secret, use **Migrate JWT secret**, then **Rotate keys** to activate the generated ES256 standby key. Do not copy private signing material. Do not rotate an unrelated existing production project's keys for this setup. [Signing-key configuration](https://supabase.com/docs/guides/auth/signing-keys).
 4. Keep refresh-token rotation/reuse detection enabled and its default 10-second reuse interval. Keep the default one-hour access-token expiry for initial integration; application session lifetime is a separate control described above. Paid-plan session settings are not assumed. [Session configuration](https://supabase.com/docs/guides/auth/sessions).
-5. Under **Authentication → Email Templates → Confirm signup**, set subject to `Confirm your SwasthyaLens email` and use this body:
+5. **Historical planned step, unavailable on the owner's current project:** under **Authentication → Email Templates → Confirm signup**, the proposed subject was `Confirm your SwasthyaLens email` with this body. The owner confirmed that editing is locked; do not attempt this step or consider it completed:
 
 ```html
 <h2>Confirm your email</h2>
@@ -138,6 +138,8 @@ Likely existing files affected: `frontend/src/App.tsx`, `main.tsx`, `layouts/App
 `{{ .Token }}` is Supabase's email-template variable, not a secret to replace by hand. This sends a code for the future verification form and avoids putting authentication tokens in application URLs. [Email templates](https://supabase.com/docs/guides/auth/auth-email-templates).
 
 ### C. Arrange verification email delivery
+
+**Historical setup guidance; currently deferred:** the owner has confirmed that custom SMTP is not configured and selected the built-in sender for development. The two Auto Confirm integration users have already passed isolation checks. The locked-template/email-flow limitation is now recorded; this section does not request SMTP setup or another confirmation at this time.
 
 The built-in sender currently accepts only organization-team email addresses and has a two-message-per-hour limit; it is not production delivery. Do not add people as project administrators to bypass that restriction. [Supabase SMTP requirements](https://supabase.com/docs/guides/auth/auth-smtp).
 

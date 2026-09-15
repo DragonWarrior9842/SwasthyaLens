@@ -4,6 +4,8 @@ This directory owns the versioned Supabase PostgreSQL schema and its verificatio
 
 **Execution status (14 September 2026):** applied to the verified `swasthyalens-dev` project through the connected Supabase migration tool, version `20260914164833`, name `auth_foundation`. Both `schema.sql` and the complete rollback-only `rls-isolation.sql` passed on hosted PostgreSQL 17.6. No fixture users/profile/settings rows remained afterward. Supabase security and performance advisors both returned no findings. These database results do not replace live browser/API authentication acceptance.
 
+**Acceptance update (15 September 2026):** the real two-user FastAPI/Data API suite and production-build browser checks passed. Private-schema exposure was explicitly rejected with HTTP 406 / `PGRST106`. The latest security advisor now reports leaked-password protection disabled; there are no table/RLS/function findings. The performance advisor remains clear. The owner confirmed that the Free/default-sender email template is locked; actual signup-email delivery and OTP-code verification remain a known Phase 2 limitation. The two Auto Confirm fixtures do not verify that flow. See the [Phase 2 handoff](../docs/phase-2-handoff.md) for details. Phase 3 is on hold.
+
 ## Apply the initial migration
 
 1. Open the **development** Supabase project selected for SwasthyaLens. Check the project name before opening SQL Editor.
@@ -28,7 +30,7 @@ psql service=swasthyalens_dev -v ON_ERROR_STOP=1 -f database/verification/schema
 psql service=swasthyalens_dev -v ON_ERROR_STOP=1 -f database/verification/rls-isolation.sql
 ```
 
-These commands run from the repository root. SQL Editor is the supported owner workflow when no local database tooling exists. No tooling installation, remote migration, reset or destructive down migration is performed automatically. Corrections after application require a new reviewed migration rather than editing already-applied history. Do not insert these files into `supabase_migrations.schema_migrations` by hand; no Supabase CLI migration history has been initialized by this project.
+These commands run from the repository root. SQL Editor is the supported owner workflow when no local database tooling exists. The already-authorized initial remote migration was applied through the connected migration tool and is recorded in Supabase migration history. No local CLI project was initialized. Future migrations require their phase's reviewed scope; no database reset or destructive down migration is part of this workflow. Corrections after application require a new reviewed migration rather than editing already-applied history. Do not insert migration history rows by hand.
 
 ## Schema and API contract
 
@@ -94,7 +96,7 @@ PostgREST verifies JWTs before mapping requests to a role; FastAPI independently
 
 It does **not** send email, create usable passwords, issue signed access/refresh tokens or exercise FastAPI/browser flows. Its `.invalid` fixture email addresses are generated at runtime and never used for sign-in. No pre-existing account is selected or changed. Do not run fragments or change the final `rollback` to `commit`. If execution fails, the transaction is aborted; roll it back before doing anything else.
 
-The separate live two-user harness must still prove the FastAPI and direct Data API behavior using real opted-in test accounts and genuine provider-issued tokens. Browser signup/confirmation/login/refresh/logout, CSRF, HttpOnly cookies and built-in email delivery constraints need their own evidence. A SQL fixture pass alone is not Phase 2 completion.
+The separate live two-user harness has now proved FastAPI and direct Data API behavior using real opted-in test accounts and genuine provider-issued tokens. Browser login/refresh/logout, CSRF, HttpOnly cookies and account persistence also passed. Actual signup-email delivery and OTP-code verification remain unverified under the owner-confirmed locked-template limitation. A SQL fixture pass or Auto Confirm account does not establish email-flow acceptance.
 
 Timezone validation uses the database's installed timezone catalog, including valid IANA aliases. After a future timezone-data upgrade, inspect stored timezone validity before changing/removing supported names. The backend's timezone package and database catalog should be kept compatible.
 

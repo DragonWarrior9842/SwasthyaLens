@@ -176,7 +176,7 @@ def test_issued_at_tolerance_never_extends_expiration_or_not_before(
 ) -> None:
     provider, verifier = verification
     now = int(time.time())
-    claims = {"iat": now - 10, claim: now - 1 if claim == "exp" else now + 3}
+    claims: dict[str, object] = {"iat": now - 10, claim: now - 1 if claim == "exp" else now + 3}
     with pytest.raises(ApiProblem) as failure:
         verifier.verify(provider.token(claims))
     assert failure.value.status == 401
