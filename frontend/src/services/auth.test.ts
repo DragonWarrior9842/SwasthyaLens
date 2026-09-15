@@ -39,7 +39,7 @@ describe('cookie account transport', () => {
     await expect(requestJson('/profile', (value) => value, { credentials: 'include' })).rejects.toMatchObject({ code, message, status: 403 })
   })
 
-  it('does not submit or replay a write when CSRF bootstrap fails', async () => {
+  it('does not submit a write when the ownership recheck fails', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(unavailable())
     vi.stubGlobal('fetch', fetchMock)
     await expect(accountPatch('/profile', { display_name: 'A' }, (value) => value, session().user.id)).rejects.toMatchObject({ status: 503 })
@@ -139,6 +139,14 @@ describe('session restoration and rotation', () => {
     vi.stubGlobal('navigator', { locks: { request } })
     await expect(withSessionLock(() => Promise.resolve('done'))).resolves.toBe('done')
     expect(request).toHaveBeenCalledWith('swasthyalens-session', expect.any(Function))
+  })
+
+  it('fails closed in a browser without cross-tab session coordination', async () => {
+    vi.stubGlobal('window', {})
+    vi.stubGlobal('navigator', {})
+    const operation = vi.fn(() => Promise.resolve('must not run'))
+    await expect(withSessionLock(operation)).rejects.toMatchObject({ code: 'configuration' })
+    expect(operation).not.toHaveBeenCalled()
   })
 
   it('keeps logout after an in-flight operation even if that operation rejects', async () => {

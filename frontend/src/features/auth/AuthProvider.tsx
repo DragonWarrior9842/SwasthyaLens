@@ -3,6 +3,7 @@ import { errorMessage } from '../../services/api-client'
 import { restoreSession, signOut } from '../../services/auth'
 import type { AuthState, Session } from '../../types/auth'
 import { AuthContext } from './auth-context'
+import { sessionCheckDelay } from './session-timing'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'checking' })
@@ -52,7 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', recheck)
     if (typeof BroadcastChannel !== 'undefined') {
       const connection = new BroadcastChannel('swasthyalens-session')
-      connection.onmessage = (event: MessageEvent<unknown>) => { if (event.data === 'session-changed') void checkSession() }
+      connection.onmessage = (event: MessageEvent<unknown>) => {
+        if (event.data === 'session-changed') {
+          // Discard the previous account's rendered content before the new read resolves.
+          setState({ status: 'checking' })
+          void checkSession()
+        }
+      }
       channel.current = connection
     }
     return () => {
@@ -66,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (state.status !== 'authenticated') return
-    const delay = Math.max(1_000, state.session.expires_at * 1000 - Date.now() - 45_000)
+    const delay = sessionCheckDelay(state.session.expires_at)
     const timer = window.setTimeout(() => { void checkSession() }, delay)
     return () => window.clearTimeout(timer)
   }, [state, checkSession])

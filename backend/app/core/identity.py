@@ -10,6 +10,8 @@ import jwt
 from app.core.errors import unauthenticated, unavailable
 from app.core.provider import SupabaseGateway
 
+ISSUED_AT_CLOCK_SKEW_SECONDS = 5
+
 
 @dataclass(frozen=True)
 class VerifiedIdentity:
@@ -92,6 +94,9 @@ class TokenVerifier:
                 options={
                     "require": ["exp", "iat", "sub", "iss", "aud", "session_id", "email"],
                     "verify_exp": not allow_expired,
+                    # Provider/local clocks can differ slightly. Check iat explicitly below;
+                    # global JWT leeway would also extend exp and nbf, which must stay strict.
+                    "verify_iat": False,
                     "strict_aud": True,
                 },
             )
@@ -101,6 +106,7 @@ class TokenVerifier:
             if (
                 type(expiration) is not int
                 or type(issued) is not int
+                or issued > time.time() + ISSUED_AT_CLOCK_SKEW_SECONDS
                 or expiration <= issued
                 or claims.get("role") != "authenticated"
                 or claims.get("is_anonymous") is not False

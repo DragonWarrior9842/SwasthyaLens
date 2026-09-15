@@ -23,9 +23,14 @@ function decodeMessage(payload: unknown): void {
 
 /** A shared lock prevents cookie rotation racing login/logout or another browser tab. */
 export function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
-  const run = () => typeof navigator !== 'undefined' && navigator.locks
-    ? navigator.locks.request('swasthyalens-session', operation)
-    : operation()
+  const run = () => {
+    if (typeof window !== 'undefined' && (typeof navigator === 'undefined' || !navigator.locks)) {
+      throw new ApiError('configuration', 'Secure session coordination is unavailable. Use an up-to-date browser over HTTPS, or the local development address.')
+    }
+    return typeof navigator !== 'undefined' && navigator.locks
+      ? navigator.locks.request('swasthyalens-session', operation)
+      : operation()
+  }
   const result = localQueue.then(run, run)
   localQueue = result.catch(() => undefined)
   return result

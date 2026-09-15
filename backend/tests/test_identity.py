@@ -44,6 +44,7 @@ def test_valid_signature_yields_typed_authoritative_identity(
         {"exp": "9999999999"},
         {"exp": True},
         {"iat": "1"},
+        {"iat": True},
         {"iat": 9999999999},
         {"nbf": 9999999999},
         {"role": "service_role"},
@@ -147,3 +148,35 @@ def test_jwks_failure_is_unavailable_and_not_anonymous(
         assert failure.value.status == 503
         assert "private key detail" not in failure.value.message
     assert len(provider.requests) == 1
+
+
+@pytest.mark.parametrize(("seconds_ahead", "accepted"), [(0, True), (5, True), (6, False)])
+def test_issued_at_clock_difference_is_bounded_to_five_seconds(
+    verification: tuple[ProviderFixture, TokenVerifier],
+    monkeypatch: pytest.MonkeyPatch,
+    seconds_ahead: int,
+    accepted: bool,
+) -> None:
+    provider, verifier = verification
+    now = int(time.time())
+    monkeypatch.setattr("app.core.identity.time.time", lambda: float(now))
+    token = provider.token({"iat": now + seconds_ahead})
+    if accepted:
+        assert str(verifier.verify(token).user_id) == provider.user_id
+    else:
+        with pytest.raises(ApiProblem) as failure:
+            verifier.verify(token)
+        assert failure.value.status == 401
+
+
+@pytest.mark.parametrize("claim", ["exp", "nbf"])
+def test_issued_at_tolerance_never_extends_expiration_or_not_before(
+    verification: tuple[ProviderFixture, TokenVerifier],
+    claim: str,
+) -> None:
+    provider, verifier = verification
+    now = int(time.time())
+    claims = {"iat": now - 10, claim: now - 1 if claim == "exp" else now + 3}
+    with pytest.raises(ApiProblem) as failure:
+        verifier.verify(provider.token(claims))
+    assert failure.value.status == 401

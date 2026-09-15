@@ -3,7 +3,7 @@
 Requires two dedicated, confirmed development accounts, a running local API and
 the applied migration. Credentials are read only from ignored .env.integration.
 No emails are sent or accounts created by this suite. It changes and restores the
-two test accounts' display names and exercises current-session logout.
+two test accounts' display names/preferences and exercises current-session logout.
 """
 
 from __future__ import annotations
@@ -154,6 +154,7 @@ def live() -> Iterator[LiveContext]:
 
 def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
     original_profiles: list[dict[str, object]] = []
+    original_settings: list[dict[str, object]] = []
     for user in live.users:
         response = user.client.get("/profile")
         expect_status(response, 200, "Owner profile read")
@@ -163,8 +164,10 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
         original_profiles.append(profile)
         response = user.client.get("/settings")
         expect_status(response, 200, "Owner settings read")
-        if object_body(response).get("user_id") != user.user_id:
+        settings = object_body(response)
+        if settings.get("user_id") != user.user_id:
             raise AssertionError("Settings identity mismatch")
+        original_settings.append(settings)
         response = user.write("POST", "/auth/refresh", {})
         expect_status(response, 200, "Real provider token refresh")
         refreshed = object_body(response)
@@ -186,6 +189,21 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
             other = live.users[1 - index]
             response = user.write("PATCH", "/profile", {"display_name": f"Isolation test {index}"})
             expect_status(response, 200, "Owner profile update")
+            persisted = user.client.get("/profile")
+            expect_status(persisted, 200, "Persisted profile read")
+            if object_body(persisted).get("display_name") != f"Isolation test {index}":
+                raise AssertionError("Profile change was not persisted")
+            preferences: dict[str, object] = {
+                "preferred_language": "hi" if index == 0 else "en",
+                "timezone": "Asia/Kolkata" if index == 0 else "Europe/London",
+            }
+            expect_status(
+                user.write("PATCH", "/settings", preferences), 200, "Owner settings update"
+            )
+            persisted = user.client.get("/settings")
+            expect_status(persisted, 200, "Persisted settings read")
+            if any(object_body(persisted).get(key) != value for key, value in preferences.items()):
+                raise AssertionError("Settings change was not persisted")
             response = user.write("PATCH", "/profile", {"id": other.user_id})
             expect_status(response, 422, "API rejects supplied owner")
             response = user.write("PATCH", "/settings", {"user_id": other.user_id})
@@ -219,7 +237,8 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
                 if object_body(forged).get("code") != "42501":
                     raise AssertionError("Forged insert must fail a database permission/RLS check")
                 forbidden_updates: tuple[dict[str, object], ...] = (
-                    {owner_key: other.user_id}, {"created_at": "2000-01-01"}
+                    {owner_key: other.user_id},
+                    {"created_at": "2000-01-01"},
                 )
                 for forbidden in forbidden_updates:
                     expect_status(
@@ -231,6 +250,19 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
 
         # Revoke A's real provider session, then replay its previously valid access JWT.
         first = live.users[0]
+        for user, original in zip(live.users, original_settings, strict=True):
+            expect_status(
+                user.write(
+                    "PATCH",
+                    "/settings",
+                    {
+                        "preferred_language": original["preferred_language"],
+                        "timezone": original["timezone"],
+                    },
+                ),
+                200,
+                "Restore original test settings",
+            )
         for user, original in zip(live.users, original_profiles, strict=True):
             expect_status(
                 user.write("PATCH", "/profile", {"display_name": original.get("display_name")}),
@@ -249,6 +281,18 @@ def test_real_two_user_ownership_and_revocation(live: LiveContext) -> None:
             live.users[1].client.get("/auth/me"), 200, "Other user's session remains valid"
         )
     finally:
+        for user, original in zip(live.users, original_settings, strict=True):
+            try:
+                user.write(
+                    "PATCH",
+                    "/settings",
+                    {
+                        "preferred_language": original["preferred_language"],
+                        "timezone": original["timezone"],
+                    },
+                )
+            except httpx.HTTPError:
+                pass
         for user, original in zip(live.users, original_profiles, strict=True):
             try:
                 user.write("PATCH", "/profile", {"display_name": original.get("display_name")})

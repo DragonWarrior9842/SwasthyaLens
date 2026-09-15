@@ -33,11 +33,14 @@ def headers(client: TestClient) -> dict[str, str]:
 
 
 def login(client: TestClient) -> httpx.Response:
-    return cast(httpx.Response, client.post(
-        "/auth/login",
-        headers=headers(client),
-        json={"email": "account@example.com", "password": "isolated-test-password"},
-    ))
+    return cast(
+        httpx.Response,
+        client.post(
+            "/auth/login",
+            headers=headers(client),
+            json={"email": "account@example.com", "password": "isolated-test-password"},
+        ),
+    )
 
 
 def test_login_sets_private_cookies_initializes_owned_rows_and_returns_only_identity(

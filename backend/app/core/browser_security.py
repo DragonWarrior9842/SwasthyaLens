@@ -81,8 +81,11 @@ class CsrfProtection:
             raise failure
         parts = token.split(".")
         if (
-            len(parts) != 2 or not parts[0].isascii() or not parts[0].isdigit()
-            or len(parts[1]) != 64 or any(character not in "0123456789abcdef" for character in parts[1])
+            len(parts) != 2
+            or not parts[0].isascii()
+            or not parts[0].isdigit()
+            or len(parts[1]) != 64
+            or any(character not in "0123456789abcdef" for character in parts[1])
         ):
             raise failure
         timestamp = int(parts[0])

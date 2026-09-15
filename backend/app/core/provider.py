@@ -68,9 +68,16 @@ class SupabaseGateway:
                     raise ApiProblem(
                         401, "email_not_confirmed", "Confirm your email before signing in."
                     )
-                if status in (400, 401, 403, 422) and code in {"invalid_credentials", "invalid_grant"}:
+                if status in (400, 401, 403, 422) and code in {
+                    "invalid_credentials",
+                    "invalid_grant",
+                }:
                     raise ApiProblem(401, "invalid_credentials", "Email or password is incorrect.")
-            if purpose == "verify" and status in (400, 401, 403, 422) and code in {"otp_expired", "invalid_token", "access_denied"}:
+            if (
+                purpose == "verify"
+                and status in (400, 401, 403, 422)
+                and code in {"otp_expired", "invalid_token", "access_denied"}
+            ):
                 raise ApiProblem(
                     400, "invalid_code", "The verification code is invalid or expired."
                 )
@@ -87,8 +94,11 @@ class SupabaseGateway:
             if purpose == "logout" and code == "session_not_found":
                 return None
             if purpose == "refresh" and code in {
-                "refresh_token_not_found", "refresh_token_already_used", "session_not_found",
-                "session_expired", "invalid_grant",
+                "refresh_token_not_found",
+                "refresh_token_already_used",
+                "session_not_found",
+                "session_expired",
+                "invalid_grant",
             }:
                 raise unauthenticated()
             if purpose == "data" and status == 401 and code in {"PGRST301", "PGRST303"}:

@@ -1,6 +1,8 @@
 # Local configuration; examples contain names, never secrets.
 .env
 .env.*
+# Also protect the alternative integration-file spelling mentioned during setup.
+backend.env.integration
 !.env.example
 !**/.env.example
 
