@@ -4,12 +4,12 @@ SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentic
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-OCR, AI, health measurements, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. AI, medical parameter extraction, health measurements, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
 - Node.js 24 or newer and npm 11 or newer. Node 24 is recommended; `.nvmrc` pins the tested 24.19.0 runtime.
-- Python 3.12 is recommended. The backend declares Python 3.12–3.14 support; the Phase 1 validation uses Python 3.12.14.
+- Python 3.12 (64-bit on Windows). Phase 4 narrows support to the tested Python 3.12 runtime because the pinned Windows OCR wheel is CPython 3.12-specific.
 - Access to the public npm and Python package registries for the initial dependency installation.
 
 The commands below assume Windows PowerShell and a terminal starting in this project. Run the frontend and backend in separate terminals. Virtual environment activation is optional because commands use its Python executable directly.
@@ -34,6 +34,8 @@ python -m venv .venv
 Check `python --version` first. If your default is a different version, select your Python 3.12 executable when creating the environment, or use `py -3.12 -m venv .venv` if the Windows Python launcher is installed.
 
 The development lock includes the runtime and quality tools. The runtime-only lock is `requirements.lock`. Dependencies originate in `backend/pyproject.toml`; lockfile regeneration is documented in the phase handoff.
+
+On Linux, install `libtesseract-dev`, `libleptonica-dev` and `pkg-config` before the Python dependencies. Windows uses the hash-pinned tesserocr/Tesseract wheel in the lock. Device application-control policy must permit that runtime; do not disable policy to install it. Extraction also needs the Phase 4 migrations, a private server processing key and verified English/Hindi/orientation models. Follow the [Phase 4 setup](docs/phase-4-handoff.md#setup-and-manual-test) before clicking **Extract text**.
 
 ## Start local development
 
@@ -212,5 +214,7 @@ Authentication and account persistence are real Supabase integrations. Add healt
 - [Phase 2 handoff](docs/phase-2-handoff.md) records authentication evidence and the deferred email-flow acceptance.
 - [Phase 3 plan](docs/phase-3-upload-plan.md) records the upload/lifecycle design.
 - [Phase 3 handoff](docs/phase-3-handoff.md) records report storage, verification, manual checks and limits.
+- [Phase 4 decision](docs/phase-4-decision.md) compares native extraction and OCR options.
+- [Phase 4 handoff](docs/phase-4-handoff.md) records source text extraction, OCR quality, ownership, limits and verification.
 
-The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Phase 3 was separately authorized by the owner. Phase 4 requires a new explicit instruction to continue and agreement on OCR implementation and any external setup.
+The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Phase 4 was separately authorized. Phase 5 requires a new explicit instruction; no medical interpretation or structured medical extraction is implemented.

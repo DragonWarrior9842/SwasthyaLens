@@ -2,8 +2,12 @@
 name = "swasthyalens-api"
 version = "0.1.0"
 description = "Local API foundation for SwasthyaLens."
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.12,<3.13"
 dependencies = [
+    "pypdfium2==5.13.0",
+    "Pillow==12.3.0",
+    "tesserocr==2.11.0; sys_platform != 'win32'",
+    "tesserocr @ https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.11.0-tesseract-5.5.3/tesserocr-2.11.0-cp312-cp312-win_amd64.whl#sha256=74604b65547b6e988dcdab0d6d7366964ec588a9fd28a526b2ca9b9f8b8d3dea ; sys_platform == 'win32'",
     "fastapi==0.141.1",
     "httpx==0.28.1",
     "PyJWT[crypto]==2.14.0",
@@ -43,3 +47,7 @@ plugins = ["pydantic.mypy"]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+
+[[tool.mypy.overrides]]
+module = ["pypdfium2.*", "tesserocr"]
+ignore_missing_imports = true

@@ -1,6 +1,9 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  processing_unavailable: 'Text extraction is not configured on this server.',
+  processing_limit: 'This report has reached its three-attempt extraction limit.',
+  extraction_not_found: 'No completed text extraction is available for this report.',
   unauthenticated: 'Your session has ended. Please sign in again.',
   invalid_credentials: 'The email or password is incorrect.',
   email_not_confirmed: 'Confirm your email before signing in.',

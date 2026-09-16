@@ -7,12 +7,13 @@ import { Icon } from '../../components/Icon'
 import { errorMessage } from '../../services/api-client'
 import { deleteReport, downloadReport, formatBytes, saveReportAttachment } from '../../services/reports'
 import type { Report, ReportPage, ReportStatus } from '../../types/reports'
+import { ReportExtraction } from './ReportExtraction'
 
 const labels: Record<ReportStatus, string> = { pending_upload: 'Awaiting file', uploading: 'Upload in progress', uploaded: 'Uploaded', upload_failed: 'Upload incomplete', deleting: 'Deletion pending' }
 const descriptions: Record<ReportStatus, string> = {
   pending_upload: 'The file upload has not completed. Retry from the selected file, or delete this record.',
   uploading: 'Upload completion is not yet confirmed. Refresh to check its status.',
-  uploaded: 'Stored privately. OCR and report analysis are not available yet.',
+  uploaded: 'Stored privately. Text extraction is available below; medical analysis is not included.',
   upload_failed: 'Upload did not complete. Retry from the selected file, or delete this record.',
   deleting: 'Deletion has been requested. The record remains until private file cleanup is confirmed.',
 }
@@ -99,6 +100,7 @@ function ReportRow({ report, ownerId, onChange, onAuthFailure }: { report: Repor
       {confirmDelete && <div className="report-delete" role="group" aria-label={`Confirm deletion of ${report.original_filename}`}><p>Delete <strong>{report.original_filename}</strong> and its private stored file? This cannot be undone. Copies already downloaded to a device remain there.</p><div><Button size="sm" className="button--danger" disabled={busy !== null} onClick={() => { void remove() }}>{busy === 'delete' ? 'Deleting…' : 'Confirm delete'}</Button><Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => setConfirmDelete(false)}>Keep report</Button></div></div>}
       {error && <p className="form-error" role="alert">{error}</p>}
       {notice && <p className="form-notice" role="status">{notice}</p>}
+      {report.status === 'uploaded' && <ReportExtraction reportId={report.id} ownerId={ownerId} onAuthFailure={onAuthFailure} />}
     </li>
   )
 }

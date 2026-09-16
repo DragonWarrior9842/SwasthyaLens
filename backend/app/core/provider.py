@@ -70,6 +70,10 @@ class SupabaseGateway:
                 if code == "P0001" and isinstance(error, dict):
                     message = error.get("message")
                     report_errors = {
+                        "processing_limit": (
+                            409,
+                            "This report has reached its three-attempt extraction limit.",
+                        ),
                         "report_not_found": (404, "Report not found."),
                         "report_conflict": (
                             409,

@@ -14,7 +14,17 @@ The migration creates one `public.reports` manifest table, the private `reports`
 
 `reports.user_id` references `auth.users(id)` with RESTRICT: account deletion must first discharge file-cleanup obligations. Deleted rows retain opaque owner/report/path/idempotency metadata and timestamps; filename/type/size/hash/leases are scrubbed. There is no hard-delete API or production manifest-retention policy yet. The detailed contract is in [the Phase 3 handoff](../docs/phase-3-handoff.md).
 
-For a **fresh** project, apply both migration files in order through the migration tooling. The report migration fails if a conflicting bucket or existing Storage policies need review; never bypass that guard or make the bucket public. Official Supabase bucket-creation SQL is used only for bucket setup. Actual object writes/deletes always use Storage's API; never delete `storage.objects` rows to remove files.
+For a **fresh** project, apply all migration files in order through the migration tooling. The report migration fails if a conflicting bucket or existing Storage policies need review; never bypass that guard or make the bucket public. Official Supabase bucket-creation SQL is used only for bucket setup. Actual object writes/deletes always use Storage's API; never delete `storage.objects` rows to remove files.
+
+## Phase 4 extraction
+
+The same development project has migrations `20260916153700_report_text_extraction.sql` and `20260916160036_processing_attempt_configuration.sql`. Supabase CLI generated their initial filenames; they were renamed to the migration service's recorded timestamps with SQL unchanged.
+
+`report_processing_runs` retains source hash, attempts, lifecycle timestamps, processor/configuration and failures. `report_pages` holds ordered page text and provenance. Both have forced RLS deriving ownership through `reports`, with active-session checks and authenticated SELECT only. Private lifecycle functions require both the owner JWT and a server processing secret; its SHA-256 hash is stored in the unexposed private schema. Public wrappers are security-invoker. The configured request wrapper retains planned processor/configuration before work begins, including failed/interrupted runs. No service-role runtime access is added.
+
+The report's `deleting` transition physically deletes runs and cascades pages in the same transaction. Completion also locks and rechecks the report, fencing late worker writes. Existing successful attempts survive later failures until the report is deleted. Restart recovery expires unacknowledged attempts after 180 seconds on an authenticated history/request call; it is not an unattended durable queue.
+
+Run `verification/extraction-schema.sql` and the complete rollback-only `verification/extraction-lifecycle.sql`, as well as the four prior scripts. Provisioning the private processing-key hash is separate operator configuration, not hidden DDL. See [Phase 4 setup and verification](../docs/phase-4-handoff.md) for exact setup, tests, resource limits and retention boundaries.
 
 Run these complete scripts after application:
 

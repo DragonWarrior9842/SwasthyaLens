@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     csrf_signing_key: SecretStr | None = None
     auth_rate_limit_mode: Literal["local", "edge"] = "local"
     report_max_upload_bytes: int = Field(default=5_242_880, ge=1, le=5_242_880)
+    report_processing_max_pages: int = Field(default=20, ge=1, le=20)
+    report_processing_timeout_seconds: int = Field(default=120, ge=5, le=120)
+    ocr_tessdata_dir: str | None = None
+    report_processing_key: SecretStr | None = None
 
     @property
     def auth_enabled(self) -> bool:

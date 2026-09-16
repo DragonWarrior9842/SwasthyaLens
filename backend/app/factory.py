@@ -12,12 +12,14 @@ from fastapi.responses import JSONResponse
 
 from app.api.accounts import router as accounts_router
 from app.api.auth import router as auth_router
+from app.api.extraction import router as extraction_router
 from app.api.health import router as health_router
 from app.api.reports import router as reports_router
 from app.core.auth_service import AuthService
 from app.core.browser_security import clear_session_cookies
 from app.core.config import Settings
 from app.core.errors import ApiProblem
+from app.core.extraction import ExtractionService
 from app.core.http_security import BrowserSecurityMiddleware
 from app.core.provider import SupabaseGateway
 from app.core.reports import ReportsService
@@ -51,12 +53,20 @@ def create_app(
                 else None
             )
             application.state.report_upload_slots = asyncio.Semaphore(4)
+            extraction = (
+                ExtractionService(application.state.reports_service, config)
+                if config.auth_enabled
+                else None
+            )
+            application.state.extraction_service = extraction
             yield
+            if extraction:
+                extraction.close()
 
     application = FastAPI(
         title="SwasthyaLens API",
         version="0.1.0",
-        description="Private reports and authentication. OCR and analysis are not implemented.",
+        description="Private reports, authentication and source-preserving text extraction.",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -96,4 +106,5 @@ def create_app(
     application.include_router(auth_router)
     application.include_router(accounts_router)
     application.include_router(reports_router)
+    application.include_router(extraction_router)
     return application

@@ -118,7 +118,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
       controller.signal.throwIfAborted()
       if (!active.current) return
       setPhase('uploaded')
-      setNotice(`${selected.file.name} was uploaded privately. OCR and report analysis are not available yet.`)
+      setNotice(`${selected.file.name} was uploaded privately. Open Text extraction in report history to extract its text.`)
       setTask(currentTask.current)
       onChange()
     } catch (failure) {
@@ -156,7 +156,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
           <input ref={input} id="report-file" type="file" aria-label="Report file" accept={config.allowed_media_types.join(',')} hidden disabled={lockedSelection} onChange={(event) => { if (event.target.files) selectFiles(event.target.files); event.target.value = '' }} />
         </div>
         <p className="report-upload__guidance">PDF, JPEG or PNG · Up to {formatBytes(config.max_upload_bytes)} per file. File contents are validated on upload.</p>
-        <label className="report-permission"><input type="checkbox" checked={permission} onChange={(event) => setPermission(event.target.checked)} disabled={busy} /><span>I have permission to store this report. Files are private to my account and remain stored until I delete them. OCR and analysis are not available yet.</span></label>
+        <label className="report-permission"><input type="checkbox" checked={permission} onChange={(event) => setPermission(event.target.checked)} disabled={busy} /><span>I have permission to store and extract text from this report. Files and derived text are private to my account and remain stored until I delete the report. Medical analysis is not included.</span></label>
         {error && <div className="form-error" role="alert">{error}</div>}
         {notice && <div className={phase === 'deleting' ? 'form-notice' : 'form-success'} role="status">{notice}</div>}
         {busy && <p className="report-progress" role="status"><span className="loading-spinner" aria-hidden="true" />{phase === 'reserving' ? 'Preparing your private upload…' : phase === 'cancelling' ? 'Confirming cancellation and cleanup…' : 'Uploading and validating your report…'}</p>}
