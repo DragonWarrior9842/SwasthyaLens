@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 import httpx
 
@@ -39,6 +40,7 @@ class ReportStorage:
             "Authorization": f"Bearer {token}",
             "Cookie": "",
             "Accept-Encoding": "identity",
+            "Cache-Control": "no-cache, no-store",
         }
         if media_type is not None:
             headers["Content-Type"] = media_type
@@ -89,7 +91,11 @@ class ReportStorage:
         )
 
     def download(self, path: str, token: str) -> StoredFile:
-        return self._request("GET", f"/storage/v1/object/authenticated/reports/{path}", token)
+        # Provider edge caching can retain a previously authorized URL even after
+        # deletion. A fresh documented cacheNonce forces an origin/RLS check.
+        return self._request(
+            "GET", f"/storage/v1/object/authenticated/reports/{path}?cacheNonce={uuid4()}", token
+        )
 
     def delete(self, path: str, token: str) -> None:
         self._request("DELETE", "/storage/v1/object/reports", token, payload={"prefixes": [path]})

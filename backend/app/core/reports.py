@@ -271,6 +271,11 @@ class ReportsService:
         except ValueError:
             logger.warning("report_download_validation_failure")
             raise report_unavailable() from None
+        # Recheck the active-session/RLS-protected manifest after provider I/O;
+        # a concurrent cancellation must not return an already buffered file.
+        latest = self.get(row.id, current)
+        if latest.status != "uploaded" or latest.sha256 != row.sha256:
+            raise not_found()
         return stored
 
     def delete(self, report_id: UUID, current: AuthenticatedRequest) -> DeleteResult:
@@ -312,8 +317,10 @@ class ReportsService:
                 pending += 1
             # Rotate failed attempts too so one unavailable object cannot starve the batch.
             self.gateway.request(
-                "POST", "/rest/v1/rpc/report_touch_cleanup",
+                "POST",
+                "/rest/v1/rpc/report_touch_cleanup",
                 payload={"p_report_id": str(row.id)},
-                access_token=current.access_token, purpose="reports",
+                access_token=current.access_token,
+                purpose="reports",
             )
         return CleanupResult(pending=pending, cleaned=cleaned)

@@ -13,8 +13,14 @@ from app.schemas.accounts import InputModel
 MediaType = Literal["application/pdf", "image/jpeg", "image/png"]
 ReportStatus = Literal["pending_upload", "uploading", "uploaded", "upload_failed", "deleting"]
 ErrorCategory = Literal[
-    "invalid_file", "file_too_large", "unsupported_file_type", "filename_invalid",
-    "storage_unavailable", "metadata_unavailable", "upload_interrupted", "integrity_mismatch",
+    "invalid_file",
+    "file_too_large",
+    "unsupported_file_type",
+    "filename_invalid",
+    "storage_unavailable",
+    "metadata_unavailable",
+    "upload_interrupted",
+    "integrity_mismatch",
 ]
 
 

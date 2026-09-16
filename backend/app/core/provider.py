@@ -73,7 +73,7 @@ class SupabaseGateway:
                         "report_not_found": (404, "Report not found."),
                         "report_conflict": (
                             409,
-                            "The report operation is in progress or conflicts with an earlier request.",
+                            "This operation is in progress or conflicts with an earlier request.",
                         ),
                         "invalid_file": (422, "The file or report metadata is invalid."),
                     }

@@ -1,10 +1,29 @@
-# Phase 2 database foundation
+# Database foundation and private reports
 
-This directory owns the versioned Supabase PostgreSQL schema and its verification SQL. It contains no credentials, report tables, medical data, storage buckets or AI records. The initial migration does not modify provider-owned `auth.users` or `auth.sessions` data.
+This directory owns the versioned Supabase PostgreSQL schema and its verification SQL. Phase 2 defines accounts; Phase 3 adds owned report metadata and a private Storage bucket. There are no credentials, medical measurements or AI records here. The initial migration does not modify provider-owned `auth.users` or `auth.sessions` data.
 
 **Execution status (14 September 2026):** applied to the verified `swasthyalens-dev` project through the connected Supabase migration tool, version `20260914164833`, name `auth_foundation`. Both `schema.sql` and the complete rollback-only `rls-isolation.sql` passed on hosted PostgreSQL 17.6. No fixture users/profile/settings rows remained afterward. Supabase security and performance advisors both returned no findings. These database results do not replace live browser/API authentication acceptance.
 
 **Acceptance update (15 September 2026):** the real two-user FastAPI/Data API suite and production-build browser checks passed. Private-schema exposure was explicitly rejected with HTTP 406 / `PGRST106`. The latest security advisor now reports leaked-password protection disabled; there are no table/RLS/function findings. The performance advisor remains clear. The owner confirmed that the Free/default-sender email template is locked; actual signup-email delivery and OTP-code verification remain a known Phase 2 limitation. The two Auto Confirm fixtures do not verify that flow. See the [Phase 2 handoff](../docs/phase-2-handoff.md) for details. Phase 3 is on hold.
+
+## Phase 3 application and verification
+
+The separately authorized Phase 3 migration was applied to the same verified development project as **20260915150720 / reports_foundation**. Its source is `migrations/20260915150720_reports_foundation.sql`. Supabase CLI 2.117.0 generated the initial filename locally; the file was renamed to the migration service's recorded timestamp without changing SQL, so repository and hosted migration history agree. The downloaded CLI was checksum-verified and kept in ignored workspace cache; no application dependency was added.
+
+The migration creates one `public.reports` manifest table, the private `reports` bucket (5 MiB, PDF/JPEG/PNG), owner/active-session RLS, narrow lifecycle RPCs and operation-aware Storage policies. Authenticated callers can SELECT their own manifests but cannot directly INSERT/UPDATE/DELETE them. The RPCs accept no owner ID and preserve immutable generated paths. Private security-definer lifecycle functions are intentional: they enforce state transitions while public wrappers remain security-invoker. Every private entry point checks the active JWT owner. No service-role runtime client is used.
+
+`reports.user_id` references `auth.users(id)` with RESTRICT: account deletion must first discharge file-cleanup obligations. Deleted rows retain opaque owner/report/path/idempotency metadata and timestamps; filename/type/size/hash/leases are scrubbed. There is no hard-delete API or production manifest-retention policy yet. The detailed contract is in [the Phase 3 handoff](../docs/phase-3-handoff.md).
+
+For a **fresh** project, apply both migration files in order through the migration tooling. The report migration fails if a conflicting bucket or existing Storage policies need review; never bypass that guard or make the bucket public. Official Supabase bucket-creation SQL is used only for bucket setup. Actual object writes/deletes always use Storage's API; never delete `storage.objects` rows to remove files.
+
+Run these complete scripts after application:
+
+1. `verification/schema.sql` — read-only Phase 2 assertions.
+2. `verification/rls-isolation.sql` — rollback-only Phase 2 role/session fixtures.
+3. `verification/reports-schema.sql` — read-only report grants, constraints, bucket and function assertions.
+4. `verification/reports-rls-isolation.sql` — rollback-only report ownership, idempotency, lease, cancellation, cleanup, revocation and privilege assertions.
+
+All four passed against hosted PostgreSQL on 16 September 2026. Real Storage HTTP authorization is tested separately by `backend/tests/integration/test_live_reports.py`; SQL fixtures do not simulate successful object uploads. Direct Storage read assertions use a fresh `cacheNonce` to test current origin/RLS permission, because a previously authorized CDN response may outlive an origin deletion. Backend downloads use the same documented cache bypass and never disclose the URL.
 
 ## Apply the initial migration
 

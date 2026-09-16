@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from app.factory import create_app
 from tests.auth_support import ORIGIN, auth_settings
-from tests.report_fixtures import valid_pdf, valid_png
+from tests.report_fixtures import valid_jpeg, valid_pdf, valid_png
 from tests.reports_support import ReportsProvider
 
 
@@ -431,3 +431,42 @@ def test_deleted_manifest_reconciles_late_storage_artifact(
     provider.objects[key] = valid_pdf(), "application/pdf"
     assert client.post("/reports/cleanup", headers=csrf(client), json={}).json()["cleaned"] == 1
     assert not provider.objects
+
+
+def test_real_jpeg_container_round_trip(client: TestClient, provider: ReportsProvider) -> None:
+    login(client)
+    data = valid_jpeg()
+    row = reserve(client, filename="neutral.jpeg", data=data, media_type="image/jpeg")
+    assert upload(client, row, data, "image/jpeg").status_code == 200
+    assert client.get(f"/reports/{row['id']}/file").content == data
+
+
+def test_storage_reads_force_fresh_origin_authorization(
+    client: TestClient, provider: ReportsProvider
+) -> None:
+    login(client)
+    row = reserve(client)
+    assert upload(client, row).status_code == 200
+    for _ in range(2):
+        assert client.get(f"/reports/{row['id']}/file").status_code == 200
+    reads = [
+        r for r in provider.requests if r.url.path.startswith("/storage/") and r.method == "GET"
+    ]
+    assert len(reads) == 2
+    nonces = [str(r.url.params["cacheNonce"]) for r in reads]
+    assert len(set(nonces)) == 2 and all(len(nonce) == 36 for nonce in nonces)
+    assert all(r.headers["cache-control"] == "no-cache, no-store" for r in reads)
+
+
+def test_matching_hash_does_not_bypass_download_format_validation(
+    client: TestClient, provider: ReportsProvider
+) -> None:
+    login(client)
+    row = reserve(client)
+    assert upload(client, row).status_code == 200
+    internal = provider.rows[str(row["id"])]
+    data = b"MZ harmless synthetic invalid PDF"
+    internal["size_bytes"], internal["sha256"] = len(data), hashlib.sha256(data).hexdigest()
+    provider.objects[str(internal["storage_path"])] = data, "application/pdf"
+    response = client.get(f"/reports/{row['id']}/file")
+    assert response.status_code == 503 and data not in response.content

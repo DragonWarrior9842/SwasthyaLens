@@ -1,10 +1,10 @@
 # SwasthyaLens
 
-SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Phase 2 adds Supabase authentication through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. The four health destinations retain their honest empty states.
+SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Phase 3 adds real private PDF/JPEG/PNG report upload, history, download and deletion. Dashboard, Trends and Assistant retain truthful empty states.
 
-**Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for the full results and limitation. Phase 3 is on hold by the owner's instruction.
+**Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Uploads, report storage, OCR, AI, health measurements, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+OCR, AI, health measurements, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -83,6 +83,7 @@ if (-not (Test-Path backend\.env)) { Copy-Item backend\.env.example backend\.env
 | `CORS_ALLOWED_ORIGINS` | `backend/.env` | JSON array. With auth enabled, use exactly `["http://127.0.0.1:5173"]` locally. `[]` disables CORS. |
 | `ENVIRONMENT` | `backend/.env` | `development` for loopback HTTP; `production` requires HTTPS and Secure cookies. |
 | `AUTH_RATE_LIMIT_MODE` | `backend/.env` | `local` uses a bounded in-process development limiter. `edge` declares a separately configured production edge limiter; it does not provision one. |
+| `REPORT_MAX_UPLOAD_BYTES` | `backend/.env` | Optional positive byte limit, default and maximum 5,242,880 (5 MiB). May lower the API limit; raising the database/bucket cap needs a reviewed migration. |
 
 Vite loads public configuration from the project root using `envDir`; it does not load it from `frontend/.env`. Restart Vite after changes. Vite embeds `VITE_` values into browser assets, so these values must never contain secrets.
 
@@ -98,7 +99,15 @@ The [authentication plan](docs/phase-2-auth-plan.md) explains the approved desig
 
 For this phase the owner selected Supabase's built-in email sender for development. It is restricted to eligible project-team addresses and has a low sending quota; custom SMTP is not configured. Do not disable email confirmation or grant project access to work around mail delivery. Actual email verification remains a deferred acceptance item after a supported email flow is agreed and configured.
 
-The reviewed migration is already applied to the current development project as `20260914164833 / auth_foundation`; do not rerun it there. For a fresh installation, apply the exact versioned SQL and run the verification scripts using the [database instructions](database/README.md). Do not create tables manually, expose the private helper schema, or use a service-role client for normal requests. The runtime needs no database password.
+The reviewed migrations are already applied to the development project as `20260914164833 / auth_foundation` and `20260915150720 / reports_foundation`; do not rerun them there. For a fresh installation, apply the exact versioned SQL in order and run the verification scripts using the [database instructions](database/README.md). The reports migration creates the private bucket and policies together. Do not create tables manually, expose the private helper schema, or use a service-role client for normal requests. The runtime needs no database password.
+
+## Private reports
+
+Sign in with a confirmed development account and open **Reports**. Select one PDF, JPEG or PNG (up to 5 MiB), acknowledge permission to store it, and choose **Upload report**. The server validates the filename, declared type, actual container structure and size before saving. History comes from the account's database records; **Uploaded** means stored, not medically analyzed.
+
+Downloads are backend-mediated attachments with fresh ownership/session checks, a unique provider cache nonce, `no-store` and `nosniff`. No Storage URLs or provider tokens are returned to the browser. **Delete report** asks for confirmation. An interrupted operation can remain **Deletion pending**; refresh or retry deletion until removal is confirmed. Minimal opaque deletion manifests remain for cleanup of possible late provider writes. There is no unattended cleanup worker or production retention policy yet. Previously downloaded copies and provider edge caches cannot be retracted by deleting a database row; see the handoff's cache and retention limitations.
+
+The optional live integration suite uploads only generated neutral files and removes them through their owners' API sessions. It tests database and Storage isolation with both dedicated accounts. Never substitute real medical reports in automated fixtures.
 
 ## Real two-user acceptance checks
 
@@ -158,7 +167,7 @@ Stop the frontend development server first: preview also uses port 5173 so it ma
 With Phase 2 enabled, apply the migration and sign in first before checking protected destinations. The public service-health endpoint remains available without signing in.
 
 1. Start both services. Open `/` and confirm the sidebar says **Local API connected** and the overview says **No health data available yet.**
-2. Navigate to `/reports`, `/trends`, and `/assistant`. Confirm each explicitly states the unavailable functionality. No medical measurements or generated chat responses should appear.
+2. Navigate to `/reports`, `/trends`, and `/assistant`. Reports now offers private uploads/history; Trends and Assistant remain empty. No medical measurements or generated chat responses should appear.
 3. Refresh each route directly; use browser back/forward and check the active navigation state.
 4. At a mobile viewport, open/close navigation, press Escape, and navigate. The menu should close, focus should remain usable, and the page should not scroll horizontally.
 5. Use Tab/Enter for the skip link, navigation, buttons and links. Focus indicators should be visible.
@@ -173,8 +182,9 @@ frontend/
   src/
     components/       shared UI primitives and navigation
     layouts/          responsive application shell
-    pages/            auth/settings pages, four empty-state destinations, not-found page
+    pages/            auth/settings/reports pages, remaining empty destinations, not-found
     features/auth/    session lifecycle, route protection and account controls
+    features/reports/ upload, cancellation and private report history
     features/system/  service connection indicator
     hooks/            API request lifecycle
     lib/              public configuration validation
@@ -183,7 +193,7 @@ frontend/
     styles/           design tokens and responsive styling
 backend/
   app/
-    api/              health/auth/profile/settings routes and verified-user dependency
+    api/              health/auth/profile/settings/reports and verified-user dependency
     core/             configuration, cookies/CSRF, JWT/provider/session, owner repositories
     schemas/          strict request and response contracts
   tests/              isolated unit/security tests and opt-in real two-user checks
@@ -199,6 +209,8 @@ Authentication and account persistence are real Supabase integrations. Add healt
 - [Original technical audit and roadmap](docs/technical-audit.md) records the empty-workspace baseline before implementation.
 - [Phase 1 handoff](docs/phase-1-handoff.md) records the historical foundation implementation and checks.
 - [Phase 2 authentication plan](docs/phase-2-auth-plan.md) records the approved architecture and initial setup gate.
-- [Phase 2 handoff](docs/phase-2-handoff.md) records the current implementation, evidence and remaining setup.
+- [Phase 2 handoff](docs/phase-2-handoff.md) records authentication evidence and the deferred email-flow acceptance.
+- [Phase 3 plan](docs/phase-3-upload-plan.md) records the upload/lifecycle design.
+- [Phase 3 handoff](docs/phase-3-handoff.md) records report storage, verification, manual checks and limits.
 
-The owner has requested that the email-template restriction remain a documented Phase 2 limitation for now. Phase 2 is not represented as fully verified for public signup. Phase 3 remains on hold and requires the owner's explicit instruction to proceed; recording this limitation does not authorize another phase.
+The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Phase 3 was separately authorized by the owner. Phase 4 requires a new explicit instruction to continue and agreement on OCR implementation and any external setup.
