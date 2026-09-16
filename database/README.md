@@ -4,7 +4,7 @@ This directory owns the versioned Supabase PostgreSQL schema and its verificatio
 
 **Execution status (14 September 2026):** applied to the verified `swasthyalens-dev` project through the connected Supabase migration tool, version `20260914164833`, name `auth_foundation`. Both `schema.sql` and the complete rollback-only `rls-isolation.sql` passed on hosted PostgreSQL 17.6. No fixture users/profile/settings rows remained afterward. Supabase security and performance advisors both returned no findings. These database results do not replace live browser/API authentication acceptance.
 
-**Acceptance update (15 September 2026):** the real two-user FastAPI/Data API suite and production-build browser checks passed. Private-schema exposure was explicitly rejected with HTTP 406 / `PGRST106`. The latest security advisor now reports leaked-password protection disabled; there are no table/RLS/function findings. The performance advisor remains clear. The owner confirmed that the Free/default-sender email template is locked; actual signup-email delivery and OTP-code verification remain a known Phase 2 limitation. The two Auto Confirm fixtures do not verify that flow. See the [Phase 2 handoff](../docs/phase-2-handoff.md) for details. Phase 3 is on hold.
+**Phase 2 acceptance update (15 September 2026):** the real two-user FastAPI/Data API suite and production-build browser checks passed. Private-schema exposure was explicitly rejected with HTTP 406 / `PGRST106`. The security advisor reports leaked-password protection disabled; there are no table/RLS/function findings. The performance advisor remains clear. The owner confirmed that the Free/default-sender email template is locked; actual signup-email delivery and OTP-code verification remain a known Phase 2 limitation. The two Auto Confirm fixtures do not verify that flow. See the [Phase 2 handoff](../docs/phase-2-handoff.md) for details. Phase 3 was subsequently authorized separately, as recorded below.
 
 ## Phase 3 application and verification
 
@@ -86,7 +86,7 @@ Changing `auth.users` remains the authentication provider's responsibility. Prof
 
 ## Session helper boundary
 
-Only `swasthyalens_private.current_session_context()` is security-definer. It has no caller-supplied identity, a fixed empty search path, fully qualified provider tables and tightly scoped execution grants. It checks:
+Within the Phase 2 session helpers, only `swasthyalens_private.current_session_context()` is security-definer. The additional private Phase 3 lifecycle helpers are described above. The session helper has no caller-supplied identity, a fixed empty search path, fully qualified provider tables and tightly scoped execution grants. It checks:
 
 1. The claims describe an `authenticated`, non-anonymous account.
 2. `auth.uid()` is a valid subject and `session_id` is a canonical UUID; malformed/missing claims fail closed.

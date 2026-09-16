@@ -59,7 +59,7 @@ Storage and database changes are not one atomic transaction. Supabase can finish
 | DELETE `/reports/{id}` | JSON `{}` plus CSRF; 200 `deleted` or 202 `deleting`, safely retryable |
 | POST `/reports/cleanup` | CSRF-protected bounded retry of the current owner's previous deletion intents |
 
-Public metadata includes ID, safe original filename, type, byte count, lifecycle status, timestamps and allowlisted failure category. Do not expose provider errors, storage paths, leases, content hashes or another user's existence. Downloads use attachment disposition, `nosniff`, `no-store` and sandboxing headers; no inline PDF/HTML rendering.
+Public metadata includes ID, safe original filename, type, byte count, lifecycle status, timestamps and allowlisted failure category. Do not expose provider errors, storage paths, leases, content hashes or another user's existence. Downloads use attachment disposition, `nosniff`, `no-store` and sandboxing headers; no inline PDF/HTML rendering. Live verification additionally established that each backend Storage read needs a fresh `cacheNonce` to force origin authorization despite provider CDN reuse; the implemented download repeats its manifest check after retrieval. The final handoff records the remaining direct-URL cache limitation.
 
 ## Validation and user experience
 
