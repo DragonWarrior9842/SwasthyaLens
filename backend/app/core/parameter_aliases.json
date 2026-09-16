@@ -1,0 +1,14 @@
+{
+  "version": "synthetic-aliases-v1",
+  "aliases": {
+    "hemoglobin": "hemoglobin",
+    "haemoglobin": "hemoglobin",
+    "hb": "hemoglobin",
+    "tsh": "tsh",
+    "thyroid stimulating hormone": "tsh",
+    "thyrotropin": "tsh",
+    "vitamin d": "vitamin_d_unspecified",
+    "glucose": "glucose_unspecified",
+    "crp": "crp"
+  }
+}

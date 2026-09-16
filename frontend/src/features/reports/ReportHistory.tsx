@@ -8,6 +8,7 @@ import { errorMessage } from '../../services/api-client'
 import { deleteReport, downloadReport, formatBytes, saveReportAttachment } from '../../services/reports'
 import type { Report, ReportPage, ReportStatus } from '../../types/reports'
 import { ReportExtraction } from './ReportExtraction'
+import { ReportParameters } from './ReportParameters'
 
 const labels: Record<ReportStatus, string> = { pending_upload: 'Awaiting file', uploading: 'Upload in progress', uploaded: 'Uploaded', upload_failed: 'Upload incomplete', deleting: 'Deletion pending' }
 const descriptions: Record<ReportStatus, string> = {
@@ -101,6 +102,7 @@ function ReportRow({ report, ownerId, onChange, onAuthFailure }: { report: Repor
       {error && <p className="form-error" role="alert">{error}</p>}
       {notice && <p className="form-notice" role="status">{notice}</p>}
       {report.status === 'uploaded' && <ReportExtraction reportId={report.id} ownerId={ownerId} onAuthFailure={onAuthFailure} />}
+      {report.status === 'uploaded' && <ReportParameters reportId={report.id} ownerId={ownerId} onAuthFailure={onAuthFailure} />}
     </li>
   )
 }

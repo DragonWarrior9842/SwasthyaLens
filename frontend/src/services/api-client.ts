@@ -1,6 +1,7 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  parameter_limit: 'This text extraction has used its three parameter attempts.',
   processing_unavailable: 'Text extraction is not configured on this server.',
   processing_limit: 'This report has reached its three-attempt extraction limit.',
   extraction_not_found: 'No completed text extraction is available for this report.',
