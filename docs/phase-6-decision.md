@@ -37,8 +37,9 @@ Day precision is preserved; no midnight measurement timestamp is fabricated.
 Manual entries require an ISO timestamp with an offset, normalized to UTC. Their
 forms explicitly request UTC. Upload, publication and revision timestamps are
 separate system times. Date filters use supplied report days or UTC manual days;
-unknown dates are excluded by a date filter. Known measurement days sort descending,
-then system creation time and identity as deterministic ties. Unknown dates appear
+unknown dates are excluded by a date filter. Known measurement days sort descending;
+within a day, known manual instants sort descending before day-only records,
+then system creation time and identity provide deterministic ties. Unknown dates appear
 last, ordered by recorded time, explicitly labeled unknown. No latest-metric card
 is included because uncertain precision and units do not justify one.
 

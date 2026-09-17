@@ -24,6 +24,7 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 *.log
+database/supabase/.temp/
 
 # Local editor/OS files.
 .DS_Store

@@ -70,7 +70,9 @@ class ObservationService:
     @staticmethod
     def row(value: object, current: AuthenticatedRequest) -> Observation:
         try:
-            if not isinstance(value, dict) or UUID(value["user_id"]) != current.identity.user_id:
+            if not isinstance(value, dict) or not isinstance(value.get("user_id"), str):
+                raise ValueError
+            if UUID(value["user_id"]) != current.identity.user_id:
                 raise ValueError
             return Observation.model_validate(value)
         except (ValueError, KeyError, TypeError):
@@ -166,7 +168,9 @@ class ObservationService:
     def dashboard(self, current: AuthenticatedRequest) -> Dashboard:
         value = self.rpc("dashboard", {}, current)
         try:
-            if not isinstance(value, dict) or UUID(value["user_id"]) != current.identity.user_id:
+            if not isinstance(value, dict) or not isinstance(value.get("user_id"), str):
+                raise ValueError
+            if UUID(value["user_id"]) != current.identity.user_id:
                 raise ValueError
             raw = value["observations"]
             if not isinstance(raw, list) or len(raw) > 21:

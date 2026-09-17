@@ -1,6 +1,10 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  observation_not_found: 'This observation or its source is no longer available. Refresh health history.',
+  observation_conflict: 'The observation or review changed. Refresh and review the latest revision before trying again.',
+  observation_duplicate_source: 'This source row is already published. Use its original candidate review.',
+  observation_limit: 'This account has reached its manual-entry limit.',
   parameter_limit: 'This text extraction has used its three parameter attempts.',
   processing_unavailable: 'Text extraction is not configured on this server.',
   processing_limit: 'This report has reached its three-attempt extraction limit.',

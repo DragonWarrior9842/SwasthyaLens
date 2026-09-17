@@ -1,6 +1,8 @@
 """Phase 6 acceptance with real owner sessions and disposable synthetic reports."""
 
 import os
+import time
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
@@ -22,6 +24,57 @@ from tests.parameter_fixtures import NATIVE_LINES
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_SUPABASE_INTEGRATION") != "1", reason="Real provider opt-in required"
 )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def preserve_account_rate_window() -> Iterator[None]:
+    yield
+    # These dense lifecycle/pagination fixtures share the existing per-account
+    # write budget with later suites. Let the real 60-second window expire;
+    # never increase/reset the application limiter to make acceptance pass.
+    if os.environ.get("RUN_SUPABASE_INTEGRATION") == "1":
+        time.sleep(60)
+
+
+def test_live_manual_pagination_and_measurement_order(live: LiveContext) -> None:
+    user, other = live.users
+    created: list[str] = []
+    # Deliberately insert in reverse measurement order: insertion time must not win.
+    try:
+        for minute in range(21, -1, -1):
+            response = user.write(
+                "POST",
+                "/observations/manual",
+                {
+                    "idempotency_key": str(uuid4()),
+                    "metric": "heart_rate",
+                    "unit": "bpm",
+                    "raw_value": "060",
+                    "measured_at": f"2010-02-03T12:{minute:02}:00Z",
+                },
+            )
+            expect_status(response, 200, "Create pagination fixture")
+            created.append(response.json()["id"])
+        route = (
+            "/observations?metric=heart_rate&source_type=manual"
+            "&date_from=2010-02-03&date_to=2010-02-03"
+        )
+        response = user.client.get(route)
+        expect_status(response, 200, "Read first bounded page")
+        first = response.json()
+        assert [row["id"] for row in first["items"]] == created[:20]
+        assert first["next_offset"] == 20
+        second = user.client.get(route + "&offset=20").json()
+        assert [row["id"] for row in second["items"]] == created[20:]
+        assert second["next_offset"] is None
+        assert other.client.get(route).json()["items"] == []
+    finally:
+        for identifier in created:
+            expect_status(
+                user.write("DELETE", f"/observations/{identifier}", {"expected_revision": 1}),
+                200,
+                "Pagination fixture cleanup",
+            )
 
 
 def test_live_history_trust_dates_units_isolation_and_deletion(

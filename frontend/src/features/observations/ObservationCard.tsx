@@ -16,7 +16,10 @@ export function ManualForm({ owner, authFailure, onChange, observation }: Props 
     event.preventDefault(); if (operation.current) return
     const form = event.currentTarget, data = new FormData(form)
     const time = String(data.get('measured_at'))
-    const body = { metric, raw_value: String(data.get('value')), unit: metric === 'weight' ? 'kg' as const : 'bpm' as const, measured_at: `${time}${time.length === 16 ? ':00' : ''}Z`, ...(observation ? { expected_revision: observation.current.revision } : {}) }
+    const enteredTime = `${time}${time.length === 16 ? ':00' : ''}Z`
+    const originalTime = observation?.current.measured_at
+    const measured_at = originalTime && Date.parse(originalTime) === Date.parse(enteredTime) ? originalTime : enteredTime
+    const body = { metric, raw_value: String(data.get('value')), unit: metric === 'weight' ? 'kg' as const : 'bpm' as const, measured_at, ...(observation ? { expected_revision: observation.current.revision } : {}) }
     const text = JSON.stringify(body)
     if (pending.current?.text !== text) pending.current = { text, key: crypto.randomUUID() }
     const input: ManualInput = { ...body, idempotency_key: pending.current.key }

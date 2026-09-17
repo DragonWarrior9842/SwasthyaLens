@@ -31,7 +31,7 @@ set local role authenticated;
 do $$
 declare actor record; other_actor record; result jsonb; key uuid; worker text:=repeat('synthetic',8);
  payload jsonb:='[{"page_number":1,"source_text":"Synthetic | 5","source_start":14,"source_end":27,"source_method":"native_text","certainty":"needs_review","fields":{"original_label":"Synthetic","raw_value":"5.00","original_unit":"mg/dL","value_kind":"numeric","numeric_value":"5.00"}}]';
- published jsonb; oid uuid; mid uuid; input jsonb; response jsonb;
+ published jsonb; oid uuid; mid uuid; input jsonb; response jsonb; duplicate_id uuid;
 begin
  for actor in select * from pg_temp.parameter_test_context order by label loop
   select * into other_actor from pg_temp.parameter_test_context where label<>actor.label;
@@ -45,6 +45,11 @@ begin
   published:=public.observation_call('publish',input,worker); oid:=(published->>'id')::uuid;
   perform pg_temp.check_parameter(published->'current'->>'status'='active' and published->'current'->>'measurement_date' is null,'reviewed publication without fabricated date');
   perform pg_temp.check_parameter(public.observation_call('publish',input,worker)=published,'exact publication replay');
+  result:=public.parameter_request(actor.report,actor.source,gen_random_uuid(),'v1','v1',worker);
+  perform public.parameter_finish(actor.report,(result->'run'->>'id')::uuid,payload,'[]',null,worker);
+  select id into duplicate_id from public.report_parameter_candidates where run_id=(result->'run'->>'id')::uuid;
+  perform public.parameter_review(actor.report,duplicate_id,gen_random_uuid(),0,'confirmed',null,worker);
+  perform pg_temp.deny_parameter(format('select public.observation_call(''publish'',%L,%L)',input||jsonb_build_object('candidate_id',duplicate_id),worker),'P0001');
   perform pg_temp.deny_parameter(format('select public.observation_call(''publish'',%L,%L)',input||'{"measurement_date":"2020-01-01"}',worker),'P0001');
   perform public.parameter_review(actor.report,actor.candidate,gen_random_uuid(),1,'corrected','{"original_label":"Synthetic","raw_value":"5.01","original_unit":"mmol/L"}',worker);
   response:=public.observation_call('get',jsonb_build_object('id',oid),worker);
@@ -85,6 +90,7 @@ begin
  end loop;
 end; $$;
 reset role;
+select pg_temp.deny_parameter('update public.health_observation_revisions set fields=''{}'' where observation_id in(select second from parameter_test_context)','P0001');
 -- Source deletion uses the existing Phase 4 deletion trigger and FK chain.
 update public.reports set status='deleting' where id in(select report from parameter_test_context);
 select pg_temp.check_parameter(not exists(select 1 from public.health_observations where source_type='report' and user_id in(select owner from parameter_test_context)),'physical report-derived cleanup');

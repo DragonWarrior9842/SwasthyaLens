@@ -1,17 +1,63 @@
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.core.observations import manual_fields
+from app.core.auth_service import AuthenticatedRequest
+from app.core.errors import ApiProblem
+from app.core.identity import VerifiedIdentity
+from app.core.observations import ObservationService, manual_fields
 from app.core.parameter_parser import fields
 from app.factory import create_app
 from app.schemas.observations import ManualInput, PublishInput
 from app.schemas.parameters import RawFields
 from tests.auth_support import ProviderFixture, auth_settings
+
+
+def test_repository_rejects_cross_owner_or_broken_provenance() -> None:
+    owner = uuid4()
+    current = AuthenticatedRequest(
+        VerifiedIdentity(owner, uuid4(), "fixture@example.invalid", 1), "synthetic", 1
+    )
+    candidate = str(uuid4())
+    revision = {
+        "revision": 1,
+        "status": "active",
+        "fields": fields(RawFields(original_label="Hemoglobin", raw_value="13.20")).model_dump(),
+        "catalog_version": "observations-v1",
+        "measurement_date": None,
+        "measured_at": None,
+        "candidate_id": candidate,
+        "review_revision": 1,
+        "created_at": "2020-01-01T00:00:00Z",
+        "status_changed_at": "2020-01-01T00:00:00Z",
+    }
+    value: dict[str, object] = {
+        "id": str(uuid4()),
+        "user_id": str(owner),
+        "source_type": "report",
+        "report_id": str(uuid4()),
+        "candidate_id": candidate,
+        "created_at": "2020-01-01T00:00:00Z",
+        "current": revision,
+        "revisions": [],
+        "evidence": None,
+    }
+    assert ObservationService.row(value, current).candidate_id == UUID(candidate)
+    overrides: tuple[dict[str, object], ...] = (
+        {"user_id": str(uuid4())},
+        {"user_id": []},
+        {"candidate_id": str(uuid4())},
+        {"report_id": None},
+        {"source_type": "manual"},
+    )
+    for override in overrides:
+        with pytest.raises(ApiProblem) as rejected:
+            ObservationService.row({**value, **override}, current)
+        assert rejected.value.status == 503
 
 
 def manual(**overrides: object) -> ManualInput:

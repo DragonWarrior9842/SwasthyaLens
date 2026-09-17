@@ -131,12 +131,18 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   assert.ok((await hb.textContent()).includes('Measurement date unknown')); passed();
   stage = 'two-tab stale publication and rejection';
   const second = await context.newPage();
+  stage = 'two-tab: load stale candidate';
   const stale = await inspectCandidate(second);
+  stage = 'two-tab: reload first candidate';
   await inspectCandidate(page);
+  stage = 'two-tab: reject current revision';
   await candidate().getByRole('button', { name: 'Reject candidate', exact: true }).click();
   await candidate().getByText('Rejected by you', { exact: true }).waitFor();
+  stage = 'two-tab: stale publish conflict';
   await stale.getByRole('button', { name: 'Publish to health history', exact: true }).click();
+  stage = 'two-tab: await safe error';
   await stale.getByRole('alert').waitFor();
+  stage = 'two-tab: verify conflict message';
   assert.ok((await stale.getByRole('alert').textContent()).includes('changed'));
   await second.close(); passed();
   stage = 'report deletion erases derived data and preserves manual entry';

@@ -1,10 +1,10 @@
 # SwasthyaLens
 
-SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Phase 3 adds real private PDF/JPEG/PNG report upload, history, download and deletion. Dashboard, Trends and Assistant retain truthful empty states.
+SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Reports support private upload, extraction and personal review. Phase 6 adds explicitly published health observations, manual weight/heart-rate entry, revision history and a dashboard backed by actual owned records. Trends and Assistant retain truthful empty states.
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds explicit deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md) for supported formats and measured limits. AI explanations, health observations, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). AI explanations, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -111,6 +111,28 @@ Downloads are backend-mediated attachments with fresh ownership/session checks, 
 
 The optional live integration suite uploads only generated neutral files and removes them through their owners' API sessions. It tests database and Storage isolation with both dedicated accounts. Never substitute real medical reports in automated fixtures.
 
+## Health history and manual measurements
+
+After inspecting a report candidate against its source, confirm or correct it, then
+choose **Publish to health history**. Publication is explicit and uses the latest
+review revision. Supply a measurement day only if known; otherwise leave it blank.
+Upload/recording times are never substituted for unknown clinical dates. Changing
+or rejecting a review removes its old value from active history. An eligible new
+review must be explicitly published again; earlier snapshots remain inspectable.
+
+Open **Health history** to filter actual observations, inspect source evidence,
+download the original report, or add a manual **weight (kg)** or **heart rate (bpm)**
+measurement. Manual forms request an explicit UTC time. Edits retain revisions;
+deletion erases the manual values. Report deletion removes its derived observations
+while preserving unrelated manual measurements. Units and qualitative/comparator
+values are retained exactly; no conversions or medical trend calculations run.
+The dashboard uses real counts and separate recent records, with honest empty states.
+
+Phase 6 uses the existing processing secret and development project; no new service,
+credential or environment variable is required. Apply all versioned migrations in
+order for a fresh installation. Manual entries have documented technical bounds and
+revision/identity limits; see the handoff before using the development feature.
+
 ## Real two-user acceptance checks
 
 The normal unit suite makes no live provider calls. The optional integration harness uses two distinct, dedicated Supabase development accounts and the running local API. It changes/restores test display names and preferences and signs out only its test sessions; use accounts containing no real health data. Do not run simultaneous acceptance runners against the same fixture accounts.
@@ -168,8 +190,8 @@ Stop the frontend development server first: preview also uses port 5173 so it ma
 
 With Phase 2 enabled, apply the migration and sign in first before checking protected destinations. The public service-health endpoint remains available without signing in.
 
-1. Start both services. Open `/` and confirm the sidebar says **Local API connected** and the overview says **No health data available yet.**
-2. Navigate to `/reports`, `/trends`, and `/assistant`. Reports now offers private uploads/history; Trends and Assistant remain empty. No medical measurements or generated chat responses should appear.
+1. Start both services. Open `/` and confirm the sidebar says **Local API connected**. An account without observations shows **No health observations yet.**; populated accounts show real owned counts and records.
+2. Navigate to `/reports`, `/history`, `/trends`, and `/assistant`. Reports offers private uploads and reviewed candidates; Health history shows published observations and manual entries. Trends and Assistant remain empty, without calculated trends or generated responses.
 3. Refresh each route directly; use browser back/forward and check the active navigation state.
 4. At a mobile viewport, open/close navigation, press Escape, and navigate. The menu should close, focus should remain usable, and the page should not scroll horizontally.
 5. Use Tab/Enter for the skip link, navigation, buttons and links. Focus indicators should be visible.
@@ -186,7 +208,8 @@ frontend/
     layouts/          responsive application shell
     pages/            auth/settings/reports pages, remaining empty destinations, not-found
     features/auth/    session lifecycle, route protection and account controls
-    features/reports/ upload, cancellation and private report history
+    features/reports/ upload, extraction, review and private report history
+    features/observations/ publication, provenance, revisions and owned history
     features/system/  service connection indicator
     hooks/            API request lifecycle
     lib/              public configuration validation
@@ -195,7 +218,7 @@ frontend/
     styles/           design tokens and responsive styling
 backend/
   app/
-    api/              health/auth/profile/settings/reports and verified-user dependency
+    api/              health/auth/profile/settings/reports/observations/dashboard
     core/             configuration, cookies/CSRF, JWT/provider/session, owner repositories
     schemas/          strict request and response contracts
   tests/              isolated unit/security tests and opt-in real two-user checks
@@ -219,5 +242,7 @@ Authentication and account persistence are real Supabase integrations. Add healt
 
 - [Phase 5 decision](docs/phase-5-decision.md) records the deterministic candidate strategy.
 - [Phase 5 handoff](docs/phase-5-handoff.md) records candidate/review architecture, evaluation, security and manual verification.
+- [Phase 6 decision](docs/phase-6-decision.md) defines publication, dates and immutable observation revisions.
+- [Phase 6 handoff](docs/phase-6-handoff.md) records health history, manual measurements, dashboard behavior, security and acceptance evidence.
 
-The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Phase 5 was separately authorized. Candidates do not populate health history or establish clinical validity. Phase 6 requires a new explicit instruction.
+The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Machine candidates never populate health history automatically or establish clinical validity. Phase 7 requires a new explicit instruction.

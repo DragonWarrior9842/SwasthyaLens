@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { requestJson } from './api-client'
 import { decodeDashboard, decodeObservation, decodeObservationPage, measurementLabel } from './observations'
 
 const id = '11111111-1111-4111-8111-111111111111'
@@ -6,6 +7,10 @@ const fields = { original_label: 'Hemoglobin', raw_value: '13.20', original_unit
 const revision = { revision: 1, status: 'active', fields, catalog_version: 'observations-v1', measurement_date: null, measured_at: null, candidate_id: id, review_revision: 1, created_at: '2026-09-17T00:00:00Z', status_changed_at: '2026-09-17T00:00:00Z' }
 const observation = { id, source_type: 'report', report_id: id, candidate_id: id, created_at: revision.created_at, current: revision, revisions: [], evidence: null }
 describe('observation boundary', () => {
+  it.each(['observation_conflict', 'observation_not_found', 'observation_duplicate_source', 'observation_limit'])('shows a safe, specific %s message', async code => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ code, message: 'untrusted provider content' }), { status: 409, headers: { 'Content-Type': 'application/json' } }))
+    try { await expect(requestJson('/observations', value => value, { credentials: 'include' })).rejects.toMatchObject({ code, status: 409 }); await expect(requestJson('/observations', value => value, { credentials: 'include' })).rejects.not.toHaveProperty('message', 'untrusted provider content') } finally { fetch.mockRestore() }
+  })
   it('keeps decimal spelling and does not turn publication time into medical time', () => {
     const row = decodeObservation(observation)
     expect(row.current.fields.raw_value).toBe('13.20')

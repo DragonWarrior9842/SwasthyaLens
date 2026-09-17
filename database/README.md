@@ -1,6 +1,6 @@
-# Database foundation and private reports
+# Database foundation, private reports and health observations
 
-This directory owns the versioned Supabase PostgreSQL schema and its verification SQL. Phase 2 defines accounts; Phase 3 adds owned report metadata and a private Storage bucket. There are no credentials, medical measurements or AI records here. The initial migration does not modify provider-owned `auth.users` or `auth.sessions` data.
+This directory owns the versioned Supabase PostgreSQL schema and its verification SQL. Phase 2 defines accounts; Phase 3 adds owned report metadata and a private Storage bucket; later migrations add source-preserving extraction, review and explicitly published personal observations. Files contain schema and synthetic verification fixtures, never credentials or real medical measurements. The initial migration does not modify provider-owned `auth.users` or `auth.sessions` data.
 
 **Execution status (14 September 2026):** applied to the verified `swasthyalens-dev` project through the connected Supabase migration tool, version `20260914164833`, name `auth_foundation`. Both `schema.sql` and the complete rollback-only `rls-isolation.sql` passed on hosted PostgreSQL 17.6. No fixture users/profile/settings rows remained afterward. Supabase security and performance advisors both returned no findings. These database results do not replace live browser/API authentication acceptance.
 
@@ -143,6 +143,34 @@ cleanup cascades through all parameter data. Run
 `verification/parameters-lifecycle.sql`; the latter uses temporary synthetic
 identities and restores all fixture/key changes on rollback. See the
 [Phase 5 handoff](../docs/phase-5-handoff.md) for contracts, limits and live evidence.
+
+## Phase 6 observations
+
+The same development project has, in order,
+`20260917103144_health_observations.sql`,
+`20260917105520_observation_query_aliases.sql` and
+`20260917165418_observation_measurement_order.sql`. Apply them after all Phase 5
+migrations on a fresh installation. These are already recorded on the development
+project; do not rerun them there. Corrections use additional migrations rather than
+rewriting applied history.
+
+`health_observations` holds owned source identities and opaque manual deletion
+tombstones; `health_observation_revisions` holds immutable fields/date snapshots.
+Both have forced active-session/owner RLS and authenticated SELECT-only grants.
+The private lifecycle function, reached through a public invoker wrapper, requires
+the existing processing secret and owner JWT. It never accepts an authoritative
+browser owner or report-derived value. A partial unique index enforces one active
+revision, and review changes atomically supersede/invalidate publication. Existing
+report deletion cascades through all derived observations. Manual deletion erases
+value revisions and preserves only a minimal request-identity tombstone.
+
+Run `verification/observations-schema.sql` and the complete rollback-only
+`verification/observations-lifecycle.sql`, plus all eight earlier scripts. All ten
+passed after the final Phase 6 migration. Live HTTP tests additionally cover two-user
+isolation, concurrency, pagination, dates, units, revocation and deletion. See the
+[Phase 6 handoff](../docs/phase-6-handoff.md). No new credentials or setup are needed.
+
+## Reference links
 
 - [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security) explains their combined effect and anonymous-role behavior.
 - [Supabase session lifecycle](https://supabase.com/docs/guides/auth/sessions) documents JWT `session_id`, delayed expiry cleanup and session removal on logout.
