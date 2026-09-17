@@ -75,6 +75,19 @@ class SupabaseGateway:
                 if code == "P0001" and isinstance(error, dict):
                     message = error.get("message")
                     report_errors = {
+                        "observation_not_found": (404, "Observation or source not found."),
+                        "observation_conflict": (
+                            409,
+                            "The observation or review changed. Refresh the latest revision.",
+                        ),
+                        "observation_duplicate_source": (
+                            409,
+                            "This source row is already published. Use its original review.",
+                        ),
+                        "observation_limit": (
+                            409,
+                            "This account has reached its manual-entry limit.",
+                        ),
                         "parameter_limit": (
                             409,
                             "This text extraction has used its three parameter attempts.",

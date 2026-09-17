@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/Button'
+import { PublishObservation } from '../observations/PublishObservation'
 import { errorMessage } from '../../services/api-client'
 import { getExtraction, getProcessing } from '../../services/extraction'
 import type { ProcessingRun } from '../../services/extraction'
@@ -57,7 +58,7 @@ export function ReportParameters({ reportId, ownerId, onAuthFailure }: Props) {
     <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen(value => !value)}>{open ? 'Hide parameter candidates' : 'Parameter candidates'}</Button>
     {open && <section className="report-extraction__content" aria-label="Parameter candidates">
       <h4>Extracted parameter candidates</h4>
-      <p>Compare every candidate with the original report. These are further-derived values that need review. Personal review does not establish clinical validity or add health history.</p>
+      <p>Compare every candidate with the original report. Personal review does not establish clinical validity. After review, explicitly publish eligible values to add them to health history.</p>
       <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setRefresh(value => value + 1); setResult(null) }}>Refresh parameter status</Button>
       {sources.length === 0 ? <p>Complete text extraction first, then refresh parameter status.</p> : <>
         <label className="parameter-source">Source text attempt<select value={source} disabled={busy} onChange={event => { setSource(event.target.value); requestKey.current = null }}>
@@ -126,6 +127,7 @@ function CandidateReview({ candidate, reportId, ownerId, sourceRun, onAuthFailur
       <Button size="sm" variant="ghost" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => { void perform(signal => save('rejected', signal)) }}>Reject candidate</Button>
       <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(async signal => { const history = await parameterReviews(reportId, candidate.id, ownerId, signal); if (!signal.aborted) { setReviews(history); setShowHistory(true) } }) }}>Review history</Button>
     </div>
+    {latest && <PublishObservation key={latest.revision} reportId={reportId} candidateId={candidate.id} ownerId={ownerId} review={latest} onAuthFailure={onAuthFailure} />}
     {edit && <form className="parameter-correction" onSubmit={event => {
       event.preventDefault(); const form = new FormData(event.currentTarget)
       const correction: RawFields = { original_label: String(form.get('original_label') ?? ''), raw_value: String(form.get('raw_value') ?? '') || null, original_unit: String(form.get('original_unit') ?? '') || null, raw_reference: String(form.get('raw_reference') ?? '') || null }

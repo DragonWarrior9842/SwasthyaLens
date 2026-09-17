@@ -1,33 +1,22 @@
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ButtonLink } from '../components/Button'
+import { Button, ButtonLink } from '../components/Button'
 import { Card } from '../components/Card'
-import { EmptyState } from '../components/EmptyState'
-import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/PageHeader'
+import { useHistoryAccount, useOwnedHistory } from '../features/observations/useOwnedHistory'
+import { getDashboard, measurementLabel } from '../services/observations'
 
 export function DashboardPage() {
-  return (
-    <>
-      <PageHeader eyebrow="YOUR HEALTH, IN CONTEXT" title="Your health overview" description="A place to understand your reports and see how your health changes over time." />
-      <Card className="overview-card">
-        <div className="card-heading"><h2>My health at a glance</h2><span className="subtle-label">Getting started</span></div>
-        <EmptyState icon="heart" title="No health data available yet." description="Your overview will take shape as reports and health observations become available. For now, explore your new workspace." action={<ButtonLink to="/reports">Explore reports<Icon name="arrow-right" /></ButtonLink>} />
-      </Card>
-      <section className="workspace-section" aria-labelledby="workspace-heading">
-        <div className="section-heading"><h2 id="workspace-heading">A little more clarity, in one place</h2><p>Your workspace starts here.</p></div>
-        <div className="workspace-grid">
-          <Link className="workspace-link" to="/reports">
-            <span className="workspace-link__icon"><Icon name="report" /></span>
-            <div><h3>Your reports, together</h3><p>A home for your medical reports and the information they contain.</p></div>
-            <Icon name="arrow-right" className="workspace-link__arrow" />
-          </Link>
-          <Link className="workspace-link" to="/trends">
-            <span className="workspace-link__icon"><Icon name="trends" /></span>
-            <div><h3>See the bigger picture</h3><p>A place for changes and patterns across your health history.</p></div>
-            <Icon name="arrow-right" className="workspace-link__arrow" />
-          </Link>
-        </div>
-      </section>
-    </>
-  )
+  const { owner, authFailure } = useHistoryAccount()
+  const load = useCallback((signal: AbortSignal) => getDashboard(owner, signal), [owner])
+  const overview = useOwnedHistory(load, authFailure)
+  return <><PageHeader eyebrow="YOUR HEALTH, IN CONTEXT" title="Your health overview" description="Your private reports and personally reviewed health history." />
+    <Card className="history-panel"><div className="card-heading"><h2>My health at a glance</h2><Button variant="ghost" size="sm" onClick={overview.refresh}>Refresh overview</Button></div>
+      {overview.loading && <p role="status">Loading your overview…</p>}{overview.error && <p role="alert" className="form-error">{overview.error}</p>}
+      {overview.data && <><dl className="overview-counts"><div><dt>Uploaded reports</dt><dd>{overview.data.uploaded_reports}</dd></div><div><dt>Reviewed parameters</dt><dd>{overview.data.reviewed_parameters}</dd></div><div><dt>Active observations</dt><dd>{overview.data.active_observations}</dd></div></dl>
+        {overview.data.active_observations === 0 ? <div className="history-empty"><h3>No health observations yet.</h3><p>Upload a report or add a supported measurement. Report values enter history only after personal review and explicit publication.</p></div> : <><h3>Recent health observations</h3><p>Known measurement days first; unknown dates follow by time recorded. Each value retains its own unit.</p><ul className="overview-records">{overview.data.observations.map(o => <li key={o.id}><strong>{o.current.fields.original_label}: {o.current.fields.raw_value} {o.current.fields.original_unit ?? 'Unit not reported'}</strong><br />{measurementLabel(o.current)}<br /><span className="source-badge">{o.source_type === 'report' ? 'From report' : 'Manually entered'}</span></li>)}</ul></>}
+        <h3>Recently uploaded reports</h3>{overview.data.reports.length === 0 ? <p>No reports uploaded yet.</p> : <ul className="overview-records">{overview.data.reports.map(r => <li key={r.id}><Link to="/reports">{r.original_filename}</Link><br />Report record created {new Date(r.created_at).toISOString()}</li>)}</ul>}
+      </>}
+      <div className="parameter-actions"><ButtonLink to="/history">Open health history</ButtonLink><ButtonLink to="/reports" variant="secondary">Open reports</ButtonLink></div>
+    </Card></>
 }

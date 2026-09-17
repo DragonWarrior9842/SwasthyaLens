@@ -14,6 +14,7 @@ from app.api.accounts import router as accounts_router
 from app.api.auth import router as auth_router
 from app.api.extraction import router as extraction_router
 from app.api.health import router as health_router
+from app.api.observations import router as observations_router
 from app.api.parameters import router as parameters_router
 from app.api.reports import router as reports_router
 from app.core.auth_service import AuthService
@@ -22,6 +23,7 @@ from app.core.config import Settings
 from app.core.errors import ApiProblem
 from app.core.extraction import ExtractionService
 from app.core.http_security import BrowserSecurityMiddleware
+from app.core.observations import ObservationService
 from app.core.parameters import ParameterService
 from app.core.provider import SupabaseGateway
 from app.core.reports import ReportsService
@@ -63,6 +65,9 @@ def create_app(
             application.state.extraction_service = extraction
             application.state.parameter_service = (
                 ParameterService(extraction) if extraction else None
+            )
+            application.state.observation_service = (
+                ObservationService(application.state.parameter_service) if extraction else None
             )
             yield
             if extraction:
@@ -113,4 +118,5 @@ def create_app(
     application.include_router(reports_router)
     application.include_router(extraction_router)
     application.include_router(parameters_router)
+    application.include_router(observations_router)
     return application

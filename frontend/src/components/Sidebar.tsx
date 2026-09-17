@@ -6,6 +6,7 @@ import { Icon, type IconName } from './Icon'
 const destinations: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/reports', label: 'Reports', icon: 'report' },
+  { to: '/history', label: 'Health history', icon: 'heart' },
   { to: '/trends', label: 'Trends', icon: 'trends' },
   { to: '/assistant', label: 'AI Assistant', icon: 'assistant' },
   { to: '/settings', label: 'Account settings', icon: 'info' },
