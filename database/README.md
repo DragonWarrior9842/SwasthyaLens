@@ -131,6 +131,19 @@ Timezone validation uses the database's installed timezone catalog, including va
 
 ## Design references
 
+Phase 5 adds `report_parameter_runs`, immutable `report_parameter_candidates`, and
+append-only `report_parameter_reviews` through migrations
+`20260916165018_structured_parameter_candidates.sql` and
+`20260917052948_parameter_source_index.sql`. Apply these after Phase 4. There are
+no new credentials or observations tables. All three tables have forced owner /
+active-session RLS and authenticated SELECT-only grants. Mutation RPCs require the
+existing server processing secret plus the owner JWT. Existing deletion-intent
+cleanup cascades through all parameter data. Run
+`verification/parameters-schema.sql` and the complete rollback-only
+`verification/parameters-lifecycle.sql`; the latter uses temporary synthetic
+identities and restores all fixture/key changes on rollback. See the
+[Phase 5 handoff](../docs/phase-5-handoff.md) for contracts, limits and live evidence.
+
 - [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security) explains their combined effect and anonymous-role behavior.
 - [Supabase session lifecycle](https://supabase.com/docs/guides/auth/sessions) documents JWT `session_id`, delayed expiry cleanup and session removal on logout.
 - [PostgreSQL column privileges](https://www.postgresql.org/docs/current/ddl-priv.html) documents limiting INSERT/UPDATE assignments by column.

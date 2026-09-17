@@ -4,7 +4,7 @@ SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentic
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. AI, medical parameter extraction, health measurements, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds explicit deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md) for supported formats and measured limits. AI explanations, health observations, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -217,4 +217,7 @@ Authentication and account persistence are real Supabase integrations. Add healt
 - [Phase 4 decision](docs/phase-4-decision.md) compares native extraction and OCR options.
 - [Phase 4 handoff](docs/phase-4-handoff.md) records source text extraction, OCR quality, ownership, limits and verification.
 
-The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Phase 4 was separately authorized. Phase 5 requires a new explicit instruction; no medical interpretation or structured medical extraction is implemented.
+- [Phase 5 decision](docs/phase-5-decision.md) records the deterministic candidate strategy.
+- [Phase 5 handoff](docs/phase-5-handoff.md) records candidate/review architecture, evaluation, security and manual verification.
+
+The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Phase 5 was separately authorized. Candidates do not populate health history or establish clinical validity. Phase 6 requires a new explicit instruction.

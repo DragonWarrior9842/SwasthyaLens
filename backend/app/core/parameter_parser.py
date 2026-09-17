@@ -61,6 +61,8 @@ def fields(raw: RawFields, source_flag: str | None = None) -> ParameterFields:
     value = raw.raw_value
     result = ParameterFields(
         **raw.model_dump(),
+        parsing_version=EXTRACTOR_VERSION,
+        alias_version=RULES_VERSION,
         canonical_metric=ALIASES.get(key(raw.original_label)),
         value_kind="missing",
         source_flag=source_flag,
@@ -229,9 +231,11 @@ def parse(pages: list[ExtractedPage]) -> tuple[list[CandidateContent], list[str]
                     else None
                 )
                 notices.add("unparsed_rows")
+                if pending is None and key(line) not in ALIASES:
+                    columns = None
                 continue
             if pending and key(pending[0] + " " + row["label"]) in ALIASES:
-                row["label"] = pending[0] + " " + row["label"]
+                row["label"] = pending[0] + "\n" + row["label"]
                 start = pending[1]
             pending = None
             if not row["label"] or not any(c.isalpha() for c in row["label"]):

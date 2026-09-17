@@ -33,6 +33,11 @@ class SupabaseGateway:
             headers["Authorization"] = f"Bearer {access_token}"
         if prefer is not None:
             headers["Prefer"] = prefer
+        # A Phase 5 result includes up to 200 immutable candidates plus one review
+        # each. Keep every Phase 1–4 route's original one-megabyte boundary.
+        response_limit = (
+            2_000_000 if method == "POST" and path == "/rest/v1/rpc/parameter_result" else 1_000_000
+        )
         try:
             with self.client.stream(
                 method,
@@ -44,7 +49,7 @@ class SupabaseGateway:
                 status = response.status_code
                 content = bytearray()
                 for chunk in response.iter_bytes(chunk_size=16_384):
-                    if len(content) + len(chunk) > 1_000_000:
+                    if len(content) + len(chunk) > response_limit:
                         raise unavailable()
                     content.extend(chunk)
         except httpx.HTTPError:

@@ -1,5 +1,6 @@
 """Owner-scoped, bounded structured parsing and append-only review operations."""
 
+import json
 import logging
 from threading import BoundedSemaphore
 from uuid import UUID
@@ -71,7 +72,10 @@ class ParameterService:
             )
             if not isinstance(reply, dict) or not isinstance(reply.get("created"), bool):
                 raise report_unavailable()
-            run = ParameterRun.model_validate(reply.get("run"))
+            try:
+                run = ParameterRun.model_validate(reply.get("run"))
+            except ValueError:
+                raise report_unavailable() from None
             if run.report_id != report_id or run.source_run_id != source.run.id:
                 raise report_unavailable()
             if not reply["created"]:
@@ -83,6 +87,12 @@ class ParameterService:
             try:
                 candidates, warnings = parse(source.pages)
                 content = [candidate.model_dump(mode="json") for candidate in candidates]
+                if len(json.dumps(content, ensure_ascii=False).encode("utf-8")) > 750000 or any(
+                    len(json.dumps(item, ensure_ascii=False).encode("utf-8")) > 6000
+                    for item in content
+                ):
+                    content = []
+                    raise ParserLimit
             except ParserLimit:
                 error = "resource_limit"
             except Exception:
@@ -137,7 +147,10 @@ class ParameterService:
         )
         if not isinstance(value, list) or len(value) > 20:
             raise report_unavailable()
-        return [Review.model_validate(row) for row in value]
+        try:
+            return [Review.model_validate(row) for row in value]
+        except ValueError:
+            raise report_unavailable() from None
 
     def review(
         self, report_id: UUID, candidate_id: UUID, body: ReviewInput, current: AuthenticatedRequest
@@ -156,4 +169,7 @@ class ParameterService:
                 else None,
             },
         )
-        return Review.model_validate(value)
+        try:
+            return Review.model_validate(value)
+        except ValueError:
+            raise report_unavailable() from None

@@ -1,0 +1,57 @@
+{
+  "extractor": "table-candidates-v1",
+  "rules": "synthetic-aliases-v1",
+  "scope": "Synthetic fixtures only; not an estimate of general medical accuracy. Missing rows count against every field denominator.",
+  "results": {
+    "parser_cells": {
+      "expected_rows": 32,
+      "extracted_rows": 32,
+      "correct_fields_out_of_expected": {
+        "parameter_name": 32,
+        "value": 32,
+        "unit": 32,
+        "reference": 32,
+        "source_page": 32
+      },
+      "false_positives": 0,
+      "false_negatives": 0,
+      "warnings": []
+    },
+    "negative_layouts": {
+      "documents": 5,
+      "false_candidates": 0
+    },
+    "native_pipeline": {
+      "expected_rows": 5,
+      "extracted_rows": 5,
+      "correct_fields_out_of_expected": {
+        "parameter_name": 5,
+        "value": 5,
+        "unit": 5,
+        "reference": 5,
+        "source_page": 5
+      },
+      "false_positives": 0,
+      "false_negatives": 0,
+      "warnings": [
+        "unparsed_rows"
+      ]
+    },
+    "scan_pipeline": {
+      "expected_rows": 5,
+      "extracted_rows": 4,
+      "correct_fields_out_of_expected": {
+        "parameter_name": 4,
+        "value": 4,
+        "unit": 4,
+        "reference": 4,
+        "source_page": 4
+      },
+      "false_positives": 0,
+      "false_negatives": 1,
+      "warnings": [
+        "unparsed_rows"
+      ]
+    }
+  }
+}

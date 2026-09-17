@@ -47,6 +47,18 @@ def test_connection_failure_is_generic() -> None:
     assert "internal" not in failure.value.message and "test-only" not in failure.value.message
 
 
+def test_parameter_result_has_a_separate_bounded_response_budget() -> None:
+    stream = LargeStream()
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=stream))
+    ) as client:
+        with pytest.raises(ApiProblem):
+            SupabaseGateway(auth_settings(), client).request(
+                "POST", "/rest/v1/rpc/parameter_result"
+            )
+    assert stream.closed and 65 < stream.read_chunks < 125
+
+
 def test_redirects_do_not_forward_credentials() -> None:
     visited: list[str] = []
 

@@ -17,12 +17,14 @@ class RawFields(BaseModel):
     @field_validator("original_label")
     @classmethod
     def nonblank_label(cls, value: str) -> str:
-        if not value.strip() or any(ord(c) < 32 for c in value):
+        if not value.strip() or any(ord(c) < 32 and c != "\n" for c in value):
             raise ValueError("A visible label is required")
         return value
 
 
 class ParameterFields(RawFields):
+    parsing_version: str | None = None
+    alias_version: str | None = None
     canonical_metric: str | None = None
     numeric_value: str | None = None
     comparator: Literal["<", ">", "<=", ">=", "=", "≤", "≥"] | None = None
