@@ -1,4 +1,5 @@
 import { accountMutation, accountOwnedRead } from './auth'
+import { reportChanged } from './report-events'
 
 export interface RawFields { original_label: string; raw_value: string | null; original_unit: string | null; raw_reference: string | null }
 export interface Fields extends RawFields { canonical_metric: string | null; numeric_value: string | null; comparator: string | null; value_kind: string; source_flag: string | null; calculated_range_status: 'unknown' }
@@ -67,7 +68,9 @@ export async function getParameters(report: string, run: string, owner: string, 
 }
 export async function reviewParameter(report: string, candidate: string, body: ReviewInput, owner: string, signal?: AbortSignal) {
   if (!id(candidate)) throw new Error('Invalid candidate')
-  return accountMutation(`${path(report)}/parameters/${candidate}`, body, v => decodeReviews([v])[0]!, owner, 'PATCH', signal)
+  reportChanged(report)
+  try { return await accountMutation(`${path(report)}/parameters/${candidate}`, body, v => decodeReviews([v])[0]!, owner, 'PATCH', signal) }
+  finally { reportChanged(report) }
 }
 export async function parameterReviews(report: string, candidate: string, owner: string, signal?: AbortSignal) {
   if (!id(candidate)) throw new Error('Invalid candidate')

@@ -36,11 +36,11 @@ export function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
   return result
 }
 
-async function writeWithCsrf<T>(path: string, body: object, decode: (payload: unknown) => T, method: 'POST' | 'PATCH' | 'DELETE' = 'POST', signal?: AbortSignal): Promise<T> {
+async function writeWithCsrf<T>(path: string, body: object, decode: (payload: unknown) => T, method: 'POST' | 'PATCH' | 'DELETE' = 'POST', signal?: AbortSignal, timeoutMs = 15_000): Promise<T> {
   // Fetch inside the session lock: a token cannot be overtaken by another tab's cookie update.
   const cancellation = signal ? { signal } : {}
   const csrfToken = await requestJson('/auth/csrf', decodeCsrf, { credentials: 'include', timeoutMs: 15_000, ...cancellation })
-  return requestJson(path, decode, { credentials: 'include', method, body, csrfToken, timeoutMs: 15_000, ...cancellation })
+  return requestJson(path, decode, { credentials: 'include', method, body, csrfToken, timeoutMs, ...cancellation })
 }
 
 export function accountRead<T>(path: string, decode: (payload: unknown) => T, signal?: AbortSignal): Promise<T> {
@@ -67,8 +67,8 @@ export function accountOwnedRead<T>(path: string, decode: (payload: unknown) => 
   return withCurrentAccount(expectedOwnerId, () => accountRead(path, decode, signal), signal)
 }
 
-export function accountMutation<T>(path: string, body: object, decode: (payload: unknown) => T, expectedOwnerId: string, method: 'POST' | 'PATCH' | 'DELETE', signal?: AbortSignal): Promise<T> {
-  return withCurrentAccount(expectedOwnerId, () => writeWithCsrf(path, body, decode, method, signal), signal)
+export function accountMutation<T>(path: string, body: object, decode: (payload: unknown) => T, expectedOwnerId: string, method: 'POST' | 'PATCH' | 'DELETE', signal?: AbortSignal, timeoutMs = 15_000): Promise<T> {
+  return withCurrentAccount(expectedOwnerId, () => writeWithCsrf(path, body, decode, method, signal, timeoutMs), signal)
 }
 
 export function accountUpload<T>(path: string, file: Blob, decode: (payload: unknown) => T, expectedOwnerId: string, signal?: AbortSignal): Promise<T> {

@@ -1,6 +1,15 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  explanation_not_found: 'This report or explanation is no longer available.',
+  explanation_conflict: 'The source changed. Refresh before trying again.',
+  explanation_evidence: 'Publish between one and twenty reviewed findings first.',
+  explanation_evaluation_only: 'Only enrolled synthetic evaluation reports are enabled.',
+  explanation_disabled: 'Live explanation evaluation is not enabled on this server.',
+  explanation_unavailable: 'Report explanations are temporarily unavailable.',
+  explanation_rate_limit: 'The explanation limit was reached. Wait before trying again.',
+  explanation_budget: 'The Phase 7 evaluation budget has been reached.',
+  explanation_invalid: 'The explanation could not be verified.',
   observation_not_found: 'This observation or its source is no longer available. Refresh health history.',
   observation_conflict: 'The observation or review changed. Refresh and review the latest revision before trying again.',
   observation_duplicate_source: 'This source row is already published. Use its original candidate review.',

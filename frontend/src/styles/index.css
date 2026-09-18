@@ -372,5 +372,17 @@ h1, h2, h3, p { margin: 0; }
 .overview-counts dt { font-size: .85rem; }.overview-counts dd { font-size: 2rem; margin: .5rem 0 0; }
 .overview-records { list-style: none; padding: 0; }.overview-records li { padding: 1rem 0; border-bottom: 1px solid #edf1f0; line-height: 1.8; overflow-wrap: anywhere; }
 .history-empty { padding: 1rem 0 2rem; }
+.report-explanation { margin-top: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.report-explanation > div { margin-top: .8rem; padding: 1.2rem; border: 1px solid #dbe5e3; border-radius: 10px; background: #f7faf9; }
+.report-explanation h4 { font-size: 1.05rem; margin: 0 0 .8rem; }
+.report-explanation h5 { font-size: 1rem; margin: 0 0 .5rem; }
+.report-explanation p, .report-explanation li { line-height: 1.6; }
+.report-explanation p { margin: .7rem 0; }
+.report-explanation ul { padding-left: 1.2rem; }
+.report-explanation > div > ul > li { padding: 1rem 0; border-top: 1px solid #dbe5e3; }
+.report-explanation label { display: block; margin: 1rem 0; line-height: 1.6; }
+.report-explanation input[type=checkbox] { margin-right: .5rem; width: 1.1rem; height: 1.1rem; }
+.report-explanation a { text-decoration: underline; }
+.report-explanation .button { margin: .3rem .4rem .3rem 0; }
 @media (max-width: 900px) { .history-workspace { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 480px) { .overview-counts, .observation-filters { grid-template-columns: minmax(0, 1fr); } }

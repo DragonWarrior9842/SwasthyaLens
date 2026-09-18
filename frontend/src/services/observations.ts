@@ -1,4 +1,5 @@
 import { accountMutation, accountOwnedRead } from './auth'
+import { reportChanged } from './report-events'
 import { decodeFields } from './parameters'
 import type { Fields } from './parameters'
 
@@ -60,6 +61,7 @@ export async function publishObservation(report: string, candidate: string, expe
   if (!id(report) || !id(candidate)) throw new Error('Invalid source')
   const result = await accountMutation(`/reports/${report}/parameters/${candidate}/publish`, { expected_revision, measurement_date }, decodeObservation, owner, 'POST', signal)
   if (result.report_id !== report || result.candidate_id !== candidate || result.current.review_revision !== expected_revision) throw new Error('Mismatched publication')
+  reportChanged(report)
   return result
 }
 export async function saveManual(body: ManualInput, owner: string, identifier?: string, signal?: AbortSignal) {

@@ -75,6 +75,24 @@ class SupabaseGateway:
                 if code == "P0001" and isinstance(error, dict):
                     message = error.get("message")
                     report_errors = {
+                        "explanation_not_found": (404, "Report or explanation not found."),
+                        "explanation_conflict": (
+                            409,
+                            "The explanation request changed. Refresh and try again.",
+                        ),
+                        "explanation_evidence": (
+                            409,
+                            "Publish between one and twenty reviewed findings first.",
+                        ),
+                        "explanation_evaluation_only": (
+                            403,
+                            "Only enrolled synthetic evaluation reports are enabled.",
+                        ),
+                        "explanation_rate_limit": (
+                            429,
+                            "Explanation generation is busy or its request limit was reached.",
+                        ),
+                        "explanation_budget": (429, "The Phase 7 evaluation budget is exhausted."),
                         "observation_not_found": (404, "Observation or source not found."),
                         "observation_conflict": (
                             409,

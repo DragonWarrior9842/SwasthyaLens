@@ -12,15 +12,19 @@ from fastapi.responses import JSONResponse
 
 from app.api.accounts import router as accounts_router
 from app.api.auth import router as auth_router
+from app.api.explanations import router as explanations_router
 from app.api.extraction import router as extraction_router
 from app.api.health import router as health_router
 from app.api.observations import router as observations_router
 from app.api.parameters import router as parameters_router
 from app.api.reports import router as reports_router
+from app.core.ai_config import AISettings
 from app.core.auth_service import AuthService
 from app.core.browser_security import clear_session_cookies
 from app.core.config import Settings
 from app.core.errors import ApiProblem
+from app.core.explanation_provider import ExplanationProvider, OpenAIExplanationProvider
+from app.core.explanations import ExplanationService
 from app.core.extraction import ExtractionService
 from app.core.http_security import BrowserSecurityMiddleware
 from app.core.observations import ObservationService
@@ -33,9 +37,14 @@ def create_app(
     settings: Settings | None = None,
     *,
     provider_transport: httpx.BaseTransport | None = None,
+    explanation_provider: ExplanationProvider | None = None,
 ) -> FastAPI:
     """Construct the API with validated configuration and a bounded CORS policy."""
     config = settings if settings is not None else Settings()
+    # Explicit test Settings never read the real .env.ai, even if a local key exists.
+    ai = explanation_provider or OpenAIExplanationProvider(
+        AISettings() if settings is None else AISettings(_env_file=None, ai_api_key=None)
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -68,6 +77,11 @@ def create_app(
             )
             application.state.observation_service = (
                 ObservationService(application.state.parameter_service) if extraction else None
+            )
+            application.state.explanation_service = (
+                ExplanationService(application.state.observation_service, ai)
+                if extraction
+                else None
             )
             yield
             if extraction:
@@ -119,4 +133,5 @@ def create_app(
     application.include_router(extraction_router)
     application.include_router(parameters_router)
     application.include_router(observations_router)
+    application.include_router(explanations_router)
     return application

@@ -9,6 +9,7 @@ import { deleteReport, downloadReport, formatBytes, saveReportAttachment } from 
 import type { Report, ReportPage, ReportStatus } from '../../types/reports'
 import { ReportExtraction } from './ReportExtraction'
 import { ReportParameters } from './ReportParameters'
+import { ReportExplanation } from './ReportExplanation'
 
 const labels: Record<ReportStatus, string> = { pending_upload: 'Awaiting file', uploading: 'Upload in progress', uploaded: 'Uploaded', upload_failed: 'Upload incomplete', deleting: 'Deletion pending' }
 const descriptions: Record<ReportStatus, string> = {
@@ -103,6 +104,7 @@ function ReportRow({ report, ownerId, onChange, onAuthFailure }: { report: Repor
       {notice && <p className="form-notice" role="status">{notice}</p>}
       {report.status === 'uploaded' && <ReportExtraction reportId={report.id} ownerId={ownerId} onAuthFailure={onAuthFailure} />}
       {report.status === 'uploaded' && <ReportParameters reportId={report.id} ownerId={ownerId} onAuthFailure={onAuthFailure} />}
+      {report.status === 'uploaded' && <ReportExplanation reportId={report.id} ownerId={ownerId} onAuthFailure={onAuthFailure} />}
     </li>
   )
 }
