@@ -1,9 +1,12 @@
-# Phase 7 provider decision — awaiting approval
+# Phase 7 provider decision — approved for bounded synthetic evaluation
 
 Research checked: 18 September 2026. Repository baseline: `a876e24`.
-This is the Section 0 decision gate, **not an implemented Phase 7 handoff**.
-No AI SDK, provider account, key, environment setting, migration or model call
-has been added. See [baseline verification](phase-7-baseline.md).
+The user approved OpenAI GPT-5.6 Terra for a synthetic Phase 7 evaluation with a
+cumulative maximum of $5. This is not a permanent production healthcare-provider
+decision. The comparison and proposed contract below preserve the original
+Section 0 decision record. Implementation and actual acceptance status are tracked
+in [the Phase 7 handoff](phase-7-handoff.md); see also the unchanged
+[pre-implementation baseline](phase-7-baseline.md).
 
 ## Recommendation
 
@@ -256,4 +259,3 @@ Then provide exact manual setup instructions and proceed with Phase 7 implementa
 The user's Section 0 explicitly requires approval before installing/configuring
 a provider. Phase 7 remains incomplete until that approval and all implementation
 acceptance checks; the final `phase-7-handoff.md` belongs at that later point.
-

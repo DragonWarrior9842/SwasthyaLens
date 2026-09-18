@@ -245,4 +245,40 @@ Authentication and account persistence are real Supabase integrations. Add healt
 - [Phase 6 decision](docs/phase-6-decision.md) defines publication, dates and immutable observation revisions.
 - [Phase 6 handoff](docs/phase-6-handoff.md) records health history, manual measurements, dashboard behavior, security and acceptance evidence.
 
-The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Machine candidates never populate health history automatically or establish clinical validity. Phase 7 requires a new explicit instruction.
+The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Machine candidates never populate health history automatically or establish clinical validity.
+
+## Phase 7 report explanations
+
+The report explanation API/UI is implemented for a bounded synthetic evaluation.
+See [the Phase 7 handoff](docs/phase-7-handoff.md) for acceptance status and limitations.
+OpenAI GPT-5.6 Terra is an evaluation choice only. Live acceptance is currently
+blocked by OpenAI returning `401 invalid_api_key`; no live quality claim is made.
+
+Keep `AI_PROVIDER=openai`, `AI_MODEL=gpt-5.6-terra`, and `AI_API_KEY` in the ignored
+`backend/.env.ai` file, using [the blank example](backend/.env.ai.example).
+Never put the key in a `VITE_*` variable. No additional provider SDK is required;
+the server uses the already pinned HTTPX dependency.
+
+Ordinary tests use a deterministic provider, clear the live flag, and block OpenAI
+network transports. To run the real Supabase synthetic lifecycle with the mock:
+
+```powershell
+Set-Location backend
+.venv/Scripts/python.exe -m tests.evaluate_explanations
+```
+
+Only after provider access is working, the explicitly approved live runner is:
+
+```powershell
+$env:RUN_AI_INTEGRATION='1'
+try { .venv/Scripts/python.exe -m tests.evaluate_explanations --live-openai }
+finally { Remove-Item Env:RUN_AI_INTEGRATION -ErrorAction SilentlyContinue }
+```
+
+It creates its own synthetic PDFs and real owner-reviewed publications, enrolls
+only those fixtures, and deletes them afterward. It accepts no personal report
+path or arbitrary report ID. A persisted database reservation caps cumulative
+Phase 7 evaluation at $5, including conservative reservations for failed requests.
+Do not reset the ledger to retry. Ordinary uploaded reports are never enrolled by
+the UI. Generation requires an explicit consent action and never starts on load.
+Phase 8 trends and Phase 9 free-form assistant remain unimplemented.

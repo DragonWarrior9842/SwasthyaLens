@@ -5,6 +5,7 @@
 backend.env.integration
 !.env.example
 !**/.env.example
+!backend/.env.ai.example
 
 # Dependencies, generated output and tool caches.
 node_modules/
