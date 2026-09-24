@@ -4,7 +4,7 @@ SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentic
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). AI explanations, trend calculations, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Trend calculations, free-form assistant, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -251,11 +251,21 @@ The email-template restriction remains a documented Phase 2 limitation; public s
 
 The report explanation API/UI is implemented for a bounded synthetic evaluation.
 See [the Phase 7 handoff](docs/phase-7-handoff.md) for acceptance status and limitations.
-OpenAI GPT-5.6 Terra is an evaluation choice only. Live acceptance is currently
-blocked by OpenAI returning `401 invalid_api_key`; no live quality claim is made.
+The owner stopped all further OpenAI live requests on 24 September because funded
+API access is unavailable. The historical ledger reservation is $0.50 of $5 and
+must not be reset. Only the live-evaluation choice has reopened: Gemini 3.8 Flash
+Free Tier is the recommended synthetic-only candidate, pending the
+[exact manual setup](docs/phase-7-gemini-setup.md) and adapter implementation.
+Gemini Free Tier may use inputs/outputs to improve Google products. No personal
+reports are permitted, no live Gemini request has been made, and neither provider
+is a final production healthcare choice. See the
+[current decision](docs/phase-7-provider-decision.md).
 
-Keep `AI_PROVIDER=openai`, `AI_MODEL=gpt-5.6-terra`, and `AI_API_KEY` in the ignored
-`backend/.env.ai` file, using [the blank example](backend/.env.ai.example).
+The existing adapter reads `AI_PROVIDER=openai`, `AI_MODEL=gpt-5.6-terra`, and
+`AI_API_KEY` from ignored `backend/.env.ai`; the
+[blank example](backend/.env.ai.example) still describes that dormant adapter.
+Stage Gemini settings separately as documented in the manual setup; changing the
+current file to Gemini does not work with the current OpenAI-only loader.
 Never put the key in a `VITE_*` variable. No additional provider SDK is required;
 the server uses the already pinned HTTPX dependency.
 
@@ -267,15 +277,11 @@ Set-Location backend
 .venv/Scripts/python.exe -m tests.evaluate_explanations
 ```
 
-Only after provider access is working, the explicitly approved live runner is:
+Keep `RUN_AI_INTEGRATION` unset. Do not run the historical `--live-openai` command.
+No Gemini live command is implemented yet. Stop at manual setup and confirmation
+before the new adapter and its independently gated evaluator are introduced.
 
-```powershell
-$env:RUN_AI_INTEGRATION='1'
-try { .venv/Scripts/python.exe -m tests.evaluate_explanations --live-openai }
-finally { Remove-Item Env:RUN_AI_INTEGRATION -ErrorAction SilentlyContinue }
-```
-
-It creates its own synthetic PDFs and real owner-reviewed publications, enrolls
+The existing evaluator creates its own synthetic PDFs and real owner-reviewed publications, enrolls
 only those fixtures, and deletes them afterward. It accepts no personal report
 path or arbitrary report ID. A persisted database reservation caps cumulative
 Phase 7 evaluation at $5, including conservative reservations for failed requests.

@@ -17,7 +17,7 @@ export function ReportsPage() {
       {history.state.status === 'loading' && <Card className="report-feedback"><LoadingState title="Loading your reports…" description="Checking your private report history." /></Card>}
       {history.state.status === 'error' && <Card className="report-feedback"><ErrorState title="Unable to load reports" description={history.state.message} onRetry={history.refresh} /></Card>}
       {history.state.status === 'ready' && <div className="reports-workspace"><ReportUpload ownerId={ownerId} config={history.state.config} onChange={history.refresh} onAuthFailure={history.authFailure} /><ReportHistory ownerId={ownerId} page={history.state.page} notice={history.state.notice} refreshError={history.state.refreshError} refreshing={history.refreshing} loadingMore={history.loadingMore} moreError={history.moreError} onRefresh={history.refresh} onLoadMore={history.loadMore} onAuthFailure={history.authFailure} /></div>}
-      <div className="page-note"><span className="page-note__line" /><p>Inspect source-preserving extracted text from report history. Medical interpretation and AI explanations are not included.</p></div>
+      <div className="page-note"><span className="page-note__line" /><p>Inspect source-preserving extracted text from report history. Educational explanations are available only for approved synthetic evaluation reports.</p></div>
     </>
   )
 }

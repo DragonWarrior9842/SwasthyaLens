@@ -1,4 +1,109 @@
-# Phase 7 provider decision — approved for bounded synthetic evaluation
+# Phase 7 provider decision — Gemini free-tier evaluation setup gate
+
+## Current decision — 24 September 2026
+
+The owner has no funded OpenAI API access and has explicitly stopped all further
+OpenAI live requests, including authentication/model-access probes. Reopen only
+the Phase 7 live-provider evaluation choice. The earlier OpenAI comparison below
+is historical; it does not authorize another OpenAI request.
+
+**Recommend Gemini 3.8 Flash (`gemini-3.8-flash`) on the Gemini Developer API Free
+Tier for the existing synthetic acceptance set, conditional on manual setup and
+verified account quota.** Google currently lists free input/output tokens for this
+model and structured-output support. This establishes feasibility, not measured
+grounding quality, quota availability for this account, or a production healthcare
+provider decision. [Model](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash),
+[pricing](https://ai.google.dev/gemini-api/docs/pricing).
+
+**Gemini Free Tier may use submitted inputs and generated outputs to improve Google
+products and machine-learning technologies, with possible human review.** No real,
+personal, confidential or patient information may enter this evaluation. Google
+also prohibits clinical practice and medical advice through these services; this
+remains an internal synthetic test of the closed educational vocabulary.
+[Gemini terms](https://ai.google.dev/gemini-api/terms).
+
+Read [the exact Gemini manual setup](phase-7-gemini-setup.md) before continuing.
+This turn performs documentation research and local inspection only: no provider
+API requests, adapter changes, dependencies, migrations or local secret changes.
+Stop here for the owner's setup confirmation before implementing or running the
+Gemini evaluation. Phase 7 is incomplete. Phase 8 and Phase 9 remain out of scope.
+
+### Compatibility and implementation requirements after setup
+
+The existing `ExplanationProvider` protocol, `GenerationPermit`, bounded facts,
+closed `ModelExplanation` contract, semantic validator and educational catalog
+remain the shared boundary. Add a separate Gemini adapter; do not point the OpenAI
+adapter at a different URL or permit arbitrary provider/model strings.
+
+- Use a fixed server-only Gemini `generateContent` endpoint, one text-only request
+  and schema-constrained JSON. Translate only the provider's schema representation;
+  retain all strict local type, extra-field, length, enum and semantic checks. A
+  schema compatibility failure must stop evaluation, not fall back to prompt-only
+  JSON. Google's JSON Schema subset is not a guarantee of factual correctness.
+  [Structured output](https://ai.google.dev/gemini-api/docs/structured-output),
+  [REST contract](https://ai.google.dev/api/generate-content).
+- Select only newly generated, enrolled synthetic fixtures, with active reviewed
+  and published observations from one authorized report. Keep the 20-fact/32-KiB
+  context bound, opaque aliases and server-only provenance map. Never send files,
+  OCR pages, identifiers, symptoms, medications, history or other reports.
+- Supply no tools, function declarations, search grounding, URL context, file
+  search, code execution, storage/database access, explicit cached content or
+  conversation continuation. No SDK automatic function execution. Accept only a
+  complete text candidate; reject refusals, truncation, tool parts and malformed
+  or unsupported output. Use the existing independent validator for every fact,
+  evidence ID, unit, range, flag, page, educational code and note.
+- Preserve OpenAI's explicit `store=false` and its existing request/response
+  controls in the dormant adapter. Gemini `generateContent` has no documented
+  equivalent `store` switch: do not send an invented field or claim equivalent
+  retention. Avoid application-managed provider history/cache; unpaid-service
+  data use still applies. This privacy difference is explicit, not hidden by the
+  provider abstraction.
+- Keep no automatic generation, explicit consent, RLS/CSRF/session/two-user
+  protections, post-request source revalidation, correction invalidation, deletion
+  cascades, TTL, idempotency and per-user/global rate/concurrency limits.
+- Preserve the 48-KB request, 128-KiB response, 4,000 output-token and 45-second
+  overall limits; verify Gemini's thinking/output accounting before a live call.
+  Its documented lowest thinking level is `low`, not `none` or `minimal`. Keep
+  provider safety filters. Fail safely on limits; do not silently enlarge them.
+  No automatic retries or cross-provider/paid fallback.
+- Extend exact provider/model pairs through settings, factory, persisted metadata,
+  response schemas and frontend checks. Current code and SQL are OpenAI-specific;
+  changing three environment values alone will not work. Use a new forward
+  migration when authorized, never rewrite the applied Phase 7 migration. Cache
+  identity must include provider/model and all existing versions/revisions.
+- Normal tests continue to inject the deterministic mock. Extend credential/live
+  flag isolation and HTTP transport guards to Gemini as well as OpenAI, and test
+  each real adapter only with in-memory transports in normal pytest. Preserve all
+  existing OpenAI tests. Runtime must never pretend a mock is a live result.
+- Retain `RUN_AI_INTEGRATION=1` plus a Gemini-specific CLI opt-in for the future
+  evaluator. There is no such CLI option today. A live run must not dispatch to
+  OpenAI. Initially select the same two synthetic cases/15 facts and stop on the
+  first failed case; report numeric fidelity, injections, grounding, usage and
+  latency honestly. No real-report argument or arbitrary prompt/file is added.
+
+### Free-tier and budget boundary
+
+Use a dedicated project with **no linked Cloud Billing account** and a visible
+Free Tier status. A paid project with exhausted credits is not a free project.
+There is no API-key environment variable that forces Google to bill a request as
+free. The owner's project setting is essential and must be rechecked before a run.
+If free access is unavailable, stop without upgrading or selecting another model.
+[Billing](https://ai.google.dev/gemini-api/docs/billing).
+
+Actual RPM/TPM/RPD must be read from that project's AI Studio limits; do not invent
+a fixed free quota or rotate keys to evade it. Pace sequential fixtures within
+the lower of the project quota and application limits; a 429 stops the run.
+[Rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
+
+OpenAI's historical **$0.50 reservation and $5 ceiling remain intact**. No paid
+Gemini usage is authorized: target Gemini spend is $0. After setup, add a durable
+Gemini evaluation-attempt counter (at most 20 total attempts, including failures)
+alongside the unchanged paid ledger and existing rate controls. Two initial
+fixture requests are planned; no attempt counter may reset on deletion/restart.
+An application assertion of Free Tier cannot independently enforce Cloud Billing
+state, so it must not be represented as a provider-side spending guarantee.
+
+## Historical OpenAI decision — 18 September 2026
 
 Research checked: 18 September 2026. Repository baseline: `a876e24`.
 The user approved OpenAI GPT-5.6 Terra for a synthetic Phase 7 evaluation with a

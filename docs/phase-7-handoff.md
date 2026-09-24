@@ -1,9 +1,19 @@
 # Phase 7 — grounded report explanations
 
-Status: **implementation checkpoint; live OpenAI acceptance is blocked**.
-Updated 18 September 2026. The user committed the implementation checkpoint as
-`bde47ce`; the original provider-decision/baseline checkpoint is `dda2176`.
+Status: **implementation checkpoint; Gemini Free Tier manual setup pending**.
+Updated 24 September 2026 (Asia/Calcutta); resumed verification ran 23–24 September. The user committed the implementation checkpoint as
+`bde47ce` and its documentation as `c2fad82`; the original provider-decision/baseline
+checkpoint is `dda2176`.
 Phase 7 is not declared complete. Phase 8 and Phase 9 have not started.
+
+On 24 September the owner stated that funded OpenAI access is unavailable and
+stopped all further OpenAI live requests, including probes. Only the live-provider
+evaluation decision was reopened. Gemini 3.8 Flash Free Tier is the recommended
+synthetic-only candidate, pending [manual setup](phase-7-gemini-setup.md) and the
+separate adapter work in the [current provider decision](phase-7-provider-decision.md).
+No Gemini call, adapter change or migration has occurred. The implementation and
+test evidence below describe the existing OpenAI-compatible checkpoint; they do
+not establish Gemini acceptance or authorize another OpenAI request.
 
 ## Architecture
 
@@ -34,7 +44,7 @@ Main implementation files:
 
 ## Provider/model and configuration
 
-Approved evaluation provider: **OpenAI GPT-5.6 Terra**, API model
+Implemented evaluation adapter: **OpenAI GPT-5.6 Terra**, API model
 `gpt-5.6-terra`. This is an evaluation choice only, not a permanent production
 healthcare-provider decision. The server uses existing pinned `httpx==0.28.1`;
 there is no new SDK dependency, provider fallback or browser-selectable endpoint.
@@ -137,7 +147,7 @@ SQL limit test verified rejection at 500 cents without changing the live balance
 The 48,000-byte request cap plus a conservative 5,000-token framing allowance,
 input priced at $2.50/M including cache-write premium, and 4,000 output tokens at
 $12/M gives a conservative token-cost estimate below $0.181 per request, under
-the $0.25 reservation. Prices were checked on 18 September against the
+the $0.25 reservation. Prices were rechecked on 23 September against the
 [model specification](https://developers.openai.com/api/docs/models/gpt-5.6-terra).
 The limit concerns evaluation model usage; taxes/FX/account-wide unrelated usage
 are not measured by this application. Recheck pricing before extending evaluation.
@@ -258,46 +268,81 @@ occurred in the accepted mock results.
 
 ## Live OpenAI result and remaining acceptance gate
 
-One real Responses attempt was made after the six-safeguard report. It failed with
-the safe `authentication` category; no explanation was saved. Its synthetic case
-contained eight findings. Server round-trip duration was 4,016 ms; no usage tokens
-were returned. A subsequent non-generating model-metadata check returned
-**HTTP 401, `invalid_api_key`**. The effective key matched `backend/.env.ai`, with
-no process environment override or surrounding whitespace. No key/error body was
-printed, logged or copied. No blind generation retry was made.
+Two real Responses attempts have been made after their six-safeguard reports,
+on 18 and 23 September 2026. Each failed with the safe `authentication` category;
+no explanation was saved. Each synthetic case contained eight findings. The
+first server round trip was 4,016 ms and the resumed attempt was 1,140 ms; no
+usage tokens were returned. On 23 September, a non-generating model-metadata
+check again returned **HTTP 401, `invalid_api_key`**. The effective key matched
+`backend/.env.ai`, with no process override or surrounding whitespace. No key
+or raw error body was printed, logged or copied. No blind generation retry was
+made; the second fixture was not sent after the first fixture failed.
 
-The failed attempt retains a conservative $0.25 reservation. This is reserved
-budget, not a measured billed charge. Successful live grounding, numeric fidelity,
-prompt-injection behavior, model access and token-cost/latency distribution are
-**unmeasured**. A failed authentication round trip is not model latency; no p50/p95
-or live quality success is claimed. The key must be corrected locally and the
-synthetic live runner completed before Phase 7 can be signed off.
+The two failed attempts retain **$0.50 cumulative reservations out of $5**. This
+is reserved budget, not measured billing; the ledger was not reset. Successful
+live grounding, numeric fidelity, prompt-injection behavior, model access and
+token-cost/latency distribution remain **unmeasured**. Failed authentication
+round trips are not model latency; no p50/p95 or live quality success is claimed.
+OpenAI live work is now stopped by the owner. The replacement Gemini setup,
+adapter validation and synthetic live acceptance must be completed before Phase 7
+can be signed off. Do not retry OpenAI to satisfy this gate.
 
 ## Test and regression results
 
-- 39 focused backend explanation/adapter/service tests passed.
-- Consolidated backend/OCR regression: 339 passed; 8 live integration checks
-  skipped in this run and passed separately below.
-- Correctly configured extraction/parameter regression: 61 passed, including OCR.
-- Frontend: 215 tests passed; lint, typecheck and production build passed.
-- Backend Ruff, format, strict mypy and dependency consistency passed.
-- Real Supabase Phase 7 mock evaluator: two owners, 15 findings, 18 security/lifecycle
-  checks passed; fixtures and derived explanations were deleted afterward.
-- Browser Phase 7: 10 groups passed with real authentication and synthetic routed
-  response contracts, zero AI calls. Covers explicit consent, no page-load generation,
-  empty/enrollment gates, precise values/provenance, saved-result refresh, mobile
-  layout, HTML escaping, source invalidation, invalid output and failure states.
-- All 13 database verification scripts passed as full rollback transactions.
-- All 8 real Supabase integration tests passed, including Phase 7 with the mock
-  provider and all existing ownership/storage/extraction/observation suites.
-- Remaining Phase 1–6 browser regressions are being finalized at this checkpoint;
-  update this section with their final results.
+Fresh verification on 23–24 September 2026 against implementation `c2fad82`,
+with a final Reports-page copy correction:
 
-The first attempted OCR regression omitted `OCR_EVALUATION_MODELS` and failed
-configuration-dependent tests; the corrected 61-test run passed unchanged. An
-approval-review usage-limit interruption prevented an initial rerun from executing.
-The run resumed after the user continued. These were not hidden as clean first runs.
-Existing Starlette/httpx/AnyIO deprecation warnings remain.
+- 39 focused backend explanation/adapter/service tests passed.
+- Full backend regression with local OCR: **339 passed, 8 live tests skipped**,
+  40.61 seconds. The skipped tests were run separately below.
+- Backend Ruff and formatting passed (79 files); strict mypy passed (76 source
+  files); dependency consistency passed.
+- Frontend: **215 tests across 11 files passed**; ESLint, TypeScript and production
+  build passed. Lint/build were repeated successfully after the copy correction.
+- Real Supabase integration: **8 passed in 422.79 seconds**, including the Phase 7
+  deterministic mock evaluation, ownership/session revocation, private storage,
+  worker-death recovery, extraction, review, publication and observation lifecycle.
+- Phase 7 mock evaluator: two real owners, 15 synthetic findings and **18
+  security/lifecycle checks** passed with zero critical grounding errors and zero
+  OpenAI usage. Created reports and derived explanations were deleted afterward.
+- **All 13 SQL verification scripts passed** as complete rollback transactions.
+  Ten local migration versions match hosted migration history. The retention job
+  is active and its latest observed run succeeded. The final database check found
+  zero explanation rows and zero synthetic enrollments; the budget remains 50 cents.
+- Browser regression: **63 groups passed** against the final production build:
+  authentication/foundation 15, reports 11, extraction 7, parameters 8,
+  observations 12, explanations 10. Suites ran sequentially with live AI disabled.
+  The Phase 7 suite uses synthetic routed contracts with real authentication and
+  verifies consent, no page-load generation, gates, exact values/provenance,
+  HTML escaping, mobile overflow, invalidation, rejected output and failure states.
+- Tracked-file secret-pattern checks printed no matches; the frontend contains no
+  `AI_API_KEY` reference, `backend/.env.ai` remains ignored, and `git diff --check`
+  passed. No credential value was printed or copied into an artifact.
+
+The first resumed integration run started before the required loopback API was
+ready: four tests passed and four failed setup with connection refusal. After
+starting the API, the full eight-test run above passed without test/application
+changes. This setup mistake is not counted as an application failure or a clean
+first run.
+
+The original ignored authentication browser harness timed out twice because it
+assumed Reports must be empty. The dedicated account has one pre-existing uploaded
+report. It was left untouched and was never enrolled or sent to OpenAI. An ignored
+wrapper, `.cache/qa/phase2/browser-auth-owned-state.cjs`, now compares report row
+counts and headings against the owning API response, requires the empty message
+only when that response is empty, and preserves all other auth/isolation checks.
+Its complete 15-group rerun passed. The fixture-aware assertion change is not
+claimed as a pass of the original empty-only assertion.
+
+The Reports page and README previously said AI explanations were unimplemented.
+Their copy now accurately describes the bounded synthetic-only feature and its
+pending live acceptance. No model, schema, migration or safety boundary changed.
+
+The earlier 18 September OCR run initially omitted `OCR_EVALUATION_MODELS`; its
+corrected 61-test rerun passed. Existing Starlette/httpx/AnyIO deprecation warnings
+remain. The Supabase leaked-password warning and three intentional private-table
+no-policy informational notices are unchanged. Live OpenAI quality remains blocked
+as described above; passing mock, SQL and browser checks does not replace it.
 
 ## Reproduction
 
@@ -308,19 +353,24 @@ requires `RUN_OCR_EVALUATION=1` and the baseline
 the Phase 7 provider still mocked and OpenAI transports blocked by pytest.
 
 Run `python -m tests.evaluate_explanations` from `backend` for the mock synthetic
-flow. Only the separately opted-in `--live-openai` command in the README can spend
-AI credits, always through the persisted reservation path. The normal pytest
+flow. The historical `--live-openai` runner remains in source behind the persisted
+reservation path, but its execution is no longer authorized. Gemini's live command
+does not exist yet; follow the manual setup gate rather than running either live
+provider. The normal pytest
 fixture clears AI credentials/live flags and blocks real OpenAI HTTP transports.
 Provider adapter tests use in-memory `httpx.MockTransport` only.
 
 Run all `database/verification/*.sql` as complete rollback transactions. Run
 `backend/tests/browser_explanations.cjs` with the documented Playwright module and
-local API/preview servers. Sanitized local result artifacts are under
+local API/preview servers. The Phase 1–6 browser commands are in the baseline;
+use the owned-state authentication wrapper described above when the dedicated
+account has existing reports. Start both servers before the live HTTP suites.
+Sanitized local result artifacts are under
 `.cache/phase7` and `.cache/qa/phase7`; no credentials are committed.
 
 ## Known limitations
 
-Live OpenAI acceptance is blocked as described above. English and five fixed
+Live provider acceptance is pending the Gemini setup gate described above. English and five fixed
 general definitions are the entire initial educational scope. No clinical,
 multilingual, patient-report or production-provider validation is claimed. A
 20-fact request may reach the output-token cap and fail safely; it is never
@@ -334,7 +384,10 @@ limitation and leaked-password-protection warning remain unresolved.
 
 ## Suggested commit and Phase 8 preview
 
-Suggested final commit after acceptance: `feat: add grounded synthetic report explanations`.
+Suggested commit for this resumed checkpoint:
+`fix: align Phase 7 copy and refresh acceptance evidence`.
+After successful live acceptance, the overall feature commit can use
+`feat: add grounded synthetic report explanations`.
 Do not label this checkpoint as completed live OpenAI acceptance.
 
 Phase 8 would separately define deterministic same-metric/unit/date-compatible
