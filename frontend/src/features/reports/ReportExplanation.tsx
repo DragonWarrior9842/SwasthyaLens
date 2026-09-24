@@ -10,6 +10,7 @@ export function ReportExplanation({ reportId, ownerId, onAuthFailure }: { report
   const [open, setOpen] = useState(false), [state, setState] = useState<ExplanationView | null>(null)
   const [consent, setConsent] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null)
   const operation = useRef<AbortController | null>(null), requestKey = useRef<string | null>(null)
+  const lastProvider = useRef<string | null>(null)
   const authFailure = useRef(onAuthFailure)
   useEffect(() => { authFailure.current = onAuthFailure }, [onAuthFailure])
   const load = useCallback(async (generate = false) => {
@@ -20,6 +21,8 @@ export function ReportExplanation({ reportId, ownerId, onAuthFailure }: { report
       requestKey.current ??= crypto.randomUUID()
       const result = generate ? await generateExplanation(reportId, requestKey.current, ownerId, controller.signal) : await getExplanation(reportId, ownerId, controller.signal)
       controller.signal.throwIfAborted()
+      if (lastProvider.current !== result.provider) setConsent(false)
+      lastProvider.current = result.provider
       setState(result)
       if (result.record && result.record.status !== 'generating') requestKey.current = null
     } catch (failure) { if (!controller.signal.aborted) { setError(errorMessage(failure)); authFailure.current(failure) } }
@@ -51,7 +54,7 @@ export function ReportExplanation({ reportId, ownerId, onAuthFailure }: { report
       {record?.status === 'failed' && <p role="alert">No verified explanation was saved ({record.error_category}). A retry is a new explicit request.</p>}
       {record?.status === 'generating' && <p role="status">A request is still in progress. Refresh its status; no automatic generation or retry will occur.</p>}
       {record?.status === 'ready' && <>
-        <p>{record.provider === 'mock-test' ? 'Deterministic test result · no OpenAI call' : 'OpenAI GPT-5.6 Terra · synthetic evaluation'} · Generated {new Date(record.created_at).toLocaleString()} · Expires {new Date(record.expires_at).toLocaleString()}</p>
+        <p>{record.provider === 'mock-test' ? 'Deterministic test result · no external AI call' : record.provider === 'gemini' ? 'Gemini 3.8 Flash · synthetic evaluation' : 'OpenAI GPT-5.6 Terra · synthetic evaluation'} · Generated {new Date(record.created_at).toLocaleString()} · Expires {new Date(record.expires_at).toLocaleString()}</p>
         <ul>{record.items.map(item => <li key={item.fact.evidence_id}>
           <h5>{item.fact.label}</h5>
           <p><strong>{item.fact.value}</strong>{item.fact.unit ? ` ${item.fact.unit}` : ' · Unit not supplied'}</p>
@@ -64,7 +67,10 @@ export function ReportExplanation({ reportId, ownerId, onAuthFailure }: { report
         <p>A healthcare professional can interpret these findings alongside your history and other results.</p>
       </>}
       {record?.status !== 'ready' && <>
-        <p>Generating sends the selected finding labels, exact values, units, supplied ranges, flags and page numbers to OpenAI. The original file and account identifiers are excluded. This evaluation accepts synthetic reports only. Application copies expire after 30 days; OpenAI may retain safety logs under its own terms.</p>
+        <p>Generating uses the selected finding labels, exact values, units, supplied ranges, flags and page numbers. The original file and account identifiers are excluded. This evaluation accepts synthetic reports only. Application copies expire after 30 days.</p>
+        {state?.provider === 'gemini' && <p>These synthetic findings are sent to Google Gemini Free Tier. Google may use submitted data and responses to improve its products; human reviewers may process them. Request logging is disabled, but this does not remove Google's Free Tier data terms. Do not submit personal or real patient information. This is not a production healthcare provider decision.</p>}
+        {state?.provider === 'openai' && <p>These findings would be sent to OpenAI, which may retain safety logs under its terms. OpenAI live evaluation is currently stopped.</p>}
+        {state?.provider === 'mock-test' && <p>This deterministic test uses no external AI provider.</p>}
         <label><input type="checkbox" checked={consent} disabled={!eligible || busy} onChange={event => setConsent(event.target.checked)} /> I understand and agree to send these synthetic findings for this evaluation.</label>
         <Button size="sm" disabled={!eligible || !consent || busy || record?.status === 'generating'} onClick={() => { void load(true) }}>Generate educational explanation</Button>
       </>}

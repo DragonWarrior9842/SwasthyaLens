@@ -3,15 +3,15 @@
 import asyncio
 import logging
 import time
-from typing import Any
+from typing import Any, Literal, cast
 from uuid import UUID
 
 from app.core.auth_service import AuthenticatedRequest
 from app.core.errors import ApiProblem
 from app.core.explanation_context import (
     CATALOG_VERSION,
-    MODEL,
     PROMPT_VERSION,
+    PROVIDER_MODELS,
     SCHEMA_VERSION,
     facts,
     render_output,
@@ -87,7 +87,7 @@ class ExplanationService:
                 if (
                     UUID(raw["user_id"]) != current.identity.user_id
                     or UUID(raw["report_id"]) != report
-                    or raw["model"] != MODEL
+                    or raw["model"] != PROVIDER_MODELS[raw["provider"]]
                     or raw["prompt_version"] != PROMPT_VERSION
                     or raw["schema_version"] != SCHEMA_VERSION
                     or raw["catalog_version"] != CATALOG_VERSION
@@ -108,6 +108,7 @@ class ExplanationService:
                 eligible_count=len(source),
                 evaluation_enrolled=value["evaluation_enrolled"],
                 provider_available=self.provider.available,
+                provider=cast(Literal["openai", "mock-test", "gemini"], self.provider.name),
                 record=record,
             )
         except (KeyError, TypeError, ValueError, AttributeError):
@@ -152,7 +153,11 @@ class ExplanationService:
         source = [SourceEvidence.model_validate(item) for item in value["evidence"]]
         context = facts(source)
         view = self.view(value, report, current)
-        if view.record is None or view.record.status != "generating":
+        if (
+            view.record is None
+            or view.record.status != "generating"
+            or view.record.provider != self.provider.name
+        ):
             raise unavailable()
         identifier = view.record.id
         permit = GenerationPermit(
@@ -160,6 +165,7 @@ class ExplanationService:
             context_digest(context),
             value["evaluation_enrolled"],
             value["reserved_cents"],
+            value.get("evaluation_attempt", 0),
         )
         started = time.monotonic()
         logger.info(

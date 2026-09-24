@@ -1,396 +1,299 @@
 # Phase 7 — grounded report explanations
 
-Status: **implementation checkpoint; Gemini Free Tier manual setup pending**.
-Updated 24 September 2026 (Asia/Calcutta); resumed verification ran 23–24 September. The user committed the implementation checkpoint as
-`bde47ce` and its documentation as `c2fad82`; the original provider-decision/baseline
-checkpoint is `dda2176`.
+Updated 24 September 2026 (Asia/Calcutta).
+**Implementation verified; Gemini live-provider acceptance pending actual quotas.**
+The owner confirmed the dedicated Gemini Free Tier project/key with Cloud Billing
+unlinked. Their RPM/TPM/RPD entries were placeholders. No live Gemini request has
+been made; no further OpenAI request is authorized or was made this turn.
 Phase 7 is not declared complete. Phase 8 and Phase 9 have not started.
 
-On 24 September the owner stated that funded OpenAI access is unavailable and
-stopped all further OpenAI live requests, including probes. Only the live-provider
-evaluation decision was reopened. Gemini 3.8 Flash Free Tier is the recommended
-synthetic-only candidate, pending [manual setup](phase-7-gemini-setup.md) and the
-separate adapter work in the [current provider decision](phase-7-provider-decision.md).
-No Gemini call, adapter change or migration has occurred. The implementation and
-test evidence below describe the existing OpenAI-compatible checkpoint; they do
-not establish Gemini acceptance or authorize another OpenAI request.
+The earlier implementation checkpoints are `bde47ce`, `c2fad82` and `d48ff1e`;
+the original provider/baseline checkpoint is `dda2176`. This working tree adds the
+Gemini adapter and retains the existing OpenAI-compatible abstraction. See the
+[current decision](phase-7-provider-decision.md) and
+[setup/execution instructions](phase-7-gemini-setup.md).
 
 ## Architecture
 
-An explicit authenticated POST selects active, reviewed, published observations
-from one owned uploaded report. PostgreSQL snapshots their immutable revisions,
-checks synthetic enrollment, enforces rate/concurrency limits and reserves cost
-before the server invokes a provider. No database lock spans the network request.
-The server validates the result against the exact snapshot and finishes through
-an RPC that rechecks the session, report status and current source revisions.
+An explicit authenticated POST selects current reviewed, published facts from one
+owned uploaded report. The database locks the report, snapshots immutable source
+revisions, checks synthetic enrollment, limits and idempotency, and reserves an
+attempt. No database lock spans the provider request. The server independently
+validates the response; the finish RPC rechecks the active session, ownership,
+report status, enrollment and exact source snapshot before saving ready output.
 
-The model selects from a closed educational vocabulary and echoes source facts.
-The application renders fixed catalog sentences only after validating every echo,
-code and note. There is no unrestricted medical prose, diagnosis, treatment,
-triage, trend calculation, chat or free-form prompt input. This deliberately
-bounded design provides enforceable output limits; it is not evidence of broad
-medical reasoning ability or clinical validation.
+The model selects enumerated educational wording and echoes exact facts. Only
+server-owned catalog sentences are rendered after validation. There is no free-form
+medical prose, diagnosis, treatment, triage, trend or assistant implementation.
 
-Main implementation files:
+- `backend/app/core/explanation_context.py`: facts, catalog, prompt, semantic validation.
+- `backend/app/core/explanation_provider.py`: shared protocol/permit and dormant OpenAI adapter.
+- `backend/app/core/gemini_explanation_provider.py`: separate Gemini REST adapter.
+- `backend/app/core/explanations.py`: authorization, reservation, validation and lifecycle.
+- `backend/app/schemas/explanations.py`: bounded typed contracts.
+- `backend/tests/evaluate_explanations.py`: generated synthetic two-owner acceptance runner.
+- `frontend/src/services/explanations.ts`: provider/model and fact/provenance checks.
+- `frontend/src/features/reports/ReportExplanation.tsx`: consent, disclosure and rendering.
 
-- `backend/app/core/explanation_context.py`: context, catalog, prompt and semantic validation.
-- `backend/app/core/explanation_provider.py`: fixed OpenAI Responses adapter.
-- `backend/app/core/explanations.py`: authorization, reservation and generation lifecycle.
-- `backend/app/schemas/explanations.py`: bounded typed input/output contracts.
-- `backend/app/api/explanations.py`: authenticated API routes.
-- `frontend/src/services/explanations.ts`: browser response/provenance validation.
-- `frontend/src/features/reports/ReportExplanation.tsx`: explicit consent and explanation UI.
-- `database/migrations/20260918051920_grounded_explanations.sql`: applied development migration.
+## Provider/model and settings
 
-## Provider/model and configuration
+Current evaluation provider: **Gemini 3.8 Flash**, exact model `gemini-3.8-flash`,
+Developer API Free Tier. This is an evaluation choice only, not a production
+healthcare-provider decision. `GeminiSettings` reads ignored
+`backend/.env.ai.gemini` with `AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`. The key is
+passed only in `x-goog-api-key`, never URL, prompt, log, browser or artifact.
+No `VITE_*` key exists. No new SDK dependency, configurable URL or fallback exists.
 
-Implemented evaluation adapter: **OpenAI GPT-5.6 Terra**, API model
-`gpt-5.6-terra`. This is an evaluation choice only, not a permanent production
-healthcare-provider decision. The server uses existing pinned `httpx==0.28.1`;
-there is no new SDK dependency, provider fallback or browser-selectable endpoint.
+The historical OpenAI GPT-5.6 Terra adapter keeps its exact Responses contract,
+model `gpt-5.6-terra`, separate `.env.ai` loader and in-memory contract tests.
+Its real transport is blocked. `--live-openai` rejects before any network action.
+The shared protocol and result type remain; permits add a default-zero Gemini
+attempt ordinal, which Gemini requires to be 1–20 with zero paid reservation.
 
-`backend/.env.ai` contains `AI_PROVIDER`, `AI_MODEL` and `AI_API_KEY`. It is ignored
-by Git; `backend/.env.ai.example` contains only names and an empty key. The AI
-settings loader is separate from the existing backend settings. Secrets stay
-server-side and are never sent to the model or copied into browser configuration.
-**No `VITE_*` variable contains or requires an API key.**
-
-The process environment must have `RUN_AI_INTEGRATION=1` for the real adapter to
-be available. The standalone evaluator additionally requires `--live-openai`.
-Tests with explicit application settings never load the real `.env.ai` file.
-The mock exists only in test code and is injected explicitly; the product never
-substitutes a mock explanation while claiming a real OpenAI result.
-
-A valid existing OpenAI key with the necessary project/model/Responses access can
-work. A dedicated restricted SwasthyaLens project key remains preferable for
-separate permissions, billing and revocation. Account/project access and provider
-spending settings are not established merely by storing a key locally.
+Gemini Free Tier may use submitted inputs and outputs to improve Google products
+and machine-learning technologies, including human review. Only synthetic fixtures
+are permitted. No patient data, zero-retention, residency or healthcare compliance
+claim is made. The UI discloses these terms before consent.
+[Google terms](https://ai.google.dev/gemini-api/terms).
 
 ## Context builder
 
-The server selects 1–20 active report observations with the latest confirmed or
-corrected review and a completed parameter extraction. Unreviewed, rejected,
-superseded, manual, foreign-owner and other-report observations are excluded.
-Review alone is insufficient: explicit publication is required. Empty or oversized
-evidence produces no model call.
+Select 1–20 active report observations with a completed parameter run and latest
+confirmed/corrected review. Explicit publication is required. Exclude unreviewed,
+rejected, superseded, manual, foreign-owner and other-report facts. Empty or
+oversized evidence never invokes a provider. Context is at most 32 KiB.
 
-Each fact has a request-local opaque ID `e1` through `e20`, its exact reviewed
-label/value/unit/reference/printed flag, value kind/comparator, canonical metric,
-page number and `calculated_range_status: "unknown"`. Input strings are never
-instructions. All supplied spelling, trailing zeros and missing values are kept.
+Each model fact has an opaque request-local alias `e1`–`e20`, exact label/value,
+unit, supplied reference/flag, kind/comparator, canonical metric, page number and
+`calculated_range_status: unknown`. Trailing zeros and missing values are preserved.
+Source fields are untrusted data. The server-only map holds observation/review
+revisions, candidate/run IDs and page spans. Account/report/observation UUIDs,
+filenames, raw files/OCR pages, storage paths, symptoms, medication and history are
+not in model context. Free-text labels are not guaranteed anonymized, which is why
+this remains synthetic-only.
 
-The server-only source map links each alias to observation/review revisions,
-candidate, parameter/source run and page offsets. No account/report/observation
-UUID, patient identifier, filename, file bytes, raw OCR page, source quote,
-measurement date, symptom, medication, history, credential or storage path is
-included in model context. Authorized provenance is returned to the owning UI.
-Free-text fields could contain identifying material, so this is minimization,
-not guaranteed anonymization; this phase therefore permits only synthetic fixtures.
+## Structured output and evidence validation
 
-## Structured output schema and evidence validation
+`ModelExplanation` requires `scope=educational`, 1–20 items,
+`limitation=selected_findings_only`, `follow_up=professional_context`. Each item
+contains a complete strict `ModelFact`, an enumerated explanation code and a
+bounded note-code list. Extra properties are forbidden.
 
-`ModelExplanation` requires `scope: educational`, 1–20 items,
-`limitation: selected_findings_only` and `follow_up: professional_context`.
-Each item requires one complete `ModelFact`, an enumerated `explanation_code`,
-and a bounded list of enumerated note codes. Extra properties are forbidden.
-The request specifies strict JSON-schema structured output.
+Gemini requests JSON Schema output. Its wire translator changes `const` to a
+singleton enum and omits unsupported string pattern/length keywords; local strict
+types, lengths, patterns and all semantic checks remain unchanged. There is no
+prompt-only JSON fallback. Every fact must appear exactly once in order, with the
+expected evidence ID and exact equality of every field. Definition code must match
+the canonical metric; notes must be exactly the required unique set. Unknown,
+missing, duplicate or foreign IDs, fabricated fields, ranges or measurements fail.
 
-Validation requires every fact exactly once in the same order, the exact expected
-opaque evidence ID and exact equality of every echoed field. Unknown, duplicate,
-missing or foreign IDs fail. A definition code must match the fact's authorized
-canonical metric. Notes must be exactly the required unique set: supplied/missing
-range, missing unit, source flag, comparator and nonnumeric-result cautions as
-applicable. A valid JSON shape alone does not pass these semantic checks.
+Only five general definitions (hemoglobin, TSH, vitamin D, glucose, CRP) have fixed
+English wording and allowlisted MedlinePlus links. Unknown labels receive an
+unsupported-definition notice. The application does not classify a value as
+normal/abnormal; supplied flags are presented as source flags only.
 
-Only five supported general definitions (hemoglobin, TSH, vitamin D, glucose and
-CRP) have catalog wording. Unknown/ambiguous labels get an explicit unsupported
-definition notice. General definitions were checked against the linked NLM
-MedlinePlus pages; this is engineering review of educational wording, not a
-clinician's review of a patient's result. The model cannot add a measurement,
-range, medication, symptom, diagnosis, history or arbitrary explanation sentence.
-
-Refusals, incomplete output, additional tool messages, malformed responses,
-unsupported codes, oversized bodies and incorrect usage metadata fail closed.
-Persisted ready output is validated again against current evidence before serving.
-The frontend also checks fact/source equality, IDs, revisions and a strict
-allowlist of MedlinePlus links. React renders untrusted labels as escaped text.
+Refusal, blocked/truncated output, multiple candidates, tool/code/file/thought
+parts, grounding/URL metadata, wrong model version, malformed/oversized responses
+and invalid usage are rejected. Ready records are validated again against current
+source evidence before serving. Frontend validation rechecks facts, provenance,
+versions and exact provider/model pairs; React escapes untrusted text.
 
 ## Prompt/version strategy
 
-Versions are `report-education-v1` (prompt), `closed-education-v1` (schema), and
-`education-en-v1` (wording catalog). Each record stores all three plus provider and
-model. Instructions are server-owned; report fields are explicitly untrusted data.
-The fixed prompt forbids diagnosis, treatment, tools, searches, inferred history,
-new measurements and range calculations. English is the only accepted language.
+The unchanged semantic contract is `report-education-v1`, `closed-education-v1`,
+`education-en-v1`. Every record stores these versions, provider and model. The
+prompt is server-owned, marks document fields untrusted and forbids diagnosis,
+new facts, searches and tools. Gemini transport/schema translation is adapter
+code, not a relaxation of the shared semantic version. Each provider has one
+allowed model; database constraints reject mismatched pairs. Cache reuse requires
+owner/report/snapshot/provider, with model and all versions fixed by constraints.
+Any future semantic/catalog/model change requires explicit versioning, migration
+and fresh acceptance.
 
-Changing any contract/catalog/model requires an explicit version/migration and
-fresh acceptance evaluation. Current SQL constraints and response checks require
-these exact versions. Reuse requires the same owner, report snapshot and provider;
-model, language and versions are fixed for this phase.
+## Safety controls, live gates and budget
 
-## Safety controls and budget
+Gemini sends one text-only `generateContent` request with **`store=false` and
+`tools=[]`**, no conversation history, explicit cached content, search, URL context,
+provider file uploads, code execution or database/storage access. Current REST docs
+document `store` as a logging control; this corrects the earlier setup note and
+does not override Google's Free Tier data terms. Default safety filters remain.
+[Request reference](https://ai.google.dev/api/generate-content).
 
-Every generation explicitly sends `store=false`, `stream=false`,
-`background=false`, `tools: []`, `tool_choice: none`,
-`parallel_tool_calls: false`, default service tier and no reasoning effort.
-There is no runtime web search, file search, code execution, model tool, database
-access or storage access. The endpoint is fixed to OpenAI Responses; redirects,
-environment proxy configuration, automatic retries and fallback are disabled.
+`RUN_AI_INTEGRATION=1` is required by the adapter. The standalone runner also
+requires `--live-gemini`, `--free-tier-confirmed` and actual numeric project quotas.
+The current conservative minimum is 1 RPM / 57000 TPM / 2 RPD. Two case requests
+are at least 61 seconds apart; any unsuccessful case stops the run. No model-access
+probe or token-count call is made. Billing-unlinked status is owner-confirmed;
+the application cannot independently guarantee the Cloud project's billing state.
+No paid Gemini usage is authorized. Do not guess quotas or enable billing.
 
-Before the first real request, all six required safeguards were verified and
-reported to the user. The applied private database ledger started at zero and
-permanently reserves **$0.25 before each OpenAI attempt**, with a cumulative
-**$5 hard cap**. Reservations are never refunded by failure, deletion, expiry or
-restart. At most 20 real attempts can pass this phase's ledger. The rollback-only
-SQL limit test verified rejection at 500 cents without changing the live balance.
+The applied forward migration `20260924080552_gemini_synthetic_explanations.sql`
+adds an exact Gemini model pair and permanent private `gemini_attempts` counter.
+It reserves before invocation and caps all Gemini attempts at 20, including
+failures; deletion, invalidation, expiration and restarts never refund it. The
+existing paid ledger remains 50 cents reserved of the $5 cap. It is not reset.
+Gemini attempts remain **0**; zero new live-provider requests occurred this turn.
 
-The 48,000-byte request cap plus a conservative 5,000-token framing allowance,
-input priced at $2.50/M including cache-write premium, and 4,000 output tokens at
-$12/M gives a conservative token-cost estimate below $0.181 per request, under
-the $0.25 reservation. Prices were rechecked on 23 September against the
-[model specification](https://developers.openai.com/api/docs/models/gpt-5.6-terra).
-The limit concerns evaluation model usage; taxes/FX/account-wide unrelated usage
-are not measured by this application. Recheck pricing before extending evaluation.
-Do not reset the ledger to obtain additional attempts.
+Normal pytest clears AI credentials/live flags and blocks both provider hosts at
+the HTTP transport layer. Mock is the default standalone evaluation provider;
+tests inject it explicitly. Application construction with explicit test settings
+does not load either secret env file. Adapter tests use `httpx.MockTransport`.
+The product never presents a mock as a live model result.
 
-Provider project spending enforcement is additional protection; its configuration
-was not independently verified. `store=false` does not promise zero provider
-retention, residency, a BAA or healthcare compliance. Standard safety logs and
-feature caching have separate policies described in the
-[provider data controls](https://developers.openai.com/api/docs/guides/your-data).
+Before the first future Gemini request, report all six safeguards again: explicit
+store=false, required live flag/CLI, active permanent attempt/paid safeguards,
+only generated synthetic fixtures, no tools, and mock network isolation.
 
-## Staleness, deletion and retention
+## Stale/invalidation and retention
 
-Changes to observation revisions atomically invalidate generating/ready report
-explanations, erase their output and evidence snapshot, and revoke enrollment.
-Corrections/rejections therefore cannot leave old model content readable through
-the Data API. Republication requires a new matching synthetic enrollment before a
-new evaluation. Finishing a request rechecks the source fingerprint and cannot
-resurrect a result invalidated while the network request was in flight.
+Source review/observation changes atomically remove ready/generating output and
+its stored evidence, mark stale, and remove enrollment. A late response is rejected
+if the snapshot changed. Report deletion removes explanations/enrollment with the
+existing cascade/deletion-intent handling. Ready application copies expire after
+30 days; enrollment after 24 hours; interrupted generation after 90 seconds. The
+hourly cleanup remains active. Application TTL makes no provider-retention promise.
+The browser clears displayed output/consent on source events, focus and visibility
+changes; refresh reads never generate. Provider changes also clear consent.
 
-Report deletion intent physically removes explanations and enrollment immediately,
-including when original-file cleanup remains pending. Report/account foreign keys
-also cascade derived records. The global spending ledger survives deletion.
+## API/UI
 
-Records are invisible after a 30-day TTL and physically removed by an hourly
-`pg_cron` job; physical expiry may lag the TTL by up to an hour. At most 20 records
-are retained per report. Synthetic enrollment expires after 24 hours. Abandoned
-generations become failed after their 90-second deadline on access or cleanup.
-Rate-attempt metadata is pruned after 25 hours. Cleanup was verified directly in
-rollback tests, and the scheduled job was observed succeeding on 18 September at
-10:17 UTC. A missing scheduler must be treated as a retention incident.
+Authenticated GET `/reports/{report}/explanations` and GET with explanation ID
+return only owned state. POST accepts the bounded idempotency/consent body;
+callers cannot inject prompts, evidence or tools. The response includes the active
+provider for accurate disclosure and stored provider/model metadata for results.
+An explicit checkbox and Generate action are required. Expanding/polling/refreshing
+the section only reads state; there is no automatic generation or retry.
 
-The browser clears/refetches on same-tab and cross-tab source-change notifications,
-focus/visibility changes, and 15-second status refreshes while expanded. No model
-generation is triggered by these reads. Already rendered content cannot be
-retroactively removed from a disconnected device; the server remains authoritative.
+UI shows eligible/unenrolled/disabled/generating/failed/stale states, exact values,
+units, supplied references/flags and page/review/revision provenance. General
+education links are allowlisted. Gemini results and deterministic mock results have
+distinct correct labels. No health output enters browser persistent storage.
 
-## API/UI implementation
+## Rate limits, timeouts, retries
 
-- `GET /reports/{report_id}/explanations`: current eligibility/latest record.
-- `GET /reports/{report_id}/explanations/{id}`: a specific owned record.
-- `POST /reports/{report_id}/explanations`: explicit `consent: true` and nonzero
-  UUID idempotency key. No prompt, facts, owner, model or provider is accepted.
+Existing shared limits remain one active generation/user, two globally, three
+new requests/minute/user and twenty/day/user. Report/global locks serialize
+reservation, idempotency and concurrency across workers. Retained report records
+are bounded to 20; cache/idempotency retention is finite. No lock spans network I/O.
 
-There is no HTTP route for synthetic enrollment. Only the trusted evaluator can
-call the worker-guarded RPC with its newly generated file digest and independently
-assembled exact published evidence snapshot. The runner accepts no arbitrary file,
-report ID or model argument. Storing a key alone cannot enable ordinary reports.
-
-The Reports accordion starts closed and does not fetch or generate on page load.
-It explains the third-party transmission and educational scope before a consent
-checkbox and explicit Generate action. Empty/unpublished/unenrolled/disabled,
-in-progress, failed and stale states are distinct. Saved results show exact values,
-supplied references/flags, page/review/observation provenance, authorized history
-links, general education sources, provider and timestamps. Mock results are clearly
-labelled as tests. Original facts remain authoritative and unchanged.
-
-## Rate limits, timeouts and retries
-
-The shared database enforces one active generation per user, two globally,
-three new generations/minute/user and twenty/day/user, across server workers.
-An atomic report lock and global reservation lock serialize cache/idempotency,
-rate and cost decisions. Existing authentication/report limits remain in force.
-Identical request keys and unchanged ready snapshots return existing records.
-Retained-record eviction/TTL bounds idempotency retention; it is not permanent.
-
-Context is capped at 32 KiB; serialized provider request at 48 KB; output at 4,000
-tokens and 128 KiB response bytes. Connect timeout is five seconds; provider I/O
-timeout forty seconds; overall generation forty-five seconds. The browser allows
-65 seconds for the generation response. There are **zero automatic paid retries**.
-Network ambiguity is recorded conservatively; it is not claimed to be exactly-once
-provider billing. A user explicitly retries after a failed generation.
-
-Only safe categories, counts, provider/status and timing are logged. Provider error
-bodies, prompts, responses, health values, credentials and access tokens are not
-logged. Local evaluation accounting contains safe synthetic-case metadata only.
+Serialized request <=48000 bytes; response <=131072 bytes; maxOutputTokens=4000.
+Gemini uses LOW thinking without thought text. Reported visible plus thinking
+tokens must total <=4000 and are stored together as output usage; prompt tokens
+<=53000 and total usage must reconcile. Five-second connect, forty-second I/O,
+forty-five-second total provider timeout; browser generation timeout 65 seconds.
+No automatic retries, redirects, proxy inheritance or provider fallback. Only
+safe categories/counts/timing are logged; no prompts, raw responses or secrets.
 
 ## RLS/security
 
-The migration was generated with the Supabase CLI and applied only to the existing
-`swasthyalens-dev` project (`rbmpfgndidpzdssiicyf`). Its filename matches hosted
-migration history. No reset, new project or service-role key was used.
+Only the existing `swasthyalens-dev` project (`rbmpfgndidpzdssiicyf`) changed. The
+new migration was CLI-generated, applied through Supabase and renamed to its
+hosted version. Eleven local/hosted migrations now match. No reset, new project or
+service-role key was used; original migrations remain unchanged.
 
-`report_explanations` uses forced owner/session/report-lifecycle RLS and SELECT-only
-authenticated grants. All writes pass through a public invoker wrapper into a
-private definer function with empty search path, verified active JWT session,
-worker secret and explicit report ownership. Budget/enrollment/rate tables are
-private, forced RLS and default-deny, with no client table privileges. The model
-never sees any of these credentials or objects.
+Forced owner/active-session/report RLS and authenticated SELECT-only grants remain.
+Writes use the public invoker wrapper and private definer with empty search path,
+worker-secret validation and explicit caller ownership. Budget/enrollment/attempt
+tables stay private, forced RLS, no client privileges. CSRF, Origin/JSON protection,
+HttpOnly cookies, revocation and two-user isolation remain enforced.
 
-CSRF, Origin/JSON protection, HttpOnly cookies, session revocation and two-user
-isolation remain enforced. Browser requests keep account checks and the existing
-cross-tab session lock. No health result enters browser persistent storage.
-
-The advisor retains the existing
-[leaked-password protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
-Three new private tables produce informational no-policy notices intentionally:
-they are default-deny and only accessed by guarded definer code. New indexes can
-also appear as unused during development. No production compliance claim is made.
+Security advisor has the existing
+[leaked-password protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
+and three intentional private default-deny
+[no-policy informational notices](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+No new grants or relaxed RLS were introduced.
 
 ## Grounding, numeric preservation and adversarial results
 
-The deterministic fixture set covers 31 nonmissing observations: decimal/trailing
-zero and integer traps, comparator results, qualitative values, titres, intervals,
-ordinals, missing units/ranges, unknown labels, ambiguous OCR characters, unusual
-units, contextual ranges and negative/zero values. All echoed values, units,
-references and provenance were preserved in focused tests. Corrupted values,
-units, ranges, flags, labels, metrics, pages, comparisons and IDs were rejected.
+The shared deterministic set covers 31 nonmissing observations including trailing
+zeros, decimal/integer traps, comparators, qualitative values, titres, intervals,
+ordinals, missing units/ranges, ambiguous OCR, unusual units, contextual ranges,
+negative/zero values and injection strings. Exact echo checks reject altered
+values/units/ranges/flags/IDs and invented diagnoses/history or unsupported codes.
+Gemini mock-transport tests additionally reject blocked/truncated/multiple/tool/
+code/file/thought output, grounding, wrong model and invalid token accounting.
 
-Prompt-injection strings remained source data. Tests reject invented diagnoses,
-additional history, wrong definition codes/notes, duplicate/missing/foreign evidence,
-refusal, incomplete output, tool messages, malformed/oversized responses and timeout.
-These results establish deterministic guard behavior, not live-model quality.
-The two-user mock evaluation additionally used 15 synthetic findings, including
-13.20/132, 18/80, 2.4/24, <5, >10, 0.4–4.0/30–100, source flags, qualitative/titre,
-missing-unit/range and embedded instruction cases. No critical grounding error
-occurred in the accepted mock results.
+The real two-owner **mock-AI** evaluation passed 15 synthetic findings and 18
+security/lifecycle checks with zero critical grounding errors. Cases cover
+13.20/132, 18/80, 2.4/24, <5, >10, 0.0050, supplied ranges/flags, qualitative/titre,
+missing data and embedded instructions. Fixtures and derived records were deleted.
+Existing unrelated uploaded reports were untouched and never enrolled.
 
-## Live OpenAI result and remaining acceptance gate
+**Live Gemini grounding, numeric fidelity, adversarial behavior, usage and latency
+remain unmeasured.** Passing mock/SQL/browser checks does not establish live-model
+acceptance. Gemini key presence/model selection were checked without exposing the
+key; RUN_AI_INTEGRATION is unset and the runtime reports unavailable as intended.
 
-Two real Responses attempts have been made after their six-safeguard reports,
-on 18 and 23 September 2026. Each failed with the safe `authentication` category;
-no explanation was saved. Each synthetic case contained eight findings. The
-first server round trip was 4,016 ms and the resumed attempt was 1,140 ms; no
-usage tokens were returned. On 23 September, a non-generating model-metadata
-check again returned **HTTP 401, `invalid_api_key`**. The effective key matched
-`backend/.env.ai`, with no process override or surrounding whitespace. No key
-or raw error body was printed, logged or copied. No blind generation retry was
-made; the second fixture was not sent after the first fixture failed.
+Historically, two OpenAI attempts on 18/23 September failed authentication with no
+accepted output or returned usage. Their $0.50 reservations remain conservative
+reservations, not measured billing. OpenAI is now stopped; no further probes.
 
-The two failed attempts retain **$0.50 cumulative reservations out of $5**. This
-is reserved budget, not measured billing; the ledger was not reset. Successful
-live grounding, numeric fidelity, prompt-injection behavior, model access and
-token-cost/latency distribution remain **unmeasured**. Failed authentication
-round trips are not model latency; no p50/p95 or live quality success is claimed.
-OpenAI live work is now stopped by the owner. The replacement Gemini setup,
-adapter validation and synthetic live acceptance must be completed before Phase 7
-can be signed off. Do not retry OpenAI to satisfy this gate.
+## Frontend/backend and regression results
 
-## Test and regression results
+Fresh verification of this Gemini implementation on 24 September:
 
-Fresh verification on 23–24 September 2026 against implementation `c2fad82`,
-with a final Reports-page copy correction:
+- Focused backend explanation/provider/service suite: **70 passed**.
+- Full backend with local OCR: **370 passed, 8 integration tests skipped**, 46.40s.
+- Ruff, formatting (81 files), mypy (78 source files) and pip consistency passed.
+- Frontend: **216 tests across 11 files passed**, ESLint/typecheck/build passed.
+- Dedicated real Supabase two-user Phase 7 mock test: **1 passed**, 86.40s; includes
+  both cases/15 facts/18 checks above. Both live AI hosts remained blocked.
+- All **four Phase 7 SQL scripts passed** in rollback transactions: schema,
+  lifecycle, limits and new Gemini limits. These prove the 20-attempt stop, replay,
+  failure/deletion/cleanup nonrefund, model-pair constraint, paid-ledger preservation
+  and no client counter reset. Test changes were rolled back.
+- Phase 7 browser suite: **12 groups passed**, real authentication with synthetic
+  routed responses and zero AI calls. Covers no page-load generation, consent,
+  exact values/provenance, escaping/mobile layout, invalidation, malformed output,
+  no retry, Gemini terms/provider-change consent reset and correct Gemini label.
+- Final database check: zero explanation rows and zero enrollments; Gemini attempts
+  zero and paid reservations unchanged at 50 cents. Both local test servers stopped.
+- Git diff whitespace check passed; both provider env files remain ignored.
+  Tracked-file secret-pattern scan found no matches; no key was printed or copied.
+- Historical pre-Gemini baseline: 8 live Supabase integration tests, 13 SQL scripts
+  and 63 browser groups passed on 23–24 September. Those complete older suites
+  were not all rerun for this adapter change; the fresh scoped results are above.
 
-- 39 focused backend explanation/adapter/service tests passed.
-- Full backend regression with local OCR: **339 passed, 8 live tests skipped**,
-  40.61 seconds. The skipped tests were run separately below.
-- Backend Ruff and formatting passed (79 files); strict mypy passed (76 source
-  files); dependency consistency passed.
-- Frontend: **215 tests across 11 files passed**; ESLint, TypeScript and production
-  build passed. Lint/build were repeated successfully after the copy correction.
-- Real Supabase integration: **8 passed in 422.79 seconds**, including the Phase 7
-  deterministic mock evaluation, ownership/session revocation, private storage,
-  worker-death recovery, extraction, review, publication and observation lifecycle.
-- Phase 7 mock evaluator: two real owners, 15 synthetic findings and **18
-  security/lifecycle checks** passed with zero critical grounding errors and zero
-  OpenAI usage. Created reports and derived explanations were deleted afterward.
-- **All 13 SQL verification scripts passed** as complete rollback transactions.
-  Ten local migration versions match hosted migration history. The retention job
-  is active and its latest observed run succeeded. The final database check found
-  zero explanation rows and zero synthetic enrollments; the budget remains 50 cents.
-- Browser regression: **63 groups passed** against the final production build:
-  authentication/foundation 15, reports 11, extraction 7, parameters 8,
-  observations 12, explanations 10. Suites ran sequentially with live AI disabled.
-  The Phase 7 suite uses synthetic routed contracts with real authentication and
-  verifies consent, no page-load generation, gates, exact values/provenance,
-  HTML escaping, mobile overflow, invalidation, rejected output and failure states.
-- Tracked-file secret-pattern checks printed no matches; the frontend contains no
-  `AI_API_KEY` reference, `backend/.env.ai` remains ignored, and `git diff --check`
-  passed. No credential value was printed or copied into an artifact.
+Initial sandbox runs hit filesystem/application-control restrictions (pytest temp,
+Vite/Ruff caches, mypy compiled module) and Supabase network denial. The authorized
+outside-sandbox reruns passed. The new Gemini browser label assertion initially
+failed because the rendered label still said OpenAI; the label was fixed and the
+full twelve-group rerun passed. Existing Starlette/httpx/AnyIO deprecations remain.
 
-The first resumed integration run started before the required loopback API was
-ready: four tests passed and four failed setup with connection refusal. After
-starting the API, the full eight-test run above passed without test/application
-changes. This setup mistake is not counted as an application failure or a clean
-first run.
+## Reproduction and remaining live acceptance
 
-The original ignored authentication browser harness timed out twice because it
-assumed Reports must be empty. The dedicated account has one pre-existing uploaded
-report. It was left untouched and was never enrolled or sent to OpenAI. An ignored
-wrapper, `.cache/qa/phase2/browser-auth-owned-state.cjs`, now compares report row
-counts and headings against the owning API response, requires the empty message
-only when that response is empty, and preserves all other auth/isolation checks.
-Its complete 15-group rerun passed. The fixture-aware assertion change is not
-claimed as a pass of the original empty-only assertion.
+Normal checks follow README. OCR evaluation uses RUN_OCR_EVALUATION=1 and the
+baseline local `OCR_EVALUATION_MODELS` path. RUN_SUPABASE_INTEGRATION=1 enables
+real backend integration tests with mocked AI. `python -m tests.evaluate_explanations`
+from backend runs the synthetic flow with mock AI. Do not set the live flag for
+normal tests. Browser checks use the local API/production preview and documented
+Playwright module path. SQL verification scripts must run as complete transactions.
+Sanitized result artifacts are in ignored `.cache/phase7` and `.cache/qa/phase7`.
 
-The Reports page and README previously said AI explanations were unimplemented.
-Their copy now accurately describes the bounded synthetic-only feature and its
-pending live acceptance. No model, schema, migration or safety boundary changed.
-
-The earlier 18 September OCR run initially omitted `OCR_EVALUATION_MODELS`; its
-corrected 61-test rerun passed. Existing Starlette/httpx/AnyIO deprecation warnings
-remain. The Supabase leaked-password warning and three intentional private-table
-no-policy informational notices are unchanged. Live OpenAI quality remains blocked
-as described above; passing mock, SQL and browser checks does not replace it.
-
-## Reproduction
-
-Use the usual frontend and backend checks in the README. OCR opt-in additionally
-requires `RUN_OCR_EVALUATION=1` and the baseline
-`OCR_EVALUATION_MODELS=P:/Projects/SwasthyaLens/.cache/phase4/models-best`.
-`RUN_SUPABASE_INTEGRATION=1` enables the real two-user database/API suites, with
-the Phase 7 provider still mocked and OpenAI transports blocked by pytest.
-
-Run `python -m tests.evaluate_explanations` from `backend` for the mock synthetic
-flow. The historical `--live-openai` runner remains in source behind the persisted
-reservation path, but its execution is no longer authorized. Gemini's live command
-does not exist yet; follow the manual setup gate rather than running either live
-provider. The normal pytest
-fixture clears AI credentials/live flags and blocks real OpenAI HTTP transports.
-Provider adapter tests use in-memory `httpx.MockTransport` only.
-
-Run all `database/verification/*.sql` as complete rollback transactions. Run
-`backend/tests/browser_explanations.cjs` with the documented Playwright module and
-local API/preview servers. The Phase 1–6 browser commands are in the baseline;
-use the owned-state authentication wrapper described above when the dedicated
-account has existing reports. Start both servers before the live HTTP suites.
-Sanitized local result artifacts are under
-`.cache/phase7` and `.cache/qa/phase7`; no credentials are committed.
+Remaining input: **actual RPM, TPM and RPD from AI Studio for the dedicated project**.
+Then re-report the six safeguards, run only the bounded Gemini synthetic evaluator,
+stop on failure and update this handoff with measured acceptance results. The
+owner has already authorized that scoped run; no additional general permission is
+needed. If quotas/model access are insufficient, keep acceptance pending without
+paid fallback or OpenAI retry. The key must remain local and must never be pasted.
 
 ## Known limitations
 
-Live provider acceptance is pending the Gemini setup gate described above. English and five fixed
-general definitions are the entire initial educational scope. No clinical,
-multilingual, patient-report or production-provider validation is claimed. A
-20-fact request may reach the output-token cap and fail safely; it is never
-silently truncated. Classification remains unknown even when a source range or
-flag is available. Publication can cover only part of a report.
-
-The active synthetic-only gate is intentional; ordinary user reports cannot be
-sent to OpenAI. Production use requires a separately authorized provider/privacy,
-contract, retention and safety decision. The earlier outbound-auth-email testing
-limitation and leaked-password-protection warning remain unresolved.
+Live Gemini acceptance is pending. English and five fixed definitions are the
+entire educational scope. No clinician-reviewed, production, real-patient,
+multilingual or broader medical reasoning claim is made. Source flags/ranges do
+not establish normality. Partial publication may not cover a whole report. Twenty
+facts may exceed the output cap and fail safely; they are never silently truncated.
+Project billing status depends on the owner's configuration. Provider-reported
+model/version/usage must match strictly or the result fails closed. Existing
+outbound-auth-email testing limitations and leaked-password warning remain.
 
 ## Suggested commit and Phase 8 preview
 
-Suggested commit for this resumed checkpoint:
-`fix: align Phase 7 copy and refresh acceptance evidence`.
-After successful live acceptance, the overall feature commit can use
-`feat: add grounded synthetic report explanations`.
-Do not label this checkpoint as completed live OpenAI acceptance.
+Suggested checkpoint commit:
+`feat: add gated Gemini synthetic report explanation adapter`.
+Do not describe this checkpoint as completed live acceptance.
 
-Phase 8 would separately define deterministic same-metric/unit/date-compatible
-trends, preserve source revisions, distinguish manual/report origins and surface
-insufficient or incompatible data without inventing classifications. That design
-requires its own instruction and checks. **No Phase 8 implementation was started.**
+Phase 8 would separately assess deterministic same-metric/unit/date-compatible
+trends, preserving source revisions and showing insufficient/incompatible data.
+That requires its own instruction and checks. **No Phase 8 work has started.**

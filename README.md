@@ -249,42 +249,39 @@ The email-template restriction remains a documented Phase 2 limitation; public s
 
 ## Phase 7 report explanations
 
-The report explanation API/UI is implemented for a bounded synthetic evaluation.
-See [the Phase 7 handoff](docs/phase-7-handoff.md) for acceptance status and limitations.
-The owner stopped all further OpenAI live requests on 24 September because funded
-API access is unavailable. The historical ledger reservation is $0.50 of $5 and
-must not be reset. Only the live-evaluation choice has reopened: Gemini 3.8 Flash
-Free Tier is the recommended synthetic-only candidate, pending the
-[exact manual setup](docs/phase-7-gemini-setup.md) and adapter implementation.
-Gemini Free Tier may use inputs/outputs to improve Google products. No personal
-reports are permitted, no live Gemini request has been made, and neither provider
-is a final production healthcare choice. See the
-[current decision](docs/phase-7-provider-decision.md).
+The bounded synthetic report explanation API/UI and Gemini 3.8 Flash adapter are
+implemented. Live acceptance awaits actual project RPM/TPM/RPD; the owner's setup
+confirmation contained placeholders. See the [handoff](docs/phase-7-handoff.md),
+[provider decision](docs/phase-7-provider-decision.md) and
+[setup instructions](docs/phase-7-gemini-setup.md).
 
-The existing adapter reads `AI_PROVIDER=openai`, `AI_MODEL=gpt-5.6-terra`, and
-`AI_API_KEY` from ignored `backend/.env.ai`; the
-[blank example](backend/.env.ai.example) still describes that dormant adapter.
-Stage Gemini settings separately as documented in the manual setup; changing the
-current file to Gemini does not work with the current OpenAI-only loader.
-Never put the key in a `VITE_*` variable. No additional provider SDK is required;
-the server uses the already pinned HTTPX dependency.
+Gemini Free Tier may use submitted inputs/outputs to improve Google products,
+including human review. Only generated synthetic fixtures are permitted. This is
+not a production healthcare-provider decision. Billing must remain unlinked.
 
-Ordinary tests use a deterministic provider, clear the live flag, and block OpenAI
-network transports. To run the real Supabase synthetic lifecycle with the mock:
+The server loads ignored `backend/.env.ai.gemini` with `AI_PROVIDER=gemini`,
+`AI_MODEL=gemini-3.8-flash`, and locally set `AI_API_KEY`. Never put keys in `VITE_*`
+variables. No SDK dependency or provider fallback was added. OpenAI retains its
+separate `.env.ai` and in-memory contract tests, but all live OpenAI calls are
+blocked. The historical $0.50 reservation and $5 cap remain unchanged.
+
+Ordinary tests inject deterministic mock AI, clear live flags/credentials and
+block both provider network hosts. To run the real Supabase synthetic lifecycle
+with mock AI, leave `RUN_AI_INTEGRATION` unset:
 
 ```powershell
 Set-Location backend
 .venv/Scripts/python.exe -m tests.evaluate_explanations
 ```
 
-Keep `RUN_AI_INTEGRATION` unset. Do not run the historical `--live-openai` command.
-No Gemini live command is implemented yet. Stop at manual setup and confirmation
-before the new adapter and its independently gated evaluator are introduced.
+The live Gemini command requires the process flag, `--live-gemini`, Free Tier
+confirmation and numeric quota arguments documented in setup. Do not guess quota
+values. No live Gemini request has occurred. The permanent Gemini counter caps
+attempts at 20, including failures. No paid Gemini use is authorized. Do not reset
+either ledger to retry.
 
-The existing evaluator creates its own synthetic PDFs and real owner-reviewed publications, enrolls
-only those fixtures, and deletes them afterward. It accepts no personal report
-path or arbitrary report ID. A persisted database reservation caps cumulative
-Phase 7 evaluation at $5, including conservative reservations for failed requests.
-Do not reset the ledger to retry. Ordinary uploaded reports are never enrolled by
-the UI. Generation requires an explicit consent action and never starts on load.
-Phase 8 trends and Phase 9 free-form assistant remain unimplemented.
+The evaluator creates new synthetic PDFs, reviews/publishes through owner APIs,
+enrolls only those fixtures and deletes them afterward. It accepts no arbitrary
+report ID or personal file. Generation is explicit with consent; never automatic
+on page load. Source corrections invalidate output; report deletion removes it.
+Phase 8 trends and Phase 9 free-form assistant have not started.

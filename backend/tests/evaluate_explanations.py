@@ -20,9 +20,10 @@ import httpx
 from dotenv import dotenv_values
 from fastapi.testclient import TestClient
 
-from app.core.ai_config import AISettings
+from app.core.ai_config import GeminiSettings
 from app.core.config import Settings
-from app.core.explanation_provider import ExplanationProvider, OpenAIExplanationProvider
+from app.core.explanation_provider import ExplanationProvider
+from app.core.gemini_explanation_provider import GeminiExplanationProvider
 from app.factory import create_app
 from tests import extraction_fixtures
 from tests.explanation_fixtures import MockExplanationProvider
@@ -59,9 +60,26 @@ CASES = [
 ]
 
 
-def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
-    if live_ai and os.environ.get("RUN_AI_INTEGRATION") != "1":
-        raise RuntimeError("Live evaluation requires RUN_AI_INTEGRATION=1")
+def run_evaluation(
+    *,
+    live_ai: bool = False,
+    live_gemini: bool = False,
+    gemini_rpm: int = 0,
+    gemini_tpm: int = 0,
+    gemini_rpd: int = 0,
+    free_tier_confirmed: bool = False,
+) -> dict[str, Any]:
+    # Retain the old argument solely to fail closed for old callers/scripts.
+    if live_ai:
+        raise RuntimeError("OpenAI live evaluation has been stopped by the owner")
+    if live_gemini:
+        if os.environ.get("RUN_AI_INTEGRATION") != "1":
+            raise RuntimeError("Live evaluation requires RUN_AI_INTEGRATION=1")
+        # Conservative full request-byte/framing plus output allowance. No token-count API.
+        if not free_tier_confirmed or gemini_rpm < 1 or gemini_tpm < 57000 or gemini_rpd < 2:
+            raise RuntimeError(
+                "Confirm Free Tier and sufficient project RPM/TPM/RPD before live evaluation"
+            )
     config = Settings()
     if config.supabase_url != "https://rbmpfgndidpzdssiicyf.supabase.co":
         raise RuntimeError("Only the approved development project is accepted")
@@ -69,13 +87,14 @@ def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
     if values.get("DISPOSABLE_TEST_ACCOUNTS_CONFIRMED") != "1":
         raise RuntimeError("Dedicated disposable accounts must be configured")
     provider: ExplanationProvider = (
-        OpenAIExplanationProvider(AISettings()) if live_ai else MockExplanationProvider()
+        GeminiExplanationProvider(GeminiSettings()) if live_gemini else MockExplanationProvider()
     )
     if not provider.available:
         raise RuntimeError("Approved provider is not configured for this evaluation")
     assert config.supabase_publishable_key is not None and config.report_processing_key is not None
     results: list[dict[str, Any]] = []
     checks = 0
+    last_generation: float | None = None
     with ExitStack() as stack:
         app = create_app(config, explanation_provider=provider)
         # One application lifespan; distinct cookie jars and real authenticated sessions.
@@ -236,7 +255,13 @@ def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
                     "Caller cannot choose evidence",
                 )
                 checks += 4
+                # At most one request per minute across these two cases. No automatic retries.
+                if live_gemini and last_generation is not None:
+                    remaining = 61 - (time.monotonic() - last_generation)
+                    if remaining > 0:
+                        time.sleep(remaining)
                 started = time.monotonic()
+                last_generation = started
                 response = user.write("POST", path, body)
                 expect_status(response, 200, "Explicit generation")
                 record = response.json()["record"]
@@ -258,7 +283,7 @@ def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
                 audit = Path(__file__).resolve().parents[2] / ".cache" / "phase7"
                 audit.mkdir(parents=True, exist_ok=True)
                 with (
-                    audit / ("live-openai-attempts.jsonl" if live_ai else "mock-attempts.jsonl")
+                    audit / ("live-gemini-attempts.jsonl" if live_gemini else "mock-attempts.jsonl")
                 ).open("a", encoding="utf-8") as output:
                     output.write(
                         json.dumps(
@@ -276,7 +301,7 @@ def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
                         "Evaluation did not produce a verified result: "
                         + str(record["error_category"])
                     )
-                if record["provider"] != ("openai" if live_ai else "mock-test"):
+                if record["provider"] != ("gemini" if live_gemini else "mock-test"):
                     raise RuntimeError("Unexpected evaluation provider")
                 for item, evidence in zip(record["items"], expected, strict=True):
                     if (
@@ -333,7 +358,7 @@ def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
                 )
                 checks += 1
     return {
-        "mode": "live-openai" if live_ai else "mock",
+        "mode": "live-gemini" if live_gemini else "mock",
         "cases": results,
         "security_checks": checks,
         "synthetic_only": True,
@@ -344,9 +369,21 @@ def run_evaluation(*, live_ai: bool = False) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live-openai", action="store_true")
+    parser.add_argument("--live-gemini", action="store_true")
+    parser.add_argument("--free-tier-confirmed", action="store_true")
+    parser.add_argument("--gemini-rpm", type=int, default=0)
+    parser.add_argument("--gemini-tpm", type=int, default=0)
+    parser.add_argument("--gemini-rpd", type=int, default=0)
     args = parser.parse_args()
     try:
-        result = run_evaluation(live_ai=args.live_openai)
+        result = run_evaluation(
+            live_ai=args.live_openai,
+            live_gemini=args.live_gemini,
+            free_tier_confirmed=args.free_tier_confirmed,
+            gemini_rpm=args.gemini_rpm,
+            gemini_tpm=args.gemini_tpm,
+            gemini_rpd=args.gemini_rpd,
+        )
     except Exception as error:
         # Exception types/category only: no request, response, environment or traceback dump.
         print("Evaluation failed: " + type(error).__name__)

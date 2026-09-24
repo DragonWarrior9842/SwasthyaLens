@@ -2,8 +2,8 @@
 
 Checked 24 September 2026. Scope: the existing synthetic educational acceptance
 tests only, using **Gemini 3.8 Flash / `gemini-3.8-flash`**. No production healthcare
-provider choice is made. No Gemini adapter is installed yet and no live Gemini
-request has been made. All further OpenAI live requests are stopped by the owner.
+provider choice is made. The adapter is implemented and tested offline; no live Gemini request has been
+made. Setup is confirmed; actual numeric RPM/TPM/RPD are still required. All further OpenAI live requests are stopped by the owner.
 
 ## Why this candidate
 
@@ -55,12 +55,9 @@ compliance. [Terms](https://ai.google.dev/gemini-api/terms).
 
 ## Exact local environment configuration
 
-Prepare **`backend/.env.ai.gemini`** in your editor (ignored by the existing
-`.env.*` rule). This separate staging file prevents the current OpenAI-only
-settings loader from receiving unsupported Gemini values. Leave the existing
-`backend/.env.ai` unchanged for now. The future Gemini adapter will explicitly
-load the staged settings after implementation and validation; the file alone
-does not enable anything today.
+Use **`backend/.env.ai.gemini`** (ignored by the existing `.env.*` rule).
+The implemented Gemini loader reads this file separately from the dormant OpenAI
+`backend/.env.ai`. The file alone never enables live requests.
 
 ```dotenv
 AI_PROVIDER=gemini
@@ -69,9 +66,9 @@ AI_API_KEY=
 ```
 
 Enter the newly created Gemini key after `AI_API_KEY=` locally. These three
-application variables are the proposed integration contract. No `VITE_*`,
+application variables are the implemented integration contract. No `VITE_*`,
 `GEMINI_API_KEY`, `GOOGLE_API_KEY`, Vertex/ADC credentials or provider URL variable
-is needed for this application. The adapter will pass this key explicitly in the
+is needed for this application. The adapter passes this key explicitly in the
 `x-goog-api-key` header, never in a URL or prompt. Existing Supabase/backend
 configuration is unchanged and is never exposed to the model.
 
@@ -82,12 +79,26 @@ PowerShell session has it set, clear it without printing any credentials:
 Remove-Item Env:RUN_AI_INTEGRATION -ErrorAction SilentlyContinue
 ```
 
-Later, the evaluator will require **both** the process variable
-`RUN_AI_INTEGRATION=1` and an explicit Gemini-only live command. Do not put the flag
-in either env file. The new command is not implemented yet, so no executable live
-command is provided at this setup gate. The old `--live-openai` command must not
-be used. There is no `FREE_TIER=true` key or setting that controls Google's
-billing tier: that belongs to the selected Cloud project.
+The evaluator requires **both** the process flag `RUN_AI_INTEGRATION=1` and
+`--live-gemini`. Do not put the flag in either env file. The old `--live-openai`
+command rejects before network; the dormant adapter also blocks real transport.
+There is no environment setting that controls Google's billing tier.
+
+After actual project limits are supplied and preflight safeguards are reported,
+run from `backend` with the live flag scoped only to that process:
+
+```text
+python -m tests.evaluate_explanations --live-gemini --free-tier-confirmed --gemini-rpm RPM --gemini-tpm TPM --gemini-rpd RPD
+```
+
+RPM/TPM/RPD must be the displayed **integers**, not guessed values. Current
+conservative minimums are 1 RPM, 57000 TPM and 2 RPD: the TPM allowance covers the
+full 48-KB request, 5K framing and 4K output caps. Lower quotas require a separately
+assessed smaller bound; never inflate the arguments or upgrade billing. Two fixture
+requests are spaced at least 61 seconds apart and any failure stops the run.
+Clear the process flag in `finally` after evaluation. No live call is authorized
+by this template alone; the owner's current request authorizes the scoped test
+once the required missing quota inputs and preflight are resolved.
 
 ## Controls that must pass before the first live request
 
@@ -106,10 +117,11 @@ billing tier: that belongs to the selected Cloud project.
 - Re-report these checks before live evaluation. Existing OpenAI reservations stay
   at $0.50 of $5; Gemini paid spend is not authorized. Quota failure stops the run.
 
-Gemini's stateless `generateContent` API is the proposed transport. Its request
-contract has no documented `store=false` equivalent; no zero-retention claim is
-made and Google's unpaid data terms still apply.
+Gemini's stateless `generateContent` API is implemented. The current API reference
+documents request-level `store`; the adapter explicitly sets it to `false`. This
+corrects the earlier setup note and does not remove unpaid-service data-use terms
+or establish zero retention.
 [API reference](https://ai.google.dev/api/generate-content).
 
-This is the requested stop before any live Gemini call. Phase 7 acceptance stays
+No live Gemini call has occurred. The remaining setup input is actual quota numbers. Phase 7 acceptance stays
 pending; Phase 8 has not started.

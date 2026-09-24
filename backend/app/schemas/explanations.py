@@ -112,7 +112,7 @@ class ExplanationRecord(BaseModel):
     id: UUID
     report_id: UUID
     status: Literal["generating", "ready", "failed", "stale"]
-    provider: Literal["openai", "mock-test"]
+    provider: Literal["openai", "mock-test", "gemini"]
     model: str
     prompt_version: str
     schema_version: str
@@ -131,5 +131,6 @@ class ExplanationView(BaseModel):
     report_id: UUID
     eligible_count: int
     evaluation_enrolled: bool
+    provider: Literal["openai", "mock-test", "gemini"]
     provider_available: bool
     record: ExplanationRecord | None

@@ -18,14 +18,15 @@ from app.api.health import router as health_router
 from app.api.observations import router as observations_router
 from app.api.parameters import router as parameters_router
 from app.api.reports import router as reports_router
-from app.core.ai_config import AISettings
+from app.core.ai_config import GeminiSettings
 from app.core.auth_service import AuthService
 from app.core.browser_security import clear_session_cookies
 from app.core.config import Settings
 from app.core.errors import ApiProblem
-from app.core.explanation_provider import ExplanationProvider, OpenAIExplanationProvider
+from app.core.explanation_provider import ExplanationProvider
 from app.core.explanations import ExplanationService
 from app.core.extraction import ExtractionService
+from app.core.gemini_explanation_provider import GeminiExplanationProvider
 from app.core.http_security import BrowserSecurityMiddleware
 from app.core.observations import ObservationService
 from app.core.parameters import ParameterService
@@ -41,9 +42,9 @@ def create_app(
 ) -> FastAPI:
     """Construct the API with validated configuration and a bounded CORS policy."""
     config = settings if settings is not None else Settings()
-    # Explicit test Settings never read the real .env.ai, even if a local key exists.
-    ai = explanation_provider or OpenAIExplanationProvider(
-        AISettings() if settings is None else AISettings(_env_file=None, ai_api_key=None)
+    # Explicit test Settings never read the real provider env files, even if a local key exists.
+    ai = explanation_provider or GeminiExplanationProvider(
+        GeminiSettings() if settings is None else GeminiSettings(_env_file=None, ai_api_key=None)
     )
 
     @asynccontextmanager

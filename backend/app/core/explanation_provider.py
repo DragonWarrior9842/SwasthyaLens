@@ -41,6 +41,7 @@ class GenerationPermit:
     context_digest: str
     synthetic_enrolled: bool
     reserved_cents: int
+    evaluation_attempt: int = 0
 
 
 @dataclass(frozen=True)
@@ -125,6 +126,10 @@ class OpenAIExplanationProvider:
                 413, "explanation_evidence", "The explanation request exceeds its size limit."
             )
         assert self.settings.ai_api_key is not None
+        # Owner has stopped OpenAI live evaluation. Preserve the adapter for
+        # in-memory contract tests, without allowing any real network invocation.
+        if not isinstance(self._transport, httpx.MockTransport):
+            raise ApiProblem(503, "explanation_disabled", "OpenAI live evaluation is stopped.")
         try:
             async with asyncio.timeout(45):
                 async with httpx.AsyncClient(
