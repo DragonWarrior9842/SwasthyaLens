@@ -249,9 +249,12 @@ The email-template restriction remains a documented Phase 2 limitation; public s
 
 ## Phase 7 report explanations
 
-The bounded synthetic report explanation API/UI and Gemini 3.8 Flash adapter are
-implemented. The owner confirmed quotas are not displayed and authorized one bounded attempt.
-It returned HTTP 503 UNAVAILABLE (high demand), so live acceptance stopped. See the [handoff](docs/phase-7-handoff.md),
+Phase 7 is **implementation-complete; live-provider acceptance is blocked by
+external Gemini availability**. The bounded synthetic API/UI and Gemini adapter
+are verified with mock/synthetic tests. Two explicitly authorized live requests
+returned HTTP 503 UNAVAILABLE (high demand), without authentication or explicit
+quota failures. Attempts are 2/20; the remaining 18 are preserved. No further
+request is authorized now. See the [handoff](docs/phase-7-handoff.md),
 [provider decision](docs/phase-7-provider-decision.md) and
 [setup instructions](docs/phase-7-gemini-setup.md).
 
@@ -276,8 +279,9 @@ Set-Location backend
 
 The live Gemini command requires the process flag, `--live-gemini`, Free Tier
 confirmation and either real displayed numeric quotas or explicit
-`--quota-not-displayed`, as documented in setup. Do not guess quota values. One
-Gemini request failed with HTTP 503; no second case or retry was sent. No explicit
+`--quota-not-displayed`, as documented in setup. Do not guess quota values. Two
+Gemini requests across the initial run and explicitly authorized single-fixture
+retry failed with HTTP 503; no second case or automatic retry was sent. No explicit
 quota information was returned. The live flag is unset again. The permanent Gemini counter caps
 attempts at 20, including failures. No paid Gemini use is authorized. Do not reset
 either ledger to retry.

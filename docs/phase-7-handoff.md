@@ -1,14 +1,34 @@
 # Phase 7 — grounded report explanations
 
 Updated 24 September 2026 (Asia/Calcutta).
-**Implementation verified; live Gemini acceptance stopped on provider HTTP 503.**
+**Phase 7 implementation-complete; live-provider acceptance blocked by external
+Gemini availability (HTTP 503 UNAVAILABLE).**
 The owner confirmed the dedicated Free Tier project/key with Cloud Billing unlinked
 and that AI Studio does not display quotas. They explicitly authorized the bounded
-attempt without inventing RPM/TPM/RPD. One live Gemini request was made on
-24 September at 13:27:30 UTC (18:57:30 Asia/Calcutta), and returned `UNAVAILABLE`.
-No second fixture or retry was sent. No OpenAI call, billing change or model switch
-occurred. The full provider error and cleanup evidence are recorded below.
-Phase 7 is not declared complete. Phase 8 and Phase 9 have not started.
+attempt without inventing RPM/TPM/RPD. The first request returned HTTP 503
+`UNAVAILABLE` at 13:27:30 UTC. The owner then explicitly authorized exactly one
+retry, which returned the same HTTP 503 at 16:36:05 UTC (22:06:05 Asia/Calcutta).
+The retry used one generated synthetic fixture and stopped immediately on failure.
+Gemini attempts are **2/20**. No automatic retry, OpenAI call, billing change or
+model switch occurred. Exact errors and cleanup evidence are recorded below.
+Implementation completion is supported by the mock/synthetic, security and
+regression evidence below; it is not a claim of successful live-provider acceptance.
+Phase 8 must remain unstarted. Phase 9 has not started.
+
+## Current acceptance blocker and preserved budget
+
+Exactly two explicitly authorized synthetic requests reached Gemini. Both returned
+HTTP 503 `UNAVAILABLE`, reporting temporary high demand. Neither returned a
+401/403 authentication failure, 429, explicit quota exhaustion or quota values.
+The observed blocker is external provider availability; no quota or authentication
+failure is inferred from it. Live grounding and quality acceptance remain unverified.
+
+The permanent attempt ledger is **2/20 used, 18 remaining**. Failed attempts remain
+counted; preserve the ledger without resetting or consuming further attempts now.
+The OpenAI reservation remains $0.50/$5. RUN_AI_INTEGRATION is unset again, the API
+key remains private and server-side, and synthetic cleanup has been verified.
+No further Gemini request, automatic retry, model switch or billing change is
+authorized now. No retry is scheduled. This status update makes no live request.
 
 The earlier implementation checkpoints are `bde47ce`, `c2fad82`, `d48ff1e` and `dcb11d4`;
 the original provider/baseline checkpoint is `dda2176`. The Gemini adapter retains the existing OpenAI-compatible abstraction. This update
@@ -139,7 +159,7 @@ adds an exact Gemini model pair and permanent private `gemini_attempts` counter.
 It reserves before invocation and caps all Gemini attempts at 20, including
 failures; deletion, invalidation, expiration and restarts never refund it. The
 existing paid ledger remains 50 cents reserved of the $5 cap. It is not reset.
-Gemini attempts are **1/20**, including the failed live request; paid reservations
+Gemini attempts are **2/20**, including both failed live requests; paid reservations
 remain **$0.50/$5**. The counters were not reset or refunded.
 
 Normal pytest clears AI credentials/live flags and blocks both provider hosts at
@@ -240,7 +260,9 @@ remain unmeasured.** Passing mock/SQL/browser checks does not establish live-mod
 acceptance. Gemini key presence/model selection were checked without exposing the
 key. RUN_AI_INTEGRATION is unset again after the bounded attempt.
 
-## Live Gemini attempt — 24 September 2026
+## Live Gemini attempts — 24 September 2026
+
+### Initial attempt
 
 Exactly one request was made for the first generated synthetic case (eight reviewed,
 published findings from one authorized report). The provider returned:
@@ -269,11 +291,48 @@ Pre-generation checks for foreign-owner read/generation denial, CSRF and rejecte
 caller-selected evidence passed before the provider request. These are not a pass
 of the full two-case live acceptance suite. The generated fixture was deleted in
 `finally`; database verification found zero explanation rows and zero enrollment
-rows. Gemini's permanent ledger is 1/20 and the OpenAI reserved ledger is unchanged
-at 50 cents. The process live flag was cleared. No further request is scheduled.
+rows. After the initial attempt, Gemini's ledger was 1/20 and the OpenAI reserved
+ledger was unchanged at 50 cents. The process live flag was cleared. The later
+retry below was separately and explicitly requested by the owner.
 
 Safe local accounting is in `.cache/phase7/live-gemini-attempts.jsonl` and
 `.cache/phase7/live-gemini-errors.jsonl`; no key or raw request is stored there.
+
+### Exactly one authorized retry — attempt 2/20
+
+On 24 September at 16:36:05.944801 UTC, the one authorized retry returned:
+
+```text
+HTTP 503
+code: 503
+status: UNAVAILABLE
+message: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+```
+
+The command required RUN_AI_INTEGRATION=1 and used `--live-gemini
+--free-tier-confirmed --quota-not-displayed --single-fixture 1`. Exactly one
+newly generated synthetic fixture with eight reviewed/published findings was
+selected. A new evaluator-only wrapper caps provider invocations at one for this
+mode, including failure; unexpected duplicate calls are rejected before reaching
+the provider. Tests prove the cap after both success and failure. The shared
+provider, grounding/evidence/schema validators and permanent 20-attempt ledger
+are unchanged. The key stayed server-side and was not printed or copied.
+
+Exactly one live request occurred in this retry run. The evaluator stopped at the
+503; no second fixture, automatic retry, model switch, billing change or OpenAI
+call followed. Google returned no quota/rate-limit details, authentication error,
+usage tokens or accepted output. Zero Free Tier quota therefore remains unproven.
+The failed application's generation round trip was 2735 ms; it is not successful
+model latency. Live grounding/schema/evidence acceptance cannot be claimed without
+an output. No further live acceptance work was run after the failure.
+
+The pre-generation foreign-owner/CSRF/caller-evidence checks passed. The runner
+removed its created fixture in `finally`; verification found zero explanation rows
+and zero synthetic enrollments. Gemini's permanent ledger is now **2/20**, and the
+OpenAI reserved ledger remains **$0.50/$5**. RUN_AI_INTEGRATION was removed in the
+command's `finally` and independently verified unset afterward. No further request
+is scheduled. Safe attempt/error audit records are appended to the same ignored
+JSONL artifacts above. Phase 7 live acceptance remains incomplete.
 
 Historically, two OpenAI attempts on 18/23 September failed authentication with no
 accepted output or returned usage. Their $0.50 reservations remain conservative
@@ -282,6 +341,12 @@ reservations, not measured billing. OpenAI is now stopped; no further probes.
 ## Frontend/backend and regression results
 
 Fresh verification of this Gemini implementation on 24 September:
+
+- One-request retry safeguard: **76 focused tests passed**, including single-fixture
+  selection and second-call rejection after both successful and failed provider
+  responses. Ruff, formatting and mypy (78 source files) passed. A pytest cache
+  permission warning accompanied the passing sandbox test run; existing dependency
+  deprecation warnings remain. No normal test sent a live AI request.
 
 - After the undisplayed-quota/error-reporting change: **73 focused backend tests
   passed**; Ruff/format checks and mypy (78 source files) passed. Tests verify the
@@ -303,7 +368,7 @@ Fresh verification of this Gemini implementation on 24 September:
   exact values/provenance, escaping/mobile layout, invalidation, malformed output,
   no retry, Gemini terms/provider-change consent reset and correct Gemini label.
 - Final database check after the live attempt: zero explanation rows and zero
-  enrollments; Gemini attempts one and paid reservations unchanged at 50 cents. Both local test servers stopped.
+  enrollments; Gemini attempts two and paid reservations unchanged at 50 cents. Both local test servers stopped.
 - Git diff whitespace check passed; both provider env files remain ignored.
   Tracked-file secret-pattern scan found no matches; no key was printed or copied.
 - Historical pre-Gemini baseline: 8 live Supabase integration tests, 13 SQL scripts
@@ -326,15 +391,30 @@ normal tests. Browser checks use the local API/production preview and documented
 Playwright module path. SQL verification scripts must run as complete transactions.
 Sanitized result artifacts are in ignored `.cache/phase7` and `.cache/qa/phase7`.
 
-The owner authorized an attempt with `--quota-not-displayed`, preserving explicit
-live/Free Tier gates and the permanent counter. It stopped on HTTP 503 as recorded
-above. No quota numbers are currently required or invented. Further live attempts
-are stopped pending a new instruction; do not retry automatically, infer access
-from this error, enable billing or substitute a model. The key remains local.
+The initial attempt and separately authorized one-request retry both stopped on
+HTTP 503 as recorded above. Quota values remain undisplayed and must not be
+invented. Implementation is complete; the outstanding acceptance gate is a
+successful, validated live-provider result once external availability permits it.
+
+Only after the owner explicitly authorizes another retry:
+
+1. Require process `RUN_AI_INTEGRATION=1`, `--live-gemini`, existing Free Tier/
+   undisplayed-quota gates and `--single-fixture 1` (unless another built-in
+   synthetic fixture is explicitly selected). Keep the key server-side.
+2. Perform exactly **one synthetic live request**, preserving the one-call wrapper,
+   permanent 20-attempt ceiling and all grounding/evidence/schema validation.
+3. Make no automatic retry, model switch or billing change. Stop immediately on
+   **any provider error** and report the provider response with secrets redacted.
+4. Remove RUN_AI_INTEGRATION in `finally`, clean up the created synthetic fixture,
+   verify the attempt ledger, and update this handoff with the result.
+
+These are rules for a future authorized retry, not current authorization to run it.
+Phase 8 remains unstarted until separately authorized.
 
 ## Known limitations
 
-Live Gemini acceptance is pending because the attempt returned HTTP 503. English and five fixed definitions are the
+Implementation is complete, but live Gemini acceptance is externally blocked by
+the two HTTP 503 responses. English and five fixed definitions are the
 entire educational scope. No clinician-reviewed, production, real-patient,
 multilingual or broader medical reasoning claim is made. Source flags/ranges do
 not establish normality. Partial publication may not cover a whole report. Twenty
@@ -346,7 +426,7 @@ outbound-auth-email testing limitations and leaked-password warning remain.
 ## Suggested commit and Phase 8 preview
 
 Suggested checkpoint commit:
-`fix: allow explicit undisplayed quota evaluation and report provider failures`.
+`docs: mark Phase 7 implementation complete with external acceptance blocker`.
 Do not describe this checkpoint as completed live acceptance.
 
 Phase 8 would separately assess deterministic same-metric/unit/date-compatible

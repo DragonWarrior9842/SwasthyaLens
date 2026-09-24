@@ -22,12 +22,52 @@ from app.core.gemini_explanation_provider import (
     gemini_request_body,
     provider_error_detail,
 )
-from tests.evaluate_explanations import run_evaluation
+from tests.evaluate_explanations import (
+    BoundedEvaluationProvider,
+    run_evaluation,
+    selected_case_indexes,
+)
 from tests.explanation_fixtures import mock_output, synthetic_sources
 
 
 def settings() -> GeminiSettings:
     return GeminiSettings(_env_file=None, ai_api_key=SecretStr("synthetic-test-key"))
+
+
+def test_single_fixture_selection_has_no_second_case() -> None:
+    assert selected_case_indexes(1) == [0]
+    assert selected_case_indexes(2) == [1]
+    assert selected_case_indexes(None) == [0, 1]
+    for invalid in (0, 3, True):
+        with pytest.raises(ValueError):
+            selected_case_indexes(invalid)
+
+
+@pytest.mark.parametrize("status", [200, 503])
+def test_one_request_limit_survives_success_or_failure(
+    monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    monkeypatch.setenv("RUN_AI_INTEGRATION", "1")
+    context = facts(synthetic_sources()[:1])
+    permit = GenerationPermit(uuid4(), context_digest(context), True, 0, 2)
+    calls = 0
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(status, json=envelope(mock_output(context).model_dump()))
+
+    provider = BoundedEvaluationProvider(
+        GeminiExplanationProvider(settings(), httpx.MockTransport(respond)), 1
+    )
+    if status == 200:
+        assert asyncio.run(provider.generate(context, permit)).output == mock_output(context)
+    else:
+        with pytest.raises(ApiProblem):
+            asyncio.run(provider.generate(context, permit))
+    with pytest.raises(ApiProblem, match="Evaluation request limit reached"):
+        asyncio.run(provider.generate(context, permit))
+    assert calls == provider.calls == 1
 
 
 def test_gemini_wire_contract_and_exact_preservation(monkeypatch: pytest.MonkeyPatch) -> None:

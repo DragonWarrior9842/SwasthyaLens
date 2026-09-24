@@ -8,10 +8,15 @@ requests, including probes; the historical comparison below does not authorize o
 The owner confirmed a dedicated Google AI Studio project/key, billing unlinked,
 Free Tier and ignored `backend/.env.ai.gemini` populated. The live flag remains
 unset. AI Studio does not display RPM/TPM/RPD. The owner explicitly authorized an attempt
-using `--quota-not-displayed`, without guessed values. One request returned HTTP
-503 `UNAVAILABLE` (high demand); evaluation stopped immediately. This error does
-not establish zero quota. See the exact result in the handoff. Acceptance remains incomplete;
-Phase 8 and Phase 9 have not started.
+using `--quota-not-displayed`, without guessed values. The initial request and one separately authorized
+single-fixture retry returned HTTP 503 `UNAVAILABLE` (high demand); both runs
+stopped immediately. This error does
+not establish zero quota. See the exact result in the handoff. Phase 7 is
+implementation-complete; live-provider acceptance is blocked by external Gemini
+availability. Attempts are 2/20, with 18 preserved. No request is authorized now;
+any later authorized retry must be exactly one synthetic request with the live
+flag required, no automatic retry/model/billing change, immediate stop on any
+provider error, and the flag unset afterward. Phase 8 and Phase 9 have not started.
 
 ## Provider suitability and privacy
 
@@ -80,15 +85,15 @@ explicit `--quota-not-displayed` when AI Studio exposes no numbers. This mode
 rejects simultaneous numeric quota arguments, makes no quota claim and keeps all
 other gates. For displayed limits the conservative minimums remain 1 RPM / 57000
 TPM / 2 RPD. Any two requests are spaced at least 61 seconds apart. Any unsuccessful
-case, including 429 or access errors, stops the run. The first attempt returned
-503; no second case, retry, billing change or model switch followed.
+case, including 429 or access errors, stops the run. The first attempt and its explicitly authorized one-request retry returned
+503; no second case, automatic retry, billing change or model switch followed.
 [Quota instructions](https://ai.google.dev/gemini-api/docs/rate-limits).
 
 The permanent private counter caps Gemini at **20 attempts total**, including
 failures. It is reserved before invocation and never refunded on correction,
 deletion, expiration or restart. Existing OpenAI reservations remain **$0.50 of
 $5**, unchanged; no OpenAI live requests are permitted. Gemini attempts remain
-one of twenty. The $5 paid ceiling and no-paid-Gemini restriction both remain in force.
+two of twenty. The $5 paid ceiling and no-paid-Gemini restriction both remain in force.
 
 See [setup and execution](phase-7-gemini-setup.md) for manual configuration and the
 live command, and [handoff](phase-7-handoff.md) for measured tests and remaining

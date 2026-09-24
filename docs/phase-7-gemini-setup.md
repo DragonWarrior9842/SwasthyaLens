@@ -117,6 +117,12 @@ are usually temporary. Please try again later." No explicit quota details were
 returned, so zero Free Tier quota is not established. Do not rerun automatically;
 see [the handoff](phase-7-handoff.md) for exact accounting and cleanup results.
 
+The owner subsequently authorized exactly one retry. The evaluator now supports
+`--single-fixture 1` (or 2) and caps provider invocations to the selected fixture
+count, including failures. The retry selected fixture 1 only and returned the same
+HTTP 503 at 16:36:05 UTC. Attempts are now 2/20; the live flag was cleared, cleanup
+verified, and no further retry was made. This does not authorize another run.
+
 ## Controls that must pass before the first live request
 
 - Separate Gemini adapter behind the existing provider protocol; dormant OpenAI
@@ -140,5 +146,9 @@ corrects the earlier setup note and does not remove unpaid-service data-use term
 or establish zero retention.
 [API reference](https://ai.google.dev/api/generate-content).
 
-The first live Gemini request failed with HTTP 503 and evaluation stopped. Phase 7 acceptance stays
-pending; Phase 8 has not started.
+Both explicitly authorized live Gemini requests returned HTTP 503. Phase 7 is
+implementation-complete; live-provider acceptance is blocked by external Gemini
+availability. Attempts are 2/20, with 18 preserved. No further request is authorized
+now. A later authorized retry must make exactly one synthetic request, require
+RUN_AI_INTEGRATION=1, stop on any provider error, make no automatic retry/model/
+billing change and unset the flag afterward. Phase 8 remains unstarted.

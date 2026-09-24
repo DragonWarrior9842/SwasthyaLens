@@ -22,9 +22,11 @@ from fastapi.testclient import TestClient
 
 from app.core.ai_config import GeminiSettings
 from app.core.config import Settings
-from app.core.explanation_provider import ExplanationProvider
+from app.core.errors import ApiProblem
+from app.core.explanation_provider import ExplanationProvider, GenerationPermit, GenerationResult
 from app.core.gemini_explanation_provider import GeminiExplanationProvider
 from app.factory import create_app
+from app.schemas.explanations import ModelFact
 from tests import extraction_fixtures
 from tests.explanation_fixtures import MockExplanationProvider
 from tests.integration.test_live_extraction import finish
@@ -60,6 +62,37 @@ CASES = [
 ]
 
 
+class BoundedEvaluationProvider:
+    """Additional per-run hard stop, including failures and unexpected duplicate calls."""
+
+    def __init__(self, provider: ExplanationProvider, max_requests: int) -> None:
+        self.provider, self.max_requests = provider, max_requests
+        self.name = provider.name
+        self.calls = 0
+
+    @property
+    def available(self) -> bool:
+        return self.provider.available
+
+    async def generate(
+        self, context: list[ModelFact], permit: GenerationPermit
+    ) -> GenerationResult:
+        if self.calls >= self.max_requests:
+            raise ApiProblem(
+                403, "explanation_evaluation_only", "Evaluation request limit reached."
+            )
+        self.calls += 1
+        return await self.provider.generate(context, permit)
+
+
+def selected_case_indexes(single_fixture: int | None) -> list[int]:
+    if single_fixture is None:
+        return list(range(len(CASES)))
+    if type(single_fixture) is not int or single_fixture not in (1, 2):
+        raise ValueError("Only the built-in synthetic fixture numbers 1 and 2 are accepted")
+    return [single_fixture - 1]
+
+
 def run_evaluation(
     *,
     live_ai: bool = False,
@@ -69,7 +102,9 @@ def run_evaluation(
     gemini_rpd: int = 0,
     free_tier_confirmed: bool = False,
     quota_not_displayed: bool = False,
+    single_fixture: int | None = None,
 ) -> dict[str, Any]:
+    case_indexes = selected_case_indexes(single_fixture)
     # Retain the old argument solely to fail closed for old callers/scripts.
     if live_ai:
         raise RuntimeError("OpenAI live evaluation has been stopped by the owner")
@@ -93,11 +128,12 @@ def run_evaluation(
     values = dotenv_values(Path(__file__).resolve().parents[1] / ".env.integration")
     if values.get("DISPOSABLE_TEST_ACCOUNTS_CONFIRMED") != "1":
         raise RuntimeError("Dedicated disposable accounts must be configured")
-    provider: ExplanationProvider = (
+    delegate: ExplanationProvider = (
         GeminiExplanationProvider(GeminiSettings(), error_observer=record_provider_error)
         if live_gemini
         else MockExplanationProvider()
     )
+    provider = BoundedEvaluationProvider(delegate, len(case_indexes))
     if not provider.available:
         raise RuntimeError("Approved provider is not configured for this evaluation")
     assert config.supabase_publishable_key is not None and config.report_processing_key is not None
@@ -144,7 +180,8 @@ def run_evaluation(
         created: list[tuple[SignedInUser, str]] = []
         original_lines = extraction_fixtures.LINES
         try:
-            for index, rows in enumerate(CASES):
+            for index in case_indexes:
+                rows = CASES[index]
                 user, other = users[index], users[1 - index]
                 extraction_fixtures.LINES = [
                     "SYNTHETIC PHASE 7 - NOT PATIENT DATA",
@@ -373,6 +410,8 @@ def run_evaluation(
         "synthetic_only": True,
         "critical_grounding_errors": 0,
         "quota_not_displayed": quota_not_displayed if live_gemini else False,
+        "provider_requests": provider.calls,
+        "selected_fixtures": [index + 1 for index in case_indexes],
     }
 
 
@@ -392,6 +431,7 @@ def main() -> None:
     parser.add_argument("--live-gemini", action="store_true")
     parser.add_argument("--free-tier-confirmed", action="store_true")
     parser.add_argument("--quota-not-displayed", action="store_true")
+    parser.add_argument("--single-fixture", type=int, choices=(1, 2))
     parser.add_argument("--gemini-rpm", type=int, default=0)
     parser.add_argument("--gemini-tpm", type=int, default=0)
     parser.add_argument("--gemini-rpd", type=int, default=0)
@@ -402,6 +442,7 @@ def main() -> None:
             live_gemini=args.live_gemini,
             free_tier_confirmed=args.free_tier_confirmed,
             quota_not_displayed=args.quota_not_displayed,
+            single_fixture=args.single_fixture,
             gemini_rpm=args.gemini_rpm,
             gemini_tpm=args.gemini_tpm,
             gemini_rpd=args.gemini_rpd,
