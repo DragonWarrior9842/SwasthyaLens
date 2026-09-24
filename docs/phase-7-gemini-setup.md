@@ -2,8 +2,9 @@
 
 Checked 24 September 2026. Scope: the existing synthetic educational acceptance
 tests only, using **Gemini 3.8 Flash / `gemini-3.8-flash`**. No production healthcare
-provider choice is made. The adapter is implemented and tested offline; no live Gemini request has been
-made. Setup is confirmed; actual numeric RPM/TPM/RPD are still required. All further OpenAI live requests are stopped by the owner.
+provider choice is made. The adapter is implemented. The owner confirmed Free Tier/billing unlinked and
+that AI Studio does not display quota values. The first authorized synthetic
+request returned HTTP 503 UNAVAILABLE; the run stopped immediately. All further OpenAI live requests are stopped by the owner.
 
 ## Why this candidate
 
@@ -43,14 +44,15 @@ compliance. [Terms](https://ai.google.dev/gemini-api/terms).
    credits** does not meet this requirement.
    [Billing status](https://ai.google.dev/gemini-api/docs/billing).
 5. In AI Studio's **Usage / Rate limits** view, select that project and locate
-   `gemini-3.8-flash`. Record the displayed RPM, TPM and RPD and confirm nonzero
-   access for the planned two requests. Quota is project-specific; a model listing
+   `gemini-3.8-flash`. Record RPM, TPM and RPD if displayed. If not displayed,
+   record that fact and use only the explicitly authorized undisplayed-quota mode
+   below; never invent numbers. Quota is project-specific; a model listing
    is not proof your account can call it. If unavailable or billing is required,
    stop and report that state; do not upgrade or substitute another model.
    [Active-limit instructions](https://ai.google.dev/gemini-api/docs/rate-limits).
 6. Save the key locally using the staging configuration below. Reply that setup
    is complete, the project is Free Tier with billing unlinked, and give only the
-   displayed RPM/TPM/RPD. Never paste the key, a key-bearing screenshot or an env
+   displayed RPM/TPM/RPD or state that the values are not displayed. Never paste the key, a key-bearing screenshot or an env
    file into chat. **Do not run a live command yet.**
 
 ## Exact local environment configuration
@@ -84,21 +86,36 @@ The evaluator requires **both** the process flag `RUN_AI_INTEGRATION=1` and
 command rejects before network; the dormant adapter also blocks real transport.
 There is no environment setting that controls Google's billing tier.
 
-After actual project limits are supplied and preflight safeguards are reported,
-run from `backend` with the live flag scoped only to that process:
+When AI Studio displays actual quotas, the existing numeric mode remains:
 
 ```text
 python -m tests.evaluate_explanations --live-gemini --free-tier-confirmed --gemini-rpm RPM --gemini-tpm TPM --gemini-rpd RPD
 ```
 
-RPM/TPM/RPD must be the displayed **integers**, not guessed values. Current
-conservative minimums are 1 RPM, 57000 TPM and 2 RPD: the TPM allowance covers the
-full 48-KB request, 5K framing and 4K output caps. Lower quotas require a separately
-assessed smaller bound; never inflate the arguments or upgrade billing. Two fixture
-requests are spaced at least 61 seconds apart and any failure stops the run.
-Clear the process flag in `finally` after evaluation. No live call is authorized
-by this template alone; the owner's current request authorizes the scoped test
-once the required missing quota inputs and preflight are resolved.
+Do not guess those numbers. The owner explicitly authorized an alternative because
+AI Studio currently does not display them:
+
+```text
+python -m tests.evaluate_explanations --live-gemini --free-tier-confirmed --quota-not-displayed
+```
+
+Both require process `RUN_AI_INTEGRATION=1`, server-side key, enrolled synthetic
+fixtures and the permanent 20-attempt ledger. The alternative rejects any numeric
+quota arguments; it does not assert availability or bypass Google's rate limits.
+No client setting enables Free Tier or prevents an externally changed billing
+configuration; billing must remain unlinked as confirmed by the owner.
+
+The numeric mode keeps its conservative minimums (1 RPM / 57000 TPM / 2 RPD).
+Any two fixture requests are at least 61 seconds apart; any failure stops the run.
+Explicit provider quota/rate information is authoritative and reported after key
+redaction. Provider retry hints never trigger automatic retries. The process flag
+is cleared in `finally`. No billing upgrade, key rotation or model fallback occurs.
+
+The authorized run on 24 September made one request and stopped on HTTP 503,
+`UNAVAILABLE`: "This model is currently experiencing high demand. Spikes in demand
+are usually temporary. Please try again later." No explicit quota details were
+returned, so zero Free Tier quota is not established. Do not rerun automatically;
+see [the handoff](phase-7-handoff.md) for exact accounting and cleanup results.
 
 ## Controls that must pass before the first live request
 
@@ -123,5 +140,5 @@ corrects the earlier setup note and does not remove unpaid-service data-use term
 or establish zero retention.
 [API reference](https://ai.google.dev/api/generate-content).
 
-No live Gemini call has occurred. The remaining setup input is actual quota numbers. Phase 7 acceptance stays
+The first live Gemini request failed with HTTP 503 and evaluation stopped. Phase 7 acceptance stays
 pending; Phase 8 has not started.

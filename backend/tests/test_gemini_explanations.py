@@ -17,7 +17,11 @@ from app.core.explanation_provider import (
     OpenAIExplanationProvider,
     context_digest,
 )
-from app.core.gemini_explanation_provider import GeminiExplanationProvider, gemini_request_body
+from app.core.gemini_explanation_provider import (
+    GeminiExplanationProvider,
+    gemini_request_body,
+    provider_error_detail,
+)
 from tests.evaluate_explanations import run_evaluation
 from tests.explanation_fixtures import mock_output, synthetic_sources
 
@@ -228,3 +232,108 @@ def test_runner_live_gates_precede_all_network(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv("RUN_AI_INTEGRATION", "1")
     with pytest.raises(RuntimeError, match="Confirm Free Tier"):
         run_evaluation(live_gemini=True)
+
+
+def test_explicit_undisplayed_quota_keeps_other_live_gates(monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(RuntimeError, match="RUN_AI_INTEGRATION"):
+        run_evaluation(live_gemini=True, quota_not_displayed=True, free_tier_confirmed=True)
+    monkeypatch.setenv("RUN_AI_INTEGRATION", "1")
+    with pytest.raises(RuntimeError, match="Confirm Free Tier"):
+        run_evaluation(live_gemini=True, quota_not_displayed=True)
+    with pytest.raises(RuntimeError, match="Confirm Free Tier"):
+        run_evaluation(
+            live_gemini=True, quota_not_displayed=True, free_tier_confirmed=True, gemini_rpm=1
+        )
+
+    def stop_before_configuration() -> None:
+        raise RuntimeError("passed gate; no configuration or network loaded")
+
+    monkeypatch.setattr("tests.evaluate_explanations.Settings", stop_before_configuration)
+    with pytest.raises(RuntimeError, match="passed gate"):
+        run_evaluation(live_gemini=True, quota_not_displayed=True, free_tier_confirmed=True)
+
+
+def test_provider_quota_details_preserved_and_secret_redacted() -> None:
+    secret = "synthetic-test-key"
+    raw = {
+        "error": {
+            "code": 429,
+            "status": "RESOURCE_EXHAUSTED",
+            "message": "Quota is zero. " + secret,
+            "details": [
+                {
+                    "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                    "violations": [
+                        {
+                            "quotaMetric": "generate_content_free_tier_requests",
+                            "quotaId": "RequestsPerDay",
+                            "quotaValue": "0",
+                            "quotaDimensions": {
+                                "model": "gemini-3.8-flash",
+                                "location": "global",
+                                "key": secret,
+                            },
+                        }
+                    ],
+                },
+                {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "60s"},
+                {
+                    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                    "reason": "RATE_LIMIT_EXCEEDED",
+                    "domain": "googleapis.com",
+                    "metadata": {"key": secret},
+                },
+            ],
+        }
+    }
+    detail = provider_error_detail(429, json.dumps(raw).encode(), secret)
+    assert detail["http_status"] == 429
+    assert detail["message"] == "Quota is zero. [REDACTED]"
+    assert secret not in json.dumps(detail)
+    assert "metadata" not in json.dumps(detail)
+    assert '"quotaValue": "0"' in json.dumps(detail)
+    assert '"retryDelay": "60s"' in json.dumps(detail)
+
+
+def test_access_failure_observer_has_no_retry_or_public_error_leak(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RUN_AI_INTEGRATION", "1")
+    context = facts(synthetic_sources()[:1])
+    calls = 0
+    observed: list[dict[str, object]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            404,
+            json={
+                "error": {
+                    "code": 404,
+                    "status": "NOT_FOUND",
+                    "message": "Model unavailable. synthetic-test-key",
+                }
+            },
+        )
+
+    provider = GeminiExplanationProvider(
+        settings(), httpx.MockTransport(respond), error_observer=observed.append
+    )
+    with pytest.raises(ApiProblem) as error:
+        asyncio.run(
+            provider.generate(
+                context, GenerationPermit(uuid4(), context_digest(context), True, 0, 1)
+            )
+        )
+    assert calls == 1
+    assert observed == [
+        {
+            "http_status": 404,
+            "code": 404,
+            "status": "NOT_FOUND",
+            "message": "Model unavailable. [REDACTED]",
+        }
+    ]
+    assert "Model unavailable" not in str(error.value)
+    assert "synthetic-test-key" not in str(observed)

@@ -3,6 +3,8 @@
 import asyncio
 import json
 import os
+import re
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -21,6 +23,59 @@ from app.schemas.explanations import ModelExplanation, ModelFact
 
 GEMINI_MODEL = "gemini-3.8-flash"
 MAX_GEMINI_ATTEMPTS = 20
+
+
+def provider_error_detail(status: int, content: bytes, secret: str) -> dict[str, object]:
+    """Preserve provider messages/quota fields, never headers, keys or arbitrary metadata."""
+
+    def redact(value: str) -> str:
+        value = value.replace(secret, "[REDACTED]") if secret else value
+        return re.sub(r"AIza[0-9A-Za-z_-]{20,}", "[REDACTED]", value)[:8192]
+
+    result: dict[str, object] = {"http_status": status}
+    try:
+        error = json.loads(content)["error"]
+        if type(error.get("code")) is int:
+            result["code"] = error["code"]
+        for field in ("status", "message"):
+            if isinstance(error.get(field), str):
+                result[field] = redact(error[field])
+        details = []
+        for item in error.get("details", [])[:20]:
+            kind = item.get("@type")
+            detail: dict[str, object] = {}
+            if kind == "type.googleapis.com/google.rpc.QuotaFailure":
+                violations = []
+                for violation in item.get("violations", [])[:20]:
+                    selected: dict[str, object] = {}
+                    for key in ("quotaMetric", "quotaId", "quotaValue", "description"):
+                        value = violation.get(key)
+                        if isinstance(value, str):
+                            selected[key] = redact(value)
+                        elif type(value) is int:
+                            selected[key] = value
+                    dimensions = violation.get("quotaDimensions", {})
+                    selected["quotaDimensions"] = {
+                        key: redact(dimensions[key])
+                        for key in ("model", "location")
+                        if isinstance(dimensions.get(key), str)
+                    }
+                    violations.append(selected)
+                detail["violations"] = violations
+            elif kind == "type.googleapis.com/google.rpc.RetryInfo":
+                if isinstance(item.get("retryDelay"), str):
+                    detail["retryDelay"] = redact(item["retryDelay"])
+            elif kind == "type.googleapis.com/google.rpc.ErrorInfo":
+                for key in ("reason", "domain"):
+                    if isinstance(item.get(key), str):
+                        detail[key] = redact(item[key])
+            if detail:
+                details.append({"@type": kind, **detail})
+        if details:
+            result["details"] = details
+    except (ValueError, KeyError, TypeError, AttributeError):
+        result["diagnostic_note"] = "Provider error was not a supported JSON error envelope."
+    return result
 
 
 def gemini_schema(value: Any) -> Any:
@@ -61,10 +116,15 @@ class GeminiExplanationProvider:
     name = "gemini"
 
     def __init__(
-        self, settings: GeminiSettings, transport: httpx.AsyncBaseTransport | None = None
+        self,
+        settings: GeminiSettings,
+        transport: httpx.AsyncBaseTransport | None = None,
+        *,
+        error_observer: Callable[[dict[str, object]], None] | None = None,
     ) -> None:
         self.settings = settings
         self._transport = transport
+        self._error_observer = error_observer
 
     @property
     def available(self) -> bool:
@@ -116,6 +176,20 @@ class GeminiExplanationProvider:
                         },
                     ) as response:
                         if response.status_code != 200:
+                            if self._error_observer is not None:
+                                error_content = bytearray()
+                                async for chunk in response.aiter_bytes():
+                                    error_content.extend(chunk)
+                                    if len(error_content) > 131072:
+                                        error_content.clear()
+                                        break
+                                self._error_observer(
+                                    provider_error_detail(
+                                        response.status_code,
+                                        bytes(error_content),
+                                        self.settings.ai_api_key.get_secret_value(),
+                                    )
+                                )
                             category = {
                                 401: "authentication",
                                 403: "authentication",

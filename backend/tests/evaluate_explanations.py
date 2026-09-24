@@ -68,6 +68,7 @@ def run_evaluation(
     gemini_tpm: int = 0,
     gemini_rpd: int = 0,
     free_tier_confirmed: bool = False,
+    quota_not_displayed: bool = False,
 ) -> dict[str, Any]:
     # Retain the old argument solely to fail closed for old callers/scripts.
     if live_ai:
@@ -76,9 +77,15 @@ def run_evaluation(
         if os.environ.get("RUN_AI_INTEGRATION") != "1":
             raise RuntimeError("Live evaluation requires RUN_AI_INTEGRATION=1")
         # Conservative full request-byte/framing plus output allowance. No token-count API.
-        if not free_tier_confirmed or gemini_rpm < 1 or gemini_tpm < 57000 or gemini_rpd < 2:
+        if (
+            not free_tier_confirmed
+            or (quota_not_displayed and any((gemini_rpm, gemini_tpm, gemini_rpd)))
+            or (
+                not quota_not_displayed and (gemini_rpm < 1 or gemini_tpm < 57000 or gemini_rpd < 2)
+            )
+        ):
             raise RuntimeError(
-                "Confirm Free Tier and sufficient project RPM/TPM/RPD before live evaluation"
+                "Confirm Free Tier and quota availability or explicitly confirm quota not displayed"
             )
     config = Settings()
     if config.supabase_url != "https://rbmpfgndidpzdssiicyf.supabase.co":
@@ -87,7 +94,9 @@ def run_evaluation(
     if values.get("DISPOSABLE_TEST_ACCOUNTS_CONFIRMED") != "1":
         raise RuntimeError("Dedicated disposable accounts must be configured")
     provider: ExplanationProvider = (
-        GeminiExplanationProvider(GeminiSettings()) if live_gemini else MockExplanationProvider()
+        GeminiExplanationProvider(GeminiSettings(), error_observer=record_provider_error)
+        if live_gemini
+        else MockExplanationProvider()
     )
     if not provider.available:
         raise RuntimeError("Approved provider is not configured for this evaluation")
@@ -363,7 +372,18 @@ def run_evaluation(
         "security_checks": checks,
         "synthetic_only": True,
         "critical_grounding_errors": 0,
+        "quota_not_displayed": quota_not_displayed if live_gemini else False,
     }
+
+
+def record_provider_error(detail: dict[str, object]) -> None:
+    """Only the explicitly invoked evaluator receives redacted provider diagnostics."""
+    audit = Path(__file__).resolve().parents[2] / ".cache" / "phase7"
+    audit.mkdir(parents=True, exist_ok=True)
+    event = {"recorded_at": datetime.now(UTC).isoformat(), **detail}
+    with (audit / "live-gemini-errors.jsonl").open("a", encoding="utf-8") as output:
+        output.write(json.dumps(event) + "\n")
+    print(json.dumps({"provider_error": event}), flush=True)
 
 
 def main() -> None:
@@ -371,6 +391,7 @@ def main() -> None:
     parser.add_argument("--live-openai", action="store_true")
     parser.add_argument("--live-gemini", action="store_true")
     parser.add_argument("--free-tier-confirmed", action="store_true")
+    parser.add_argument("--quota-not-displayed", action="store_true")
     parser.add_argument("--gemini-rpm", type=int, default=0)
     parser.add_argument("--gemini-tpm", type=int, default=0)
     parser.add_argument("--gemini-rpd", type=int, default=0)
@@ -380,6 +401,7 @@ def main() -> None:
             live_ai=args.live_openai,
             live_gemini=args.live_gemini,
             free_tier_confirmed=args.free_tier_confirmed,
+            quota_not_displayed=args.quota_not_displayed,
             gemini_rpm=args.gemini_rpm,
             gemini_tpm=args.gemini_tpm,
             gemini_rpd=args.gemini_rpd,

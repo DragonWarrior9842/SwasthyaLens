@@ -1,15 +1,18 @@
 # Phase 7 — grounded report explanations
 
 Updated 24 September 2026 (Asia/Calcutta).
-**Implementation verified; Gemini live-provider acceptance pending actual quotas.**
-The owner confirmed the dedicated Gemini Free Tier project/key with Cloud Billing
-unlinked. Their RPM/TPM/RPD entries were placeholders. No live Gemini request has
-been made; no further OpenAI request is authorized or was made this turn.
+**Implementation verified; live Gemini acceptance stopped on provider HTTP 503.**
+The owner confirmed the dedicated Free Tier project/key with Cloud Billing unlinked
+and that AI Studio does not display quotas. They explicitly authorized the bounded
+attempt without inventing RPM/TPM/RPD. One live Gemini request was made on
+24 September at 13:27:30 UTC (18:57:30 Asia/Calcutta), and returned `UNAVAILABLE`.
+No second fixture or retry was sent. No OpenAI call, billing change or model switch
+occurred. The full provider error and cleanup evidence are recorded below.
 Phase 7 is not declared complete. Phase 8 and Phase 9 have not started.
 
-The earlier implementation checkpoints are `bde47ce`, `c2fad82` and `d48ff1e`;
-the original provider/baseline checkpoint is `dda2176`. This working tree adds the
-Gemini adapter and retains the existing OpenAI-compatible abstraction. See the
+The earlier implementation checkpoints are `bde47ce`, `c2fad82`, `d48ff1e` and `dcb11d4`;
+the original provider/baseline checkpoint is `dda2176`. The Gemini adapter retains the existing OpenAI-compatible abstraction. This update
+adds explicit undisplayed-quota opt-in and redacted evaluator-only error diagnostics. See the
 [current decision](phase-7-provider-decision.md) and
 [setup/execution instructions](phase-7-gemini-setup.md).
 
@@ -120,9 +123,13 @@ does not override Google's Free Tier data terms. Default safety filters remain.
 [Request reference](https://ai.google.dev/api/generate-content).
 
 `RUN_AI_INTEGRATION=1` is required by the adapter. The standalone runner also
-requires `--live-gemini`, `--free-tier-confirmed` and actual numeric project quotas.
-The current conservative minimum is 1 RPM / 57000 TPM / 2 RPD. Two case requests
-are at least 61 seconds apart; any unsuccessful case stops the run. No model-access
+requires `--live-gemini`, `--free-tier-confirmed` and either actual displayed
+numeric quotas or explicit `--quota-not-displayed`. The latter was authorized by
+the owner because AI Studio does not expose the values; it accepts no invented or
+simultaneously supplied numeric quota arguments. It does not infer quota or bypass
+the permanent attempt cap. For displayed limits, the existing conservative
+minimum remains 1 RPM / 57000 TPM / 2 RPD. Any two case requests are at least 61
+seconds apart; any unsuccessful case stops the run. No model-access
 probe or token-count call is made. Billing-unlinked status is owner-confirmed;
 the application cannot independently guarantee the Cloud project's billing state.
 No paid Gemini usage is authorized. Do not guess quotas or enable billing.
@@ -132,7 +139,8 @@ adds an exact Gemini model pair and permanent private `gemini_attempts` counter.
 It reserves before invocation and caps all Gemini attempts at 20, including
 failures; deletion, invalidation, expiration and restarts never refund it. The
 existing paid ledger remains 50 cents reserved of the $5 cap. It is not reset.
-Gemini attempts remain **0**; zero new live-provider requests occurred this turn.
+Gemini attempts are **1/20**, including the failed live request; paid reservations
+remain **$0.50/$5**. The counters were not reset or refunded.
 
 Normal pytest clears AI credentials/live flags and blocks both provider hosts at
 the HTTP transport layer. Mock is the default standalone evaluation provider;
@@ -140,9 +148,11 @@ tests inject it explicitly. Application construction with explicit test settings
 does not load either secret env file. Adapter tests use `httpx.MockTransport`.
 The product never presents a mock as a live model result.
 
-Before the first future Gemini request, report all six safeguards again: explicit
-store=false, required live flag/CLI, active permanent attempt/paid safeguards,
-only generated synthetic fixtures, no tools, and mock network isolation.
+Before the first Gemini request, all safeguards were verified and reported:
+required RUN_AI_INTEGRATION=1 and CLI opt-in, only synthetic fixtures, server-side
+key, owner-confirmed Free Tier/billing unlinked, immediate stop on quota/access
+errors, store=false, no tools, permanent limit and mock network isolation. The
+process flag was scoped to the evaluator command and removed in `finally`.
 
 ## Stale/invalidation and retention
 
@@ -182,7 +192,13 @@ tokens must total <=4000 and are stored together as output usage; prompt tokens
 <=53000 and total usage must reconcile. Five-second connect, forty-second I/O,
 forty-five-second total provider timeout; browser generation timeout 65 seconds.
 No automatic retries, redirects, proxy inheritance or provider fallback. Only
-safe categories/counts/timing are logged; no prompts, raw responses or secrets.
+safe categories/counts/timing reach application logs; no prompts, raw responses
+or secrets. Only the explicitly invoked evaluator receives bounded provider error
+diagnostics: HTTP status, code/status/message and allowlisted quota/retry/reason
+fields. Known API keys are redacted; headers and arbitrary metadata are excluded.
+These diagnostics do not enter API/UI responses or model context. They are saved
+in ignored `.cache/phase7/live-gemini-errors.jsonl` for the requested exact error
+report. Provider retry advice is reported as data and never triggers a retry.
 
 ## RLS/security
 
@@ -222,7 +238,42 @@ Existing unrelated uploaded reports were untouched and never enrolled.
 **Live Gemini grounding, numeric fidelity, adversarial behavior, usage and latency
 remain unmeasured.** Passing mock/SQL/browser checks does not establish live-model
 acceptance. Gemini key presence/model selection were checked without exposing the
-key; RUN_AI_INTEGRATION is unset and the runtime reports unavailable as intended.
+key. RUN_AI_INTEGRATION is unset again after the bounded attempt.
+
+## Live Gemini attempt — 24 September 2026
+
+Exactly one request was made for the first generated synthetic case (eight reviewed,
+published findings from one authorized report). The provider returned:
+
+```text
+HTTP 503
+code: 503
+status: UNAVAILABLE
+message: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+```
+
+No explicit quota metric, quota value, rate limit or retry interval was returned.
+This is evidence of provider-reported unavailability, **not evidence of zero Free
+Tier quota or successful model acceptance**. No RPM/TPM/RPD was invented.
+The response is authoritative for this attempt; no additional provider probe ran.
+
+The application recorded safe category `provider_failure`, no explanation output
+and no input/output token counts. The complete application generation round trip
+was 4406 ms; this is not successful inference latency. The evaluator stopped on
+case 1 and did not send the adversarial second case. No automatic retry, model
+fallback, paid-tier configuration or billing upgrade occurred. No personal report
+was enrolled or transmitted. Live grounding/numeric/injection acceptance remains
+unmeasured, so Phase 7 is not signed off.
+
+Pre-generation checks for foreign-owner read/generation denial, CSRF and rejected
+caller-selected evidence passed before the provider request. These are not a pass
+of the full two-case live acceptance suite. The generated fixture was deleted in
+`finally`; database verification found zero explanation rows and zero enrollment
+rows. Gemini's permanent ledger is 1/20 and the OpenAI reserved ledger is unchanged
+at 50 cents. The process live flag was cleared. No further request is scheduled.
+
+Safe local accounting is in `.cache/phase7/live-gemini-attempts.jsonl` and
+`.cache/phase7/live-gemini-errors.jsonl`; no key or raw request is stored there.
 
 Historically, two OpenAI attempts on 18/23 September failed authentication with no
 accepted output or returned usage. Their $0.50 reservations remain conservative
@@ -232,7 +283,12 @@ reservations, not measured billing. OpenAI is now stopped; no further probes.
 
 Fresh verification of this Gemini implementation on 24 September:
 
-- Focused backend explanation/provider/service suite: **70 passed**.
+- After the undisplayed-quota/error-reporting change: **73 focused backend tests
+  passed**; Ruff/format checks and mypy (78 source files) passed. Tests verify the
+  explicit new opt-in preserves other gates, rejects mixed numeric/unknown quotas,
+  retains provider quota details, redacts keys and never retries an access failure.
+- The following broad results are the adapter checkpoint before this runner-only
+  update; they were not all rerun after the three added tests.
 - Full backend with local OCR: **370 passed, 8 integration tests skipped**, 46.40s.
 - Ruff, formatting (81 files), mypy (78 source files) and pip consistency passed.
 - Frontend: **216 tests across 11 files passed**, ESLint/typecheck/build passed.
@@ -246,8 +302,8 @@ Fresh verification of this Gemini implementation on 24 September:
   routed responses and zero AI calls. Covers no page-load generation, consent,
   exact values/provenance, escaping/mobile layout, invalidation, malformed output,
   no retry, Gemini terms/provider-change consent reset and correct Gemini label.
-- Final database check: zero explanation rows and zero enrollments; Gemini attempts
-  zero and paid reservations unchanged at 50 cents. Both local test servers stopped.
+- Final database check after the live attempt: zero explanation rows and zero
+  enrollments; Gemini attempts one and paid reservations unchanged at 50 cents. Both local test servers stopped.
 - Git diff whitespace check passed; both provider env files remain ignored.
   Tracked-file secret-pattern scan found no matches; no key was printed or copied.
 - Historical pre-Gemini baseline: 8 live Supabase integration tests, 13 SQL scripts
@@ -270,16 +326,15 @@ normal tests. Browser checks use the local API/production preview and documented
 Playwright module path. SQL verification scripts must run as complete transactions.
 Sanitized result artifacts are in ignored `.cache/phase7` and `.cache/qa/phase7`.
 
-Remaining input: **actual RPM, TPM and RPD from AI Studio for the dedicated project**.
-Then re-report the six safeguards, run only the bounded Gemini synthetic evaluator,
-stop on failure and update this handoff with measured acceptance results. The
-owner has already authorized that scoped run; no additional general permission is
-needed. If quotas/model access are insufficient, keep acceptance pending without
-paid fallback or OpenAI retry. The key must remain local and must never be pasted.
+The owner authorized an attempt with `--quota-not-displayed`, preserving explicit
+live/Free Tier gates and the permanent counter. It stopped on HTTP 503 as recorded
+above. No quota numbers are currently required or invented. Further live attempts
+are stopped pending a new instruction; do not retry automatically, infer access
+from this error, enable billing or substitute a model. The key remains local.
 
 ## Known limitations
 
-Live Gemini acceptance is pending. English and five fixed definitions are the
+Live Gemini acceptance is pending because the attempt returned HTTP 503. English and five fixed definitions are the
 entire educational scope. No clinician-reviewed, production, real-patient,
 multilingual or broader medical reasoning claim is made. Source flags/ranges do
 not establish normality. Partial publication may not cover a whole report. Twenty
@@ -291,7 +346,7 @@ outbound-auth-email testing limitations and leaked-password warning remain.
 ## Suggested commit and Phase 8 preview
 
 Suggested checkpoint commit:
-`feat: add gated Gemini synthetic report explanation adapter`.
+`fix: allow explicit undisplayed quota evaluation and report provider failures`.
 Do not describe this checkpoint as completed live acceptance.
 
 Phase 8 would separately assess deterministic same-metric/unit/date-compatible
