@@ -386,3 +386,23 @@ h1, h2, h3, p { margin: 0; }
 .report-explanation .button { margin: .3rem .4rem .3rem 0; }
 @media (max-width: 900px) { .history-workspace { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 480px) { .overview-counts, .observation-filters { grid-template-columns: minmax(0, 1fr); } }
+/* Phase 8: real-point charts always have an exact-value alternative. */
+.trend-chart { position: relative; height: 320px; width: 100%; margin-block: 1.5rem; }
+.trend-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.trend-counts > div { padding: 1rem; border: 1px solid #d6e2dc; border-radius: 12px; background: #f8faf7; }
+.trend-counts dt { font-weight: 600; margin-bottom: .6rem; }
+.trend-counts dd { margin: .35rem 0; }
+.trend-status { font-size: 1.3rem; font-weight: 600; }
+.trend-data { margin-block: 1.5rem; }
+.trend-data summary { cursor: pointer; font-weight: 600; padding-block: .75rem; }
+.trend-table-scroll { max-height: 600px; overflow: auto; }
+.trend-table-scroll table { width: 100%; border-collapse: collapse; text-align: left; }
+.trend-table-scroll th, .trend-table-scroll td { padding: .75rem; border-bottom: 1px solid #d6e2dc; vertical-align: top; }
+.trend-table-scroll caption { text-align: left; padding-block: .75rem; }
+.trend-table-scroll small { overflow-wrap: anywhere; }
+.trend-controls label { min-width: 0; }
+@media (max-width: 600px) {
+  .trend-counts { grid-template-columns: 1fr; }
+  .trend-chart { height: 260px; }
+  .trend-table-scroll table { min-width: 540px; }
+}

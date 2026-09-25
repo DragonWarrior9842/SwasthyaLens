@@ -1,6 +1,10 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  trend_unavailable: 'Trends are temporarily unavailable. Please try again.',
+  trend_capacity: 'This analysis exceeds 500 observations or 50 metric/unit groups. Choose a shorter period or another end date; no partial statistics are shown.',
+  trend_unit: 'This exact unit is not supported for this metric. The original remains in health history.',
+  trend_invalid: 'Choose a valid period ending today or earlier.',
   explanation_not_found: 'This report or explanation is no longer available.',
   explanation_conflict: 'The source changed. Refresh before trying again.',
   explanation_evidence: 'Publish between one and twenty reviewed findings first.',

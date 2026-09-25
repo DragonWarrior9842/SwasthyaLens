@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../auth/auth-context'
 import { ApiError, errorMessage, isUnauthorized } from '../../services/api-client'
+import { onHistoryChanged } from '../../services/history-events'
 
 export function useHistoryAccount() {
   const { state, checkSession } = useAuth()
@@ -22,6 +23,7 @@ export function useOwnedHistory<T>(load: (signal: AbortSignal) => Promise<T>, au
     return () => controller.abort()
   }, [load, authFailure, version])
   useEffect(() => { window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh) }, [refresh])
+  useEffect(() => onHistoryChanged(refresh), [refresh])
   const loading = state.loadedFor !== load || state.version !== version
   return { data: loading ? null : state.data, error: loading ? null : state.error, loading, refresh }
 }

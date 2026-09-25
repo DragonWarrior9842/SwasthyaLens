@@ -148,12 +148,16 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   stage = 'report deletion erases derived data and preserves manual entry';
   await report().getByRole('button', { name: 'Delete report', exact: true }).click();
   await report().getByRole('button', { name: 'Confirm delete', exact: true }).click();
+  stage = 'deletion: await report removal';
   await report().waitFor({ state: 'detached', timeout: 30000 });
+  stage = 'deletion: unrelated manual survives';
   await page.goto('http://127.0.0.1:5173/history?include_inactive=true');
   await weight.waitFor(); assert.equal(await hb.count(), 0);
+  stage = 'deletion: remove manual fixture';
   await weight.getByRole('button', { name: 'Delete measurement', exact: true }).click();
   await weight.getByRole('button', { name: 'Confirm delete measurement', exact: true }).click();
   await weight.waitFor({ state: 'detached' });
+  stage = 'deletion: overview returns to empty';
   await page.goto('http://127.0.0.1:5173/');
   await page.getByText('No health observations yet.', { exact: true }).waitFor();
   assert.equal(await page.locator('.overview-counts dd').nth(2).textContent(), '0'); passed();
@@ -162,7 +166,7 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.waitForURL('**/auth/sign-in'); passed();
   fs.writeFileSync(path.join(output, 'browser-results.json'), JSON.stringify({ checks, passed: checks.length }, null, 2));
-})().catch(() => { console.error('FAIL: ' + stage + ' (account details suppressed)'); process.exitCode = 1; }).finally(async () => {
+})().catch(error => { console.error('FAIL: ' + stage + ' ' + error.name + ' (account details suppressed)'); process.exitCode = 1; }).finally(async () => {
   if (page && !page.isClosed()) await page.evaluate(async ({ reports, manuals }) => {
     const csrf = (await (await fetch('/api/auth/csrf')).json()).csrf_token;
     const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf };

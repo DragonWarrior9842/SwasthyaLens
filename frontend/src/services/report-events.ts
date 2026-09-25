@@ -1,5 +1,7 @@
+import { historyChanged } from './history-events'
 const channelName = 'swasthyalens-report-changed'
 export function reportChanged(reportId: string) {
+  historyChanged()
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(channelName, { detail: reportId }))
   if (typeof BroadcastChannel !== 'undefined') {

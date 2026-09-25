@@ -1,5 +1,6 @@
 import type { Profile, UserSettings } from '../types/auth'
 import { accountPatch, accountRead } from './auth'
+import { historyChanged } from './history-events'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
@@ -22,4 +23,8 @@ export function decodeSettings(value: unknown): UserSettings {
 export function getProfile(signal?: AbortSignal) { return accountRead('/profile', decodeProfile, signal) }
 export function getSettings(signal?: AbortSignal) { return accountRead('/settings', decodeSettings, signal) }
 export function saveProfile(displayName: string | null, expectedOwnerId: string) { return accountPatch('/profile', { display_name: displayName }, decodeProfile, expectedOwnerId) }
-export function saveSettings({ preferred_language, timezone }: Pick<UserSettings, 'preferred_language' | 'timezone'>, expectedOwnerId: string) { return accountPatch('/settings', { preferred_language, timezone }, decodeSettings, expectedOwnerId) }
+export async function saveSettings({ preferred_language, timezone }: Pick<UserSettings, 'preferred_language' | 'timezone'>, expectedOwnerId: string) {
+  const result = await accountPatch('/settings', { preferred_language, timezone }, decodeSettings, expectedOwnerId)
+  historyChanged()
+  return result
+}

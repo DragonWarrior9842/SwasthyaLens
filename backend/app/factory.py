@@ -18,6 +18,7 @@ from app.api.health import router as health_router
 from app.api.observations import router as observations_router
 from app.api.parameters import router as parameters_router
 from app.api.reports import router as reports_router
+from app.api.trends import router as trends_router
 from app.core.ai_config import GeminiSettings
 from app.core.auth_service import AuthService
 from app.core.browser_security import clear_session_cookies
@@ -135,4 +136,5 @@ def create_app(
     application.include_router(parameters_router)
     application.include_router(observations_router)
     application.include_router(explanations_router)
+    application.include_router(trends_router)
     return application

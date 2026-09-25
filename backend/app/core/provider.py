@@ -38,6 +38,8 @@ class SupabaseGateway:
         response_limit = (
             2_000_000 if method == "POST" and path == "/rest/v1/rpc/parameter_result" else 1_000_000
         )
+        if method == "POST" and path == "/rest/v1/rpc/trend_context":
+            response_limit = 2_500_000  # At most 501 bounded Phase 6 snapshots.
         try:
             with self.client.stream(
                 method,
@@ -75,6 +77,8 @@ class SupabaseGateway:
                 if code == "P0001" and isinstance(error, dict):
                     message = error.get("message")
                     report_errors = {
+                        "trend_invalid": (422, "Choose a valid bounded trend period."),
+                        "trend_unavailable": (503, "Trends are temporarily unavailable."),
                         "explanation_not_found": (404, "Report or explanation not found."),
                         "explanation_conflict": (
                             409,

@@ -1,5 +1,6 @@
 import { accountMutation, accountOwnedRead } from './auth'
 import { reportChanged } from './report-events'
+import { historyChanged } from './history-events'
 import { decodeFields } from './parameters'
 import type { Fields } from './parameters'
 
@@ -67,7 +68,11 @@ export async function publishObservation(report: string, candidate: string, expe
 export async function saveManual(body: ManualInput, owner: string, identifier?: string, signal?: AbortSignal) {
   const result = await accountMutation(identifier ? path(identifier) : '/observations/manual', body, decodeObservation, owner, identifier ? 'PATCH' : 'POST', signal)
   if (result.source_type !== 'manual' || (identifier && result.id !== identifier)) throw new Error('Mismatched manual record')
+  historyChanged()
   return result
 }
-export const deleteObservation = (identifier: string, expected_revision: number, owner: string, signal?: AbortSignal) => accountMutation(path(identifier), { expected_revision }, v => { if (!object(v) || v.message !== 'Observation deleted.') throw new Error('Invalid deletion'); }, owner, 'DELETE', signal)
+export async function deleteObservation(identifier: string, expected_revision: number, owner: string, signal?: AbortSignal) {
+  await accountMutation(path(identifier), { expected_revision }, v => { if (!object(v) || v.message !== 'Observation deleted.') throw new Error('Invalid deletion'); }, owner, 'DELETE', signal)
+  historyChanged()
+}
 export function measurementLabel(r: Revision) { return r.measured_at ? `${new Date(r.measured_at).toISOString().replace('T', ' ').replace('.000Z', ' UTC')}` : r.measurement_date ? `${r.measurement_date} · day only, supplied by you` : 'Measurement date unknown' }

@@ -5,6 +5,7 @@ import { Card } from '../components/Card'
 import { PageHeader } from '../components/PageHeader'
 import { useHistoryAccount, useOwnedHistory } from '../features/observations/useOwnedHistory'
 import { getDashboard, measurementLabel } from '../services/observations'
+import { DashboardTrend } from '../features/trends/TrendView'
 
 export function DashboardPage() {
   const { owner, authFailure } = useHistoryAccount()
@@ -18,5 +19,5 @@ export function DashboardPage() {
         <h3>Recent reports</h3>{overview.data.reports.length === 0 ? <p>No reports uploaded yet.</p> : <ul className="overview-records">{overview.data.reports.map(r => <li key={r.id}><Link to="/reports">{r.original_filename}</Link><br />Report record created {new Date(r.created_at).toISOString()}</li>)}</ul>}
       </>}
       <div className="parameter-actions"><ButtonLink to="/history">Open health history</ButtonLink><ButtonLink to="/reports" variant="secondary">Open reports</ButtonLink></div>
-    </Card></>
+    </Card><DashboardTrend /></>
 }
