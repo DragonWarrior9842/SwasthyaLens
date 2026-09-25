@@ -173,6 +173,9 @@ async function choose(metric, unit) {
   await page.unroute('**/api/trends/weight?*'); await page.getByRole('button', { name: 'Refresh trends', exact: true }).click();
   await page.getByText('Exact measurement table (13 observations)', { exact: true }).waitFor(); pass();
 
+  // The dense browser scenario can exhaust the intentional 30 reads/minute limit.
+  // Wait for its window before testing reload/dashboard persistence.
+  await page.waitForTimeout(61000);
   stage = 'unsupported correlation is explicit and refresh persists real data';
   await page.getByText('Correlation describes an association in the available measurements and does not establish cause and effect.', { exact: true }).waitFor();
   await page.reload(); await choose('weight', 'kg'); await page.getByText('Exact measurement table (13 observations)', { exact: true }).waitFor();
@@ -195,3 +198,4 @@ async function choose(metric, unit) {
   }
   await browser?.close();
 });
+

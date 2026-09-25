@@ -189,6 +189,28 @@ All sixteen passed. No new security-advisor finding was introduced; existing fin
 and live two-user results are documented in [the Phase 8 handoff](../docs/phase-8-handoff.md).
 Phase 7 provider availability and its permanent attempt ledger are unchanged.
 
+## Phase 9 assistant conversations
+
+Migration `20260925192022_assistant_conversations.sql` is applied to development after
+the Phase 8 migration. It creates `assistant_conversations` and `assistant_messages`
+with forced owner/active-session RLS, authenticated SELECT-only grants, composite
+owner/conversation foreign keys and cascading message deletion. Bounded verified
+answers embed their evidence/provenance; no separate evidence table is needed.
+
+The public invoker `assistant_call` wrapper reaches a private lifecycle function using
+the existing server processing secret and owner JWT. Writes enforce ownership,
+idempotency, conversation/message caps and generation reservations. Source-change
+triggers clear ready/in-flight answers and their links and increment a conversation
+version, preventing stale in-flight output from being committed. Invalidation is
+conservatively owner-wide, including timezone changes and new observations.
+
+Run both `verification/assistant-schema.sql` and the complete rollback-only
+`verification/assistant-lifecycle.sql`, plus the sixteen preceding scripts. All eighteen
+passed after the migration. SQL fixtures are synthetic and rollback-only; do not run
+them concurrently with live/browser acceptance against the shared fixture accounts.
+The [Phase 9 handoff](../docs/phase-9-handoff.md) records live two-user/mock acceptance,
+rate/retention limitations and the unchanged Gemini external availability blocker.
+
 ## Reference links
 
 - [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security) explains their combined effect and anonymous-role behavior.

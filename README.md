@@ -1,10 +1,10 @@
 # SwasthyaLens
 
-SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Reports support private upload, extraction and personal review. Phase 6 adds explicitly published health observations, manual weight/heart-rate entry, revision history and a dashboard backed by actual owned records. Phase 8 adds deterministic measurement trends with real-point charts and exact-value tables. Assistant retains a truthful empty state.
+SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Reports support private upload, extraction and personal review. Phase 6 adds explicitly published health observations, manual weight/heart-rate entry, revision history and a dashboard backed by actual owned records. Phase 8 adds deterministic measurement trends with real-point charts and exact-value tables. Phase 9 adds private persisted conversations, bounded evidence retrieval and a structured assistant contract; live AI answers remain unavailable.
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). Free-form assistant, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its mock-only acceptance boundary. Formal multilingual support, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -191,7 +191,7 @@ Stop the frontend development server first: preview also uses port 5173 so it ma
 With Phase 2 enabled, apply the migration and sign in first before checking protected destinations. The public service-health endpoint remains available without signing in.
 
 1. Start both services. Open `/` and confirm the sidebar says **Local API connected**. An account without observations shows **No health observations yet.**; populated accounts show real owned counts and records.
-2. Navigate to `/reports`, `/history`, `/trends`, and `/assistant`. Reports offers private uploads and reviewed candidates; Health history shows published observations and manual entries. Trends offers exact-unit 7/30-day comparisons and sparse lab history when trusted dated observations exist. Assistant remains unimplemented.
+2. Navigate to `/reports`, `/history`, `/trends`, and `/assistant`. Reports offers private uploads and reviewed candidates; Health history shows published observations and manual entries. Trends offers exact-unit 7/30-day comparisons and sparse lab history when trusted dated observations exist. Assistant persists conversations and clearly reports that live AI answers are unavailable.
 3. Refresh each route directly; use browser back/forward and check the active navigation state.
 4. At a mobile viewport, open/close navigation, press Escape, and navigate. The menu should close, focus should remain usable, and the page should not scroll horizontally.
 5. Use Tab/Enter for the skip link, navigation, buttons and links. Focus indicators should be visible.
@@ -290,8 +290,8 @@ The evaluator creates new synthetic PDFs, reviews/publishes through owner APIs,
 enrolls only those fixtures and deletes them afterward. It accepts no arbitrary
 report ID or personal file. Generation is explicit with consent; never automatic
 on page load. Source corrections invalidate output; report deletion removes it.
-Phase 8 was separately authorized and is independent of this provider blocker. Phase 9
-free-form assistant remains unstarted.
+Phases 8 and 9 were separately authorized and retain this provider blocker. Phase 9
+does not retry Gemini or reuse a Phase 7 single-report permit for conversation generation.
 
 ## Phase 8 deterministic trends
 
@@ -314,3 +314,24 @@ is required. See [the Phase 8 handoff](docs/phase-8-handoff.md) for rules, bound
 results and manual testing. The optional synthetic browser harness is
 `backend/tests/browser_trends.cjs`; it uses the existing disposable accounts and local
 API/production preview, with `PLAYWRIGHT_MODULE` pointing to an installed Playwright module.
+
+## Phase 9 context-aware assistant
+
+Open **AI Assistant**, choose **New chat**, enter an English question and choose **Send**.
+Suggestions fill the composer only. Conversations and messages persist privately under
+owner/active-session RLS; delete a conversation to remove its messages. No chat content
+is stored in localStorage. Source corrections/deletions clear saved derived answers and
+source links, and subsequent questions retrieve current trusted evidence.
+
+Live AI answers remain unavailable. The normal UI never silently uses the test mock.
+Clarification, unsupported-correlation and safety replies are explicitly labeled
+**Application guidance**. An evidence-bearing question is saved with an honest provider
+unavailable state. **Use question again** fills the composer; sending remains explicit.
+
+No new environment variable, key, provider request or billing change is needed. Keep
+`RUN_AI_INTEGRATION` unset. Migration `20260925192022_assistant_conversations.sql` is
+already applied to development; apply it after the earlier migrations for a fresh setup.
+Synthetic acceptance uses `backend/tests/integration/test_live_assistant.py` with explicit
+Supabase opt-in and a test-only injected mock. The UI harness is
+`backend/tests/browser_assistant.cjs`. See the [handoff](docs/phase-9-handoff.md) for
+contracts, limits, acceptance results and manual checks. Phase 10 remains unstarted.

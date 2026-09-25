@@ -17,6 +17,7 @@ from app.core.explanation_provider import (
     MAX_REQUEST_BYTES,
     GenerationPermit,
     GenerationResult,
+    LockedAssistantCapability,
     context_digest,
 )
 from app.schemas.explanations import ModelExplanation, ModelFact
@@ -112,7 +113,7 @@ def gemini_request_body(context: list[ModelFact]) -> dict[str, object]:
     }
 
 
-class GeminiExplanationProvider:
+class GeminiExplanationProvider(LockedAssistantCapability):
     name = "gemini"
 
     def __init__(

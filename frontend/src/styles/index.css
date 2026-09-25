@@ -406,3 +406,24 @@ h1, h2, h3, p { margin: 0; }
   .trend-chart { height: 260px; }
   .trend-table-scroll table { min-width: 540px; }
 }
+/* Phase 9: private conversation UI uses the existing card/form palette. */
+.assistant-workspace { display: grid; grid-template-columns: minmax(240px, 0.7fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.assistant-sidebar, .assistant-thread { min-width: 0; padding: 24px; }
+.assistant-notice { padding: 16px 20px; border: 1px solid #c8dcd7; border-radius: 14px; background: #f0f7f4; margin-bottom: 24px; }
+.assistant-conversations { list-style: none; margin: 16px 0; padding: 0; display: grid; gap: 8px; }
+.assistant-conversations button { display: block; text-align: left; width: 100%; white-space: normal; }
+.assistant-conversations button[aria-pressed="true"] { background: #e9f4f0; box-shadow: inset 3px 0 #267561; }
+.assistant-conversations time { font-size: 0.8rem; font-weight: 400; }
+.assistant-messages { display: grid; gap: 18px; margin: 20px 0; }
+.assistant-message { padding: 18px; border: 1px solid #dfe7e3; border-radius: 14px; min-width: 0; overflow-wrap: anywhere; }
+.assistant-message--user { background: #f2f7f4; }
+.assistant-message h3 { margin-top: 0; font-size: 0.85rem; color: #376552; }
+.assistant-user-text { white-space: pre-wrap; }
+.assistant-evidence { margin: 12px 0; border-top: 1px solid #dfe7e3; padding-top: 12px; }
+.assistant-evidence summary { cursor: pointer; font-weight: 600; }
+.assistant-composer { display: grid; gap: 12px; border-top: 1px solid #dfe7e3; padding-top: 20px; }
+.assistant-composer label { display: grid; gap: 8px; font-weight: 600; }
+.assistant-composer textarea { width: 100%; resize: vertical; min-height: 100px; padding: 12px; border: 1px solid #a4b8ae; border-radius: 10px; font: inherit; background: white; color: #243b31; }
+.assistant-suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.assistant-suggestions button { white-space: normal; text-align: left; }
+@media (max-width: 850px) { .assistant-workspace { grid-template-columns: minmax(0, 1fr); } .assistant-sidebar, .assistant-thread { padding: 18px; } }

@@ -1,0 +1,85 @@
+{
+  "conversation": {
+    "id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+    "created_at": "2026-04-11T00:00:00+00:00",
+    "updated_at": "2026-04-11T00:00:00+00:00"
+  },
+  "messages": [
+    {
+      "id": "b50d09e9-2a8f-4ce6-b705-be118882566e",
+      "conversation_id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+      "role": "assistant",
+      "status": "ready",
+      "content": null,
+      "answer": {
+        "selection": "recent_metric",
+        "choice": {
+          "scope": "educational",
+          "evidence_ids": [
+            "e1"
+          ],
+          "explanation_code": "sources",
+          "limitation": "bounded_current_evidence_not_diagnosis",
+          "follow_up": "professional_context"
+        },
+        "facts": [
+          {
+            "evidence_id": "e1",
+            "label": "Synthetic",
+            "value": "73.125",
+            "unit": "kg",
+            "reference": null,
+            "source_flag": null,
+            "value_kind": "numeric",
+            "comparator": null,
+            "canonical_metric": "weight",
+            "measurement_date": null,
+            "measured_at": "2026-04-10T12:00:00+00:00",
+            "source_type": "manual",
+            "page_number": null,
+            "calculated_range_status": "unknown"
+          }
+        ],
+        "calculation": null,
+        "sources": [
+          {
+            "evidence_id": "e1",
+            "observation_id": "1f2fcf90-52e7-442f-a485-da69de20cd3f",
+            "revision": 1,
+            "report_id": null,
+            "candidate_id": null,
+            "review_revision": null,
+            "page_number": null,
+            "fields": {
+              "original_label": "Synthetic",
+              "raw_value": "73.125",
+              "original_unit": "kg",
+              "raw_reference": null,
+              "parsing_version": "table-candidates-v1",
+              "alias_version": "synthetic-aliases-v1",
+              "canonical_metric": "weight",
+              "numeric_value": "73.125",
+              "comparator": null,
+              "value_kind": "numeric",
+              "qualitative_result": null,
+              "reference_low": null,
+              "reference_high": null,
+              "reference_low_inclusive": null,
+              "reference_high_inclusive": null,
+              "source_flag": null,
+              "calculated_range_status": "unknown"
+            }
+          }
+        ],
+        "text": "These are the selected current observations. Values, units and supplied reference text are shown exactly as recorded; they do not establish a diagnosis."
+      },
+      "error_category": null,
+      "provider": "mock-test",
+      "model": "deterministic-test",
+      "prompt_version": "assistant-evidence-v1",
+      "schema_version": "assistant-closed-v1",
+      "created_at": "2026-04-11T00:00:00+00:00"
+    }
+  ],
+  "provider_available": true
+}

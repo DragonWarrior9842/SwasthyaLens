@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import cast
 
 import httpx
 from fastapi import FastAPI, Request
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.accounts import router as accounts_router
+from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.explanations import router as explanations_router
 from app.api.extraction import router as extraction_router
@@ -20,11 +22,12 @@ from app.api.parameters import router as parameters_router
 from app.api.reports import router as reports_router
 from app.api.trends import router as trends_router
 from app.core.ai_config import GeminiSettings
+from app.core.assistant import AssistantService
 from app.core.auth_service import AuthService
 from app.core.browser_security import clear_session_cookies
 from app.core.config import Settings
 from app.core.errors import ApiProblem
-from app.core.explanation_provider import ExplanationProvider
+from app.core.explanation_provider import AssistantProvider, ExplanationProvider
 from app.core.explanations import ExplanationService
 from app.core.extraction import ExtractionService
 from app.core.gemini_explanation_provider import GeminiExplanationProvider
@@ -40,6 +43,7 @@ def create_app(
     *,
     provider_transport: httpx.BaseTransport | None = None,
     explanation_provider: ExplanationProvider | None = None,
+    assistant_provider: AssistantProvider | None = None,
 ) -> FastAPI:
     """Construct the API with validated configuration and a bounded CORS policy."""
     config = settings if settings is not None else Settings()
@@ -82,6 +86,14 @@ def create_app(
             )
             application.state.explanation_service = (
                 ExplanationService(application.state.observation_service, ai)
+                if extraction
+                else None
+            )
+            application.state.assistant_service = (
+                AssistantService(
+                    application.state.observation_service,
+                    assistant_provider or cast(AssistantProvider, ai),
+                )
                 if extraction
                 else None
             )
@@ -137,4 +149,5 @@ def create_app(
     application.include_router(observations_router)
     application.include_router(explanations_router)
     application.include_router(trends_router)
+    application.include_router(assistant_router)
     return application

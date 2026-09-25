@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 import httpx
@@ -23,6 +23,8 @@ from app.schemas.explanations import ModelExplanation, ModelFact
 
 MAX_REQUEST_BYTES = 48000
 MAX_OUTPUT_TOKENS = 4000
+if TYPE_CHECKING:
+    from app.core.assistant_context import Context
 # Database reserves 25 cents permanently BEFORE invocation. No refund, even on error.
 # <48K UTF-8 request bytes + 5K framing tokens at $2.50/M (cache-write premium)
 # + 4K output at $12/M is <$0.181. Reservation includes additional margin.
@@ -62,6 +64,47 @@ class ExplanationProvider(Protocol):
     ) -> GenerationResult: ...
 
 
+class AssistantProvider(Protocol):
+    """Phase 9 capability on the same stateless provider boundary."""
+
+    name: str
+    assistant_available: bool
+
+    async def generate_assistant(self, request: "AssistantRequest") -> object: ...
+
+
+@dataclass(frozen=True)
+class AssistantRequest:
+    instructions: str
+    input_json: str
+    output_schema: dict[str, object]
+    store: bool = False
+    tools: tuple[()] = ()
+
+
+def assistant_request(context: "Context") -> AssistantRequest:
+    from app.core.assistant_context import PROMPT
+    from app.schemas.assistant import ModelAnswer
+
+    # Only the serialized, minimized view crosses the provider boundary.
+    # The source map and database/report identifiers remain in the service.
+    return AssistantRequest(PROMPT, context.model_input(), ModelAnswer.model_json_schema())
+
+
+class LockedAssistantCapability:
+    """No live Phase 9 enrollment/budget permit has been authorized.
+
+    A Phase 7 permit must never be repurposed for a multi-source conversation.
+    This boundary cannot be enabled by an environment flag or a browser request.
+    Tests explicitly inject a deterministic implementation of AssistantProvider.
+    """
+
+    assistant_available = False
+
+    async def generate_assistant(self, request: AssistantRequest) -> object:
+        raise ApiProblem(503, "assistant_unavailable", "Live assistant generation is unavailable.")
+
+
 def request_body(context: list[ModelFact]) -> dict[str, object]:
     return {
         "model": MODEL,
@@ -89,7 +132,7 @@ def request_body(context: list[ModelFact]) -> dict[str, object]:
     }
 
 
-class OpenAIExplanationProvider:
+class OpenAIExplanationProvider(LockedAssistantCapability):
     name = "openai"
 
     def __init__(

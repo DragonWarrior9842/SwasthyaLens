@@ -40,6 +40,8 @@ class SupabaseGateway:
         )
         if method == "POST" and path == "/rest/v1/rpc/trend_context":
             response_limit = 2_500_000  # At most 501 bounded Phase 6 snapshots.
+        if method == "POST" and path == "/rest/v1/rpc/assistant_call":
+            response_limit = 2_000_000  # 25 turns, at most 60 KB per answer.
         try:
             with self.client.stream(
                 method,
@@ -77,6 +79,19 @@ class SupabaseGateway:
                 if code == "P0001" and isinstance(error, dict):
                     message = error.get("message")
                     report_errors = {
+                        "assistant_not_found": (404, "Conversation not found."),
+                        "assistant_conflict": (
+                            409,
+                            "The request or source changed. Refresh the conversation.",
+                        ),
+                        "assistant_capacity": (
+                            409,
+                            "The conversation or account has reached its size limit.",
+                        ),
+                        "assistant_rate_limit": (
+                            429,
+                            "Assistant requests are busy or limited. Try again later.",
+                        ),
                         "trend_invalid": (422, "Choose a valid bounded trend period."),
                         "trend_unavailable": (503, "Trends are temporarily unavailable."),
                         "explanation_not_found": (404, "Report or explanation not found."),
