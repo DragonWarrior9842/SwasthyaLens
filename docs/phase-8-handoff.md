@@ -1,7 +1,6 @@
 # Phase 8 — deterministic measurement trends
 
-25 September 2026. Implementation and acceptance work in progress; the final verification
-section below will be completed before this phase is declared complete. Phase 9 is unstarted.
+25 September 2026. **Phase 8 implementation and acceptance complete.** Phase 9 is unstarted.
 Phase 7 remains implementation-complete with live acceptance externally blocked by Gemini
 503 availability; its 2/20 attempt ledger and disabled live-integration gate are unchanged.
 No AI request, billing change, provider switch or AI credit spend occurred in Phase 8.
@@ -175,9 +174,17 @@ Current verified results:
   observation harness now awaits successful deletion and refreshed empty history before
   dashboard navigation; a mistyped harness empty-state assertion was corrected during
   verification. Final observation and explanation runs passed in full.
-- Final full live integration acceptance: **pending completion**. An earlier invocation
-  encountered a stopped local API after the work pause; the API was restarted and its
-  health check verified before the final run. This was not counted as a successful run.
+- Final full live integration acceptance: **9 passed in 468.53 seconds**, with two
+  existing upstream deprecation warnings. This covers mock explanations, extraction,
+  worker interruption/recovery, observation pagination and lifecycle, two-user
+  authentication/profile/settings ownership, parameters, report storage, and trends.
+  Trend acceptance confirms distinct A/B results, 7/30-day behavior, cross-owner denial,
+  correction/republication, deletion preserving unrelated manual records, and revoked
+  session denial through both the application and direct RPC.
+- Earlier live invocations were interrupted by work pauses or encountered a stopped
+  local API; they were not counted as successful runs. The final run started after
+  verifying API health and completed with exit code 0. Its log is retained locally in
+  ignored `.cache/qa/phase8/live-acceptance.log`. Integration flags are unset afterward.
 
 Representative synthetic assertions (all passed):
 
