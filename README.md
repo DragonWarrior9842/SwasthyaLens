@@ -1,10 +1,10 @@
 # SwasthyaLens
 
-SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Reports support private upload, extraction and personal review. Phase 6 adds explicitly published health observations, manual weight/heart-rate entry, revision history and a dashboard backed by actual owned records. Trends and Assistant retain truthful empty states.
+SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Reports support private upload, extraction and personal review. Phase 6 adds explicitly published health observations, manual weight/heart-rate entry, revision history and a dashboard backed by actual owned records. Phase 8 adds deterministic measurement trends with real-point charts and exact-value tables. Assistant retains a truthful empty state.
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Trend calculations, free-form assistant, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). Free-form assistant, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -125,7 +125,7 @@ download the original report, or add a manual **weight (kg)** or **heart rate (b
 measurement. Manual forms request an explicit UTC time. Edits retain revisions;
 deletion erases the manual values. Report deletion removes its derived observations
 while preserving unrelated manual measurements. Units and qualitative/comparator
-values are retained exactly; no conversions or medical trend calculations run.
+values are retained exactly; no unit conversions or medical judgments run.
 The dashboard uses real counts and separate recent records, with honest empty states.
 
 Phase 6 uses the existing processing secret and development project; no new service,
@@ -191,7 +191,7 @@ Stop the frontend development server first: preview also uses port 5173 so it ma
 With Phase 2 enabled, apply the migration and sign in first before checking protected destinations. The public service-health endpoint remains available without signing in.
 
 1. Start both services. Open `/` and confirm the sidebar says **Local API connected**. An account without observations shows **No health observations yet.**; populated accounts show real owned counts and records.
-2. Navigate to `/reports`, `/history`, `/trends`, and `/assistant`. Reports offers private uploads and reviewed candidates; Health history shows published observations and manual entries. Trends and Assistant remain empty, without calculated trends or generated responses.
+2. Navigate to `/reports`, `/history`, `/trends`, and `/assistant`. Reports offers private uploads and reviewed candidates; Health history shows published observations and manual entries. Trends offers exact-unit 7/30-day comparisons and sparse lab history when trusted dated observations exist. Assistant remains unimplemented.
 3. Refresh each route directly; use browser back/forward and check the active navigation state.
 4. At a mobile viewport, open/close navigation, press Escape, and navigate. The menu should close, focus should remain usable, and the page should not scroll horizontally.
 5. Use Tab/Enter for the skip link, navigation, buttons and links. Focus indicators should be visible.
@@ -290,4 +290,27 @@ The evaluator creates new synthetic PDFs, reviews/publishes through owner APIs,
 enrolls only those fixtures and deletes them afterward. It accepts no arbitrary
 report ID or personal file. Generation is explicit with consent; never automatic
 on page load. Source corrections invalidate output; report deletion removes it.
-Phase 8 trends and Phase 9 free-form assistant have not started.
+Phase 8 was separately authorized and is independent of this provider blocker. Phase 9
+free-form assistant remains unstarted.
+
+## Phase 8 deterministic trends
+
+Open **Trends** to select a metric and exact unit, a seven- or thirty-day period, and
+an optional ending day. Only active trusted observations with genuine measurement
+dates enter calculations. Weight and heart rate use medians of daily medians; adjacent
+period comparisons need at least 4/7 or 15/30 observed days in each period. Sparse labs
+show chronological points and latest-versus-previous comparisons without daily tracking
+claims. Unknown dates and non-scalar values remain in history but are excluded from math.
+
+Charts show real points only, with an accessible exact-value table and provenance.
+Corrections, republication and deletion refresh open views. “Stable” describes a
+mathematical tolerance, never a medical judgment. No approved correlation pair has both
+metrics in the current catalog, so no numerical association is displayed. No AI or ML
+is involved; keep `RUN_AI_INTEGRATION` unset.
+
+Apply migration `20260924185746_deterministic_trends.sql` after earlier migrations on
+a fresh installation (already applied to development). No new key or environment variable
+is required. See [the Phase 8 handoff](docs/phase-8-handoff.md) for rules, bounds, acceptance
+results and manual testing. The optional synthetic browser harness is
+`backend/tests/browser_trends.cjs`; it uses the existing disposable accounts and local
+API/production preview, with `PLAYWRIGHT_MODULE` pointing to an installed Playwright module.

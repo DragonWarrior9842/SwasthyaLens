@@ -224,8 +224,6 @@ def test_live_two_user_trends_correction_report_deletion_and_revocation(
     with httpx.Client(base_url=str(user.client.base_url), cookies={"sl_access": access}) as revoked:
         for route in ["/trends/catalog", "/trends/weight?unit=kg", "/trends/correlations"]:
             expect_status(revoked.get(route), 401, "Revoked trend access denied")
-    expect_status(
-        live.data(user, "POST", "rpc/trend_context", {"p_metric": "weight", "p_unit": "kg"}),
-        401,
-        "Revoked direct trend RPC denied",
-    )
+    denied = live.data(user, "POST", "rpc/trend_context", {"p_metric": "weight", "p_unit": "kg"})
+    expect_status(denied, 403, "Revoked direct trend RPC denied")
+    assert denied.json().get("code") == "28000"

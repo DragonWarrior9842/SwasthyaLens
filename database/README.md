@@ -170,6 +170,25 @@ passed after the final Phase 6 migration. Live HTTP tests additionally cover two
 isolation, concurrency, pagination, dates, units, revocation and deletion. See the
 [Phase 6 handoff](../docs/phase-6-handoff.md). No new credentials or setup are needed.
 
+## Phase 8 deterministic trends
+
+Migration `20260924185746_deterministic_trends.sql` is applied to the same development
+project. It adds two partial active-revision metric/unit/date indexes and an invoker
+`trend_context` RPC with its invoker private helper. It creates no tables or persisted
+trend snapshots and requires no processing secret. All reads retain owner/active-session
+RLS, use the saved timezone, and accept no caller-supplied owner ID.
+
+Requested series have exact units and bounded history: two 7/30-day windows for frequent
+metrics, or 366 days for occasional labs. A 501st row or 51st metric/unit group causes
+the application to fail closed instead of returning a partial statistic. The RPC reads
+only active observation snapshots; no raw OCR or candidate values enter calculations.
+
+Run the complete `verification/trends-schema.sql` and rollback-only
+`verification/trends-lifecycle.sql` with the fourteen earlier verification scripts.
+All sixteen passed. No new security-advisor finding was introduced; existing findings
+and live two-user results are documented in [the Phase 8 handoff](../docs/phase-8-handoff.md).
+Phase 7 provider availability and its permanent attempt ledger are unchanged.
+
 ## Reference links
 
 - [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security) explains their combined effect and anonymous-role behavior.

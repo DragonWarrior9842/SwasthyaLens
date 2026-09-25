@@ -155,8 +155,13 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await weight.waitFor(); assert.equal(await hb.count(), 0);
   stage = 'deletion: remove manual fixture';
   await weight.getByRole('button', { name: 'Delete measurement', exact: true }).click();
+  const manualDeleted = page.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname.startsWith('/api/observations/'));
   await weight.getByRole('button', { name: 'Confirm delete measurement', exact: true }).click();
+  stage = 'deletion: await successful manual response';
+  assert.equal((await manualDeleted).status(), 200);
+  stage = 'deletion: await refreshed empty history';
   await weight.waitFor({ state: 'detached' });
+  await page.getByText('No observations match this view. Upload and review a report or add a supported measurement.', { exact: true }).waitFor();
   stage = 'deletion: overview returns to empty';
   await page.goto('http://127.0.0.1:5173/');
   await page.getByText('No health observations yet.', { exact: true }).waitFor();

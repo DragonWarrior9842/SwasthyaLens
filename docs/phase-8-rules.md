@@ -137,4 +137,6 @@ format (81 files), mypy (78 files), 376 tests with real local OCR (eight opt-in 
 tests skipped in that invocation); eight real Supabase integration tests (424.47 s);
 all fourteen rollback SQL verification scripts passed. Two upstream deprecation
 warnings remain. Sandbox cache/runtime checks were rerun with authorized access.
-Browser verification is being completed; failures/retries will be recorded in the handoff.
+All 65 established browser groups passed before application changes. Initial extraction
+startup and final observation deletion timeouts passed on isolated reruns, as recorded
+in the handoff; they are not claimed as first-pass success.

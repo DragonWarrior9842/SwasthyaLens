@@ -1,5 +1,6 @@
 import type { Report, ReportConfig, ReportDeletion, ReportErrorCategory, ReportMediaType, ReportPage, ReportStatus } from '../types/reports'
 import { accountDownload, accountMutation, accountOwnedRead, accountUpload } from './auth'
+import { reportChanged } from './report-events'
 
 const mediaTypes = ['application/pdf', 'image/jpeg', 'image/png'] as const
 const statuses: ReportStatus[] = ['pending_upload', 'uploading', 'uploaded', 'upload_failed', 'deleting']
@@ -55,6 +56,7 @@ export function uploadReport(id: string, file: File, expectedOwnerId: string, si
 export async function deleteReport(id: string, expectedOwnerId: string, signal?: AbortSignal) {
   const result = await accountMutation(reportPath(id), {}, decodeDeletion, expectedOwnerId, 'DELETE', signal)
   if (result.report_id !== id) throw new Error('Mismatched deletion acknowledgement')
+  reportChanged(id)
   return result
 }
 export function cleanupReports(expectedOwnerId: string, signal?: AbortSignal) { return accountMutation('/reports/cleanup', {}, decodeCleanup, expectedOwnerId, 'POST', signal) }
