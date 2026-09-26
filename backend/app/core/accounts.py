@@ -95,7 +95,7 @@ class AccountsRepository:
         row = self._row(
             "user_settings",
             "user_id",
-            "user_id,preferred_language,timezone,created_at,updated_at",
+            "user_id,preferred_language,assistant_language,timezone,created_at,updated_at",
             identity,
             token,
             changes,

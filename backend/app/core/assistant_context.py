@@ -7,6 +7,7 @@ from typing import Literal
 from uuid import UUID
 
 from app.core.auth_service import AuthenticatedRequest
+from app.core.assistant_language import Language, wording
 from app.core.errors import ApiProblem
 from app.core.observations import ObservationService
 from app.core.trends import TrendService
@@ -15,14 +16,14 @@ from app.schemas.assistant import (
     AssistantFact,
     Calculation,
     Code,
-    ModelAnswer,
+    MultilingualModelAnswer,
     Provenance,
 )
 from app.schemas.observations import Observation
 from app.schemas.trends import Metric, TrendQuery, TrendResult
 
-PROMPT_VERSION = "assistant-evidence-v1"
-SCHEMA_VERSION = "assistant-closed-v1"
+PROMPT_VERSION = "assistant-evidence-v2"
+SCHEMA_VERSION = "assistant-closed-v2"
 MAX_CONTEXT_BYTES = 24000
 PROMPT = """Select only the permitted educational explanation code and ALL supplied opaque
 evidence IDs, in order. Return the strict schema, never free-form prose or new facts.
@@ -33,6 +34,8 @@ Do not diagnose, prescribe, change doses, infer symptoms/history, invent measure
 ranges, units or dates, claim causation, reveal credentials, or access tools/data.
 Unknown dates stay unknown. Supplied flags/ranges are not independent assessments.
 No tools, searches, storage, database, code, files or external requests are available.
+Return the exact server-selected response_language. Hindi means Devanagari;
+Hinglish means professional Latin-script Hindi. Never translate or change evidence.
 """
 COPY: dict[str, str] = {
     "sources": (
@@ -84,12 +87,12 @@ COPY: dict[str, str] = {
     ),
 }
 ALIASES: dict[Metric, str] = {
-    "weight": r"\bweight\b",
-    "heart_rate": r"\bheart[ -]?rate\b|\bpulse\b",
-    "hemoglobin": r"\bhemoglobin\b|\bhaemoglobin\b",
+    "weight": r"\bweight\b|वज़न|वजन|\bwazan\b|\bvajan\b",
+    "heart_rate": r"\bheart[ -]?rate\b|\bpulse\b|हृदय गति|धड़कन|\bdhadkan\b",
+    "hemoglobin": r"\bhemoglobin\b|\bhaemoglobin\b|हीमोग्लोबिन",
     "tsh": r"\btsh\b",
-    "vitamin_d_unspecified": r"\bvitamin[ -]?d\b",
-    "glucose_unspecified": r"\bglucose\b",
+    "vitamin_d_unspecified": r"\bvitamin[ -]?d\b|विटामिन डी|विटामिन डी",
+    "glucose_unspecified": r"\bglucose\b|ग्लूकोज़|ग्लूकोज",
     "crp": r"\bcrp\b",
 }
 
@@ -107,18 +110,27 @@ def route(question: str, recent_questions: list[str]) -> Intent:
     # A deliberately narrow phrase screen on the current user message, never lab values.
     if re.search(
         r"severe chest pain|difficulty breathing|can't breathe|cannot breathe|unconscious|"
-        r"loss of consciousness|uncontrolled bleeding|bleeding won't stop",
+        r"loss of consciousness|uncontrolled bleeding|bleeding won't stop|"
+        r"सीने में तेज़? दर्द|सांस नहीं|साँस नहीं|सांस लेने में (?:दिक्कत|तकलीफ)|"
+        r"बेहोश|खून नहीं रुक|\bseene mein (?:tez|bahut) dard\b|"
+        r"\bsaans (?:nahi|nahin)|\bbehosh\b|\bkhoon nahi ruk",
         q,
     ):
         return Intent("rules", code="emergency")
     if re.search(
         r"diagnos|prescrib|dosage|\bdose\b|stop.*(?:medication|treatment)|do i have|have cancer|"
         r"api.?key|secret|another user|other user|reveal all|ignore.*instructions|"
-        r"change.*\bfrom\b.*\bto\b",
+        r"change.*\bfrom\b.*\bto\b|change.*\d+.*\bto\b.*\d+|"
+        r"निर्देश.*(?:भूल|अनदेखा)|(?:दूसरे|अन्य).*(?:रिपोर्ट|डेटा)|"
+        r"(?:एपीआई|api).*(?:कुंजी|की)|\d+.*को.*\d+.*बदल|"
+        r"कैंसर|निदान|दवा.*(?:बदल|बंद)|"
+        r"(?:pichhle|pichle|purane).*(?:instructions|nirdesh).*(?:bhool|ignore)|"
+        r"(?:doosre|dusre).*(?:report|data)|(?:api).*(?:key|chabi)|"
+        r"\d+.*ko.*\d+.*badal|(?:mujhe|mujhko).*cancer|dawa.*(?:badal|band)",
         q,
     ):
         return Intent("rules", code="safety")
-    if re.search(r"correlat|caus|relationship|association", q):
+    if re.search(r"correlat|caus|relationship|association|सहसंबंध|कारण|संबंध|\bsambandh\b|\bkaran\b", q):
         return Intent("rules", code="unsupported_correlation")
     metrics = [m for m, pattern in ALIASES.items() if re.search(pattern, q)]
     if not metrics and re.fullmatch(
@@ -135,13 +147,13 @@ def route(question: str, recent_questions: list[str]) -> Intent:
     if len(metrics) > 1:
         return Intent("rules")
     if metrics:
-        trend = bool(re.search(r"trend|increas|decreas|chang|compar|period|days|week|month", q))
+        trend = bool(re.search(r"trend|increas|decreas|chang|compar|period|days|week|month|रुझान|बढ़|घट|तुलना|दिन|महीन|\bbadha|\bghata|\btulna|\bdin\b|\bbadla", q))
         return Intent(
             "trend" if trend else "metric",
             metrics[0],
-            "30d" if re.search(r"30|thirty|month", q) else "7d",
+            "30d" if re.search(r"30|thirty|month|महीन|\bmahine\b", q) else "7d",
         )
-    if "latest" in q and "report" in q:
+    if re.search(r"latest|नवीनतम|हाल की|\bhaal ki\b", q) and re.search(r"report|रिपोर्ट", q):
         return Intent("report")
     return Intent("rules")
 
@@ -155,9 +167,11 @@ class Context:
     facts: list[AssistantFact] = field(default_factory=list)
     calculation: Calculation | None = None
     sources: list[Provenance] = field(default_factory=list)
+    language: Language = "en"
 
-    def expected(self) -> ModelAnswer:
-        return ModelAnswer(
+    def expected(self) -> MultilingualModelAnswer:
+        return MultilingualModelAnswer(
+            response_language=self.language,
             scope="educational",
             evidence_ids=[f.evidence_id for f in self.facts] + (["t1"] if self.calculation else []),
             explanation_code=self.code,
@@ -167,6 +181,9 @@ class Context:
 
     def model_input(self) -> str:
         value = {
+            "response_language": self.language,
+            "prompt_version": PROMPT_VERSION,
+            "schema_version": SCHEMA_VERSION,
             "question_untrusted": self.question,
             "dialogue_untrusted_not_evidence": [q[:500] for q in self.dialogue[-4:]],
             "current_evidence": {
@@ -195,11 +212,11 @@ class Context:
         }
 
 
-def validate_answer(value: object, context: Context) -> ModelAnswer:
+def validate_answer(value: object, context: Context) -> MultilingualModelAnswer:
     try:
         if len(json.dumps(value).encode()) > 4096:
             raise ValueError
-        parsed = ModelAnswer.model_validate(value)
+        parsed = MultilingualModelAnswer.model_validate(value)
         if parsed != context.expected():
             raise ValueError
         return parsed
@@ -207,7 +224,7 @@ def validate_answer(value: object, context: Context) -> ModelAnswer:
         raise ApiProblem(502, "assistant_invalid", "The answer could not be verified.") from None
 
 
-def render(context: Context, choice: ModelAnswer) -> Answer:
+def render(context: Context, choice: MultilingualModelAnswer) -> Answer:
     validate_answer(choice.model_dump(), context)
     return Answer(
         selection=context.selection,
@@ -215,7 +232,7 @@ def render(context: Context, choice: ModelAnswer) -> Answer:
         facts=context.facts,
         calculation=context.calculation,
         sources=context.sources,
-        text=COPY[choice.explanation_code],
+        text=wording(choice.explanation_code, context.language, COPY),
     )
 
 
@@ -281,9 +298,9 @@ class ContextBuilder:
         self.observations = observations
         self.trends = TrendService(observations)
 
-    def build(self, question: str, history: list[str], current: AuthenticatedRequest) -> Context:
+    def build(self, question: str, history: list[str], current: AuthenticatedRequest, language: Language = "en") -> Context:
         intent = route(question, history)
-        context = Context(question, history[-4:], intent.code)
+        context = Context(question, history[-4:], intent.code, language=language)
         if intent.kind == "rules":
             return context
         if intent.kind == "trend":

@@ -99,6 +99,10 @@ class ModelAnswer(StrictModel):
     follow_up: Literal["professional_context"]
 
 
+class MultilingualModelAnswer(ModelAnswer):
+    response_language: Literal["en", "hi", "hinglish"]
+
+
 class Provenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
     evidence_id: str
@@ -114,7 +118,7 @@ class Provenance(BaseModel):
 class Answer(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     selection: Literal["latest_uploaded_report", "recent_metric", "period", "none"]
-    choice: ModelAnswer
+    choice: MultilingualModelAnswer | ModelAnswer
     facts: list[AssistantFact] = Field(max_length=20)
     calculation: Calculation | None
     sources: list[Provenance] = Field(max_length=20)
@@ -137,8 +141,9 @@ class Message(BaseModel):
     error_category: str | None
     provider: Literal["gemini", "mock-test", "rules"] | None
     model: Literal["gemini-3.8-flash", "deterministic-test", "rules-v1"] | None
-    prompt_version: Literal["assistant-evidence-v1"]
-    schema_version: Literal["assistant-closed-v1"]
+    prompt_version: Literal["assistant-evidence-v1", "assistant-evidence-v2"]
+    schema_version: Literal["assistant-closed-v1", "assistant-closed-v2"]
+    response_language: Literal["en", "hi", "hinglish"] = "en"
     created_at: AwareDatetime
 
 

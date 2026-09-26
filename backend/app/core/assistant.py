@@ -5,11 +5,12 @@ from typing import Any
 from uuid import UUID
 
 from app.core.assistant_context import COPY, Context, ContextBuilder, render, validate_answer
+from app.core.assistant_language import explicit_language, wording
 from app.core.auth_service import AuthenticatedRequest
 from app.core.errors import ApiProblem
 from app.core.explanation_provider import AssistantProvider, assistant_request
 from app.core.observations import ObservationService
-from app.schemas.assistant import ConversationList, SendMessage, Thread
+from app.schemas.assistant import ConversationList, MultilingualModelAnswer, SendMessage, Thread
 
 
 class AssistantService:
@@ -51,6 +52,9 @@ class AssistantService:
             if len({m.id for m in result.messages}) != len(result.messages):
                 raise ValueError
             for raw, message in zip(value["messages"], result.messages, strict=True):
+                legacy = message.schema_version == "assistant-closed-v1"
+                if message.prompt_version != ("assistant-evidence-v1" if legacy else "assistant-evidence-v2") or (legacy and message.response_language != "en"):
+                    raise ValueError
                 if (
                     raw["user_id"] != str(current.identity.user_id)
                     or message.conversation_id != result.conversation.id
@@ -69,9 +73,15 @@ class AssistantService:
                             answer.facts,
                             answer.calculation,
                             answer.sources,
+                            message.response_language,
                         )
-                        validate_answer(answer.choice.model_dump(), context)
-                        if answer.text != COPY[answer.choice.explanation_code]:
+                        if legacy == isinstance(answer.choice, MultilingualModelAnswer):
+                            raise ValueError
+                        choice = answer.choice.model_dump()
+                        if legacy:
+                            choice["response_language"] = "en"
+                        validate_answer(choice, context)
+                        if answer.text != wording(answer.choice.explanation_code, message.response_language, COPY):
                             raise ValueError
                         if [s.evidence_id for s in answer.sources] != [
                             f.evidence_id for f in answer.facts
@@ -123,11 +133,12 @@ class AssistantService:
         self, identifier: UUID, body: SendMessage, current: AuthenticatedRequest
     ) -> Thread:
         value = await asyncio.to_thread(
-            self.rpc, "request", {"id": str(identifier), **body.model_dump(mode="json")}, current
+            self.rpc, "request", {"id": str(identifier), **body.model_dump(mode="json"), "response_language": explicit_language(body.content)}, current
         )
         thread = self.thread(value, current, identifier)
         if value.get("created") is not True:
             return thread  # Replay never starts a second generation, even after failure.
+        language = next(m.response_language for m in thread.messages if str(m.id) == value["message_id"])
         history = [m.content for m in thread.messages if m.role == "user" and m.content][:-1][-4:]
         payload: dict[str, object] = {
             "id": str(identifier),
@@ -140,7 +151,7 @@ class AssistantService:
         try:
             async with asyncio.timeout(60):
                 context = await asyncio.to_thread(
-                    self.builder.build, body.content, history, current
+                    self.builder.build, body.content, history, current, language
                 )
                 if context.code in (
                     "sources",

@@ -84,11 +84,11 @@ class AssistantRequest:
 
 def assistant_request(context: "Context") -> AssistantRequest:
     from app.core.assistant_context import PROMPT
-    from app.schemas.assistant import ModelAnswer
+    from app.schemas.assistant import MultilingualModelAnswer
 
     # Only the serialized, minimized view crosses the provider boundary.
     # The source map and database/report identifiers remain in the service.
-    return AssistantRequest(PROMPT, context.model_input(), ModelAnswer.model_json_schema())
+    return AssistantRequest(PROMPT, context.model_input(), MultilingualModelAnswer.model_json_schema())
 
 
 class LockedAssistantCapability:

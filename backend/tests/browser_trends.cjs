@@ -52,12 +52,15 @@ async function choose(metric, unit) {
     return route.continue();
   });
   page = await context.newPage(); watch(page);
-  stage = 'sign in and real empty Trends state';
+  stage = 'sign in and truthful owned Trends state';
   await page.goto('http://127.0.0.1:5173/trends');
   await page.getByLabel('Email address', { exact: true }).fill(config.TEST_USER_A_EMAIL);
   await page.getByLabel('Password', { exact: true }).fill(config.TEST_USER_A_PASSWORD);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByText('Every trend starts with observations.', { exact: true }).waitFor({ timeout: 30000 });
+  await page.getByRole('heading', { name: 'Your health trends', exact: true }).waitFor({ timeout: 30000 });
+  const originalCatalog = await page.evaluate(async () => (await (await fetch('/api/trends/catalog')).json()));
+  if (originalCatalog.series.length) await page.locator('#trend-metric-label').waitFor();
+  else await page.getByText('Every trend starts with observations.', { exact: true }).waitFor();
   originalTimezone = await page.evaluate(async () => (await (await fetch('/api/settings')).json()).timezone);
   assert.equal((await write(page, 'PATCH', '/settings', { timezone: 'UTC' })).status, 200); pass();
 

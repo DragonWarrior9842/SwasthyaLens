@@ -12,9 +12,10 @@ const fixture = execFileSync(python, ['-c', 'import sys; from tests import extra
 const output = path.join(root, '.cache/qa/phase6');
 fs.mkdirSync(output, { recursive: true });
 let browser, page, stage = 'launch';
+const fixtureName = 'qa-phase6-' + require('node:crypto').randomUUID() + '.pdf';
 const checks = [], created = new Set(), manuals = new Set();
 const passed = () => { checks.push(stage); console.log('PASS: ' + stage); };
-const report = () => page.locator('.report-row').filter({ has: page.getByRole('heading', { name: 'qa-parameters.pdf', exact: true }) });
+const report = () => page.locator('.report-row').filter({ has: page.getByRole('heading', { name: fixtureName, exact: true }) });
 const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglobin', exact: true });
 (async () => {
   browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -30,10 +31,10 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('heading', { name: 'Upload a report', exact: true }).waitFor({ timeout: 30000 });
   await page.goto('http://127.0.0.1:5173/');
-  await page.getByText('No health observations yet.', { exact: true }).waitFor();
-  assert.equal(await page.locator('.overview-counts dd').nth(2).textContent(), '0');
+  await page.locator('.overview-counts dd').nth(2).waitFor();
+  const originalCount = Number(await page.locator('.overview-counts dd').nth(2).textContent());
   await page.goto('http://127.0.0.1:5173/reports');
-  await page.locator('#report-file').setInputFiles({ name: 'qa-parameters.pdf', mimeType: 'application/pdf', buffer: fixture });
+  await page.locator('#report-file').setInputFiles({ name: fixtureName, mimeType: 'application/pdf', buffer: fixture });
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Upload report', exact: true }).click();
   await report().getByText('Uploaded', { exact: true }).waitFor({ timeout: 30000 }); passed();
@@ -70,7 +71,7 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await candidate().getByRole('button', { name: 'Published to health history', exact: true }).waitFor();
   await page.goto('http://127.0.0.1:5173/');
   await page.getByText('Hemoglobin: 13.21 g/dL', { exact: true }).waitFor();
-  assert.equal(await page.locator('.overview-counts dd').nth(2).textContent(), '1'); passed();
+  assert.equal(await page.locator('.overview-counts dd').nth(2).textContent(), String(originalCount + 1)); passed();
   stage = 'history refresh and source evidence download';
   await page.getByRole('link', { name: 'Open health history', exact: true }).click();
   let hb = page.getByRole('article', { name: 'Observation Hemoglobin', exact: true });
@@ -81,7 +82,7 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   assert.ok((await hb.textContent()).includes('2020-01-02'));
   const downloadEvent = page.waitForEvent('download');
   await hb.getByRole('button', { name: 'Download source report' }).click();
-  assert.equal((await downloadEvent).suggestedFilename(), 'qa-parameters.pdf');
+  assert.equal((await downloadEvent).suggestedFilename(), fixtureName);
   await page.reload(); await hb.waitFor(); passed();
   stage = 'manual entry, correction and audit';
   let form = page.getByRole('form', { name: 'Add manual measurement', exact: true });
@@ -107,7 +108,7 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await page.setViewportSize({ width: 1440, height: 1100 }); passed();
   const inspectCandidate = async target => {
     await target.goto('http://127.0.0.1:5173/reports');
-    const row = target.locator('.report-row').filter({ has: target.getByRole('heading', { name: 'qa-parameters.pdf', exact: true }) });
+    const row = target.locator('.report-row').filter({ has: target.getByRole('heading', { name: fixtureName, exact: true }) });
     await row.getByRole('button', { name: 'Parameter candidates', exact: true }).click();
     await row.getByRole('button', { name: 'Inspect parameter attempt 1', exact: true }).click();
     return row.getByRole('article', { name: 'Candidate Hemoglobin', exact: true });
@@ -120,6 +121,9 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await candidate().getByText('Corrected by you', { exact: true }).waitFor();
   await page.goto('http://127.0.0.1:5173/history');
   await weight.waitFor(); assert.equal(await hb.count(), 0);
+  // Scope inactive revisions to this run's report; other owned reports may
+  // retain their own superseded Hemoglobin observations.
+  await page.goto('http://127.0.0.1:5173/history?report_id=' + [...created][0]);
   await page.getByLabel('Include inactive observations').check();
   await page.getByRole('button', { name: 'Apply filters' }).click();
   await hb.waitFor(); assert.ok((await hb.textContent()).includes('superseded'));
@@ -151,8 +155,14 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   stage = 'deletion: await report removal';
   await report().waitFor({ state: 'detached', timeout: 30000 });
   stage = 'deletion: unrelated manual survives';
+  const removedSource = await page.evaluate(async id => {
+    const response = await fetch('/api/observations?include_inactive=true&report_id=' + id);
+    const body = await response.json();
+    return { status: response.status, count: body.items?.length };
+  }, [...created][0]);
+  assert.ok(removedSource.status === 404 || (removedSource.status === 200 && removedSource.count === 0));
   await page.goto('http://127.0.0.1:5173/history?include_inactive=true');
-  await weight.waitFor(); assert.equal(await hb.count(), 0);
+  await weight.waitFor();
   stage = 'deletion: remove manual fixture';
   await weight.getByRole('button', { name: 'Delete measurement', exact: true }).click();
   const manualDeleted = page.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname.startsWith('/api/observations/'));
@@ -161,17 +171,17 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   assert.equal((await manualDeleted).status(), 200);
   stage = 'deletion: await refreshed empty history';
   await weight.waitFor({ state: 'detached' });
-  await page.getByText('No observations match this view. Upload and review a report or add a supported measurement.', { exact: true }).waitFor();
-  stage = 'deletion: overview returns to empty';
+  if (originalCount === 0) await page.getByText('No observations match this view. Upload and review a report or add a supported measurement.', { exact: true }).waitFor();
+  stage = 'deletion: overview returns to original owned state';
   await page.goto('http://127.0.0.1:5173/');
-  await page.getByText('No health observations yet.', { exact: true }).waitFor();
-  assert.equal(await page.locator('.overview-counts dd').nth(2).textContent(), '0'); passed();
+  await page.locator('.overview-counts dd').nth(2).waitFor();
+  assert.equal(await page.locator('.overview-counts dd').nth(2).textContent(), String(originalCount)); passed();
   stage = 'logout and clean browser runtime';
   assert.equal(errors, 0);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.waitForURL('**/auth/sign-in'); passed();
   fs.writeFileSync(path.join(output, 'browser-results.json'), JSON.stringify({ checks, passed: checks.length }, null, 2));
-})().catch(error => { console.error('FAIL: ' + stage + ' ' + error.name + ' (account details suppressed)'); process.exitCode = 1; }).finally(async () => {
+})().catch(error => { console.error('FAIL: ' + stage + ' ' + error.name + (String(error.message).includes('strict mode violation') ? ' strict locator' : '') + ' (account details suppressed)'); process.exitCode = 1; }).finally(async () => {
   if (page && !page.isClosed()) await page.evaluate(async ({ reports, manuals }) => {
     const csrf = (await (await fetch('/api/auth/csrf')).json()).csrf_token;
     const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf };

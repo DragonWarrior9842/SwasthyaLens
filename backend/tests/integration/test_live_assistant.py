@@ -441,7 +441,17 @@ def test_live_assistant_report_publication_correction_and_deletion(
                     "messages"
                 ]
             )
-            assert ask("latest TSH")["choice"]["explanation_code"] == "no_data"  # type: ignore[index]
+            remaining = ask("latest TSH")
+            # A dedicated development account can retain other owned reports.
+            # Deleting this fixture must remove its evidence, not unrelated history.
+            assert all(
+                s["report_id"] != report
+                for s in cast(list[dict[str, object]], remaining["sources"])
+            )
+            if not remaining["facts"]:
+                assert remaining["choice"]["explanation_code"] == "no_data"  # type: ignore[index]
+            else:
+                assert remaining["choice"]["explanation_code"] == "sources"  # type: ignore[index]
         finally:
             if conversation:
                 user.write("DELETE", f"/assistant/conversations/{conversation}", {})

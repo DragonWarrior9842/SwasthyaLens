@@ -48,9 +48,10 @@ class ProfilePatch(InputModel):
 
 class SettingsPatch(InputModel):
     preferred_language: Literal["en", "hi"] | None = None
+    assistant_language: Literal["en", "hi", "hinglish"] | None = None
     timezone: Annotated[str | None, Field(min_length=1, max_length=64)] = None
 
-    @field_validator("preferred_language", "timezone")
+    @field_validator("preferred_language", "assistant_language", "timezone")
     @classmethod
     def reject_null(cls, value: str | None) -> str:
         if value is None:
@@ -78,6 +79,7 @@ class Profile(BaseModel):
 class UserSettings(BaseModel):
     user_id: UUID
     preferred_language: Literal["en", "hi"]
+    assistant_language: Literal["en", "hi", "hinglish"] = "en"
     timezone: str
     created_at: datetime
     updated_at: datetime
