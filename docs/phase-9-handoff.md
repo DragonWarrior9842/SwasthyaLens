@@ -5,6 +5,10 @@ contract. Evidence-bearing generation is evaluated through an explicitly injecte
 deterministic mock. **Live provider acceptance remains externally blocked.** The normal
 application reports unavailable AI answers; it does not substitute the mock.
 
+**Phase 9 implementation and mock/synthetic acceptance are complete.** Final checks
+passed: 277 frontend tests, 491 backend/local tests, 11 live Supabase tests, 18 SQL
+verification scripts and 91 browser groups. These totals do not imply live AI acceptance.
+
 Phase 7 remains **IMPLEMENTATION COMPLETE / LIVE GEMINI ACCEPTANCE BLOCKED BY PROVIDER
 AVAILABILITY / GEMINI ATTEMPTS USED: 2/20**. No Gemini/OpenAI request, model switch,
 billing change or retry was made for Phase 9. `RUN_AI_INTEGRATION` remains unset.
@@ -293,8 +297,8 @@ copied text. Source links always recheck current authorization/availability.
 
 ## 22. Real two-user results
 
-Both new synthetic Supabase tests passed individually and in the final full-suite run
-through their completion points. A/B and B/A list/read/send/delete and direct evidence
+Both new synthetic Supabase tests passed individually and in the final full-suite run.
+A/B and B/A list/read/send/delete and direct evidence
 isolation are verified. Revoked access fails through the API and RLS. Genuine Supabase
 auth, persistence and source lifecycle are exercised with an injected offline AI mock.
 
@@ -328,13 +332,20 @@ the complete passing run.
 
 ## 25. Backend checks
 
-Ruff, format (96 files) and mypy (93 files) passed. Final normal-suite result is recorded
-after the last added injection cases; the earlier complete run passed 476 tests. Nine
-explicit local OCR regression tests passed separately. Existing Starlette/AnyIO
-deprecation warnings remain. A sandbox cache failure required an unrestricted local
-check rerun; no dependency change or validation suppression was used.
+Ruff, format (96 files), mypy (93 files) and dependency consistency passed. The final
+normal suite passed **482 tests**, with the 11 live Supabase and nine local OCR tests
+skipped behind their explicit gates. The nine OCR regression tests passed separately:
+**491 offline/local tests passed in total**. Existing Starlette/AnyIO deprecation warnings
+remain. Sandbox cache/temp-directory restrictions required an unrestricted local check
+rerun; no dependency change or validation suppression was used.
 
 ## 26. SQL/live regressions
+
+Before implementation, the audit, Phase 1–8 handoffs, README and actual repository
+contracts were reviewed. Baseline frontend lint/typecheck, 247 tests and build passed;
+backend Ruff/format/mypy, 422 normal tests plus nine local OCR tests passed. The baseline
+also passed nine live Supabase tests, sixteen SQL scripts and 78 browser groups. These
+baseline results are distinct from the expanded final results below.
 
 All **18 SQL verification scripts passed** after the Phase 9 migration, including prior
 auth/report/extraction/parameter/observation/explanation/trend scripts and new assistant
@@ -342,10 +353,11 @@ schema/lifecycle checks. Lifecycle fixtures rolled back. They cover forced RLS/g
 request replay, concurrency denial, cross-owner operations, version invalidation,
 owner/parent integrity, session revocation and cascade deletion.
 
-The final full **11-test live Supabase regression** is tracked in ignored
-`.cache/qa/phase9/live-acceptance.log`; completion status will be finalized before handoff.
-It covers all prior phases plus two new assistant scenarios. No SQL verification or
-browser fixture runner runs concurrently with that suite. No live AI test is included.
+The final full live Supabase regression passed **11 tests in 466.51 seconds**, exit 0,
+with two existing upstream deprecation warnings. The ignored local record is
+`.cache/qa/phase9/live-acceptance.log`. It covers all prior phases plus two new assistant
+scenarios. SQL verification and browser fixture runners were run separately from that
+suite. No live AI test was included. The integration flag was unset afterward.
 
 ## 27. Browser regression results
 
@@ -355,10 +367,14 @@ test-labeled exact evidence, malformed response rejection, stale cleanup, mobile
 deletion and logout, with zero AI requests/runtime errors. Synthetic screenshots were
 visually reviewed. Result JSON/screenshots are ignored local QA artifacts.
 
-The established 78 groups passed at baseline; final post-change rerun completion is
-recorded before handoff: auth 15, reports 11, extraction 7, parameters 8, observations 12,
-mock explanations 12, trends 13. A baseline trend harness exhausted its intended read
-window; its final reload now waits for that existing limit. No app limit was weakened.
+All **78 established browser groups passed again after implementation**: auth 15,
+reports 11, extraction 7, parameters 8, observations 12, mock explanations 12 and
+trends 13. Together with the new assistant suite, **91 groups passed**. The extraction
+runner initially timed out at sign-in before its checks began; its isolated rerun passed
+all seven groups. That initial run is not counted as a success. A baseline trend harness
+exhausted its intended read window; its final reload now waits for that existing limit.
+No app limit was weakened. The final trend test's simulated 503 verifies read-error
+clearing/recovery and is not a live AI response.
 
 ## 28. Gemini blocker
 
