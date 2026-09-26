@@ -53,7 +53,9 @@ class AssistantService:
                 raise ValueError
             for raw, message in zip(value["messages"], result.messages, strict=True):
                 legacy = message.schema_version == "assistant-closed-v1"
-                if message.prompt_version != ("assistant-evidence-v1" if legacy else "assistant-evidence-v2") or (legacy and message.response_language != "en"):
+                if message.prompt_version != (
+                    "assistant-evidence-v1" if legacy else "assistant-evidence-v2"
+                ) or (legacy and message.response_language != "en"):
                     raise ValueError
                 if (
                     raw["user_id"] != str(current.identity.user_id)
@@ -81,7 +83,9 @@ class AssistantService:
                         if legacy:
                             choice["response_language"] = "en"
                         validate_answer(choice, context)
-                        if answer.text != wording(answer.choice.explanation_code, message.response_language, COPY):
+                        if answer.text != wording(
+                            answer.choice.explanation_code, message.response_language, COPY
+                        ):
                             raise ValueError
                         if [s.evidence_id for s in answer.sources] != [
                             f.evidence_id for f in answer.facts
@@ -133,12 +137,21 @@ class AssistantService:
         self, identifier: UUID, body: SendMessage, current: AuthenticatedRequest
     ) -> Thread:
         value = await asyncio.to_thread(
-            self.rpc, "request", {"id": str(identifier), **body.model_dump(mode="json"), "response_language": explicit_language(body.content)}, current
+            self.rpc,
+            "request",
+            {
+                "id": str(identifier),
+                **body.model_dump(mode="json"),
+                "response_language": explicit_language(body.content),
+            },
+            current,
         )
         thread = self.thread(value, current, identifier)
         if value.get("created") is not True:
             return thread  # Replay never starts a second generation, even after failure.
-        language = next(m.response_language for m in thread.messages if str(m.id) == value["message_id"])
+        language = next(
+            m.response_language for m in thread.messages if str(m.id) == value["message_id"]
+        )
         history = [m.content for m in thread.messages if m.role == "user" and m.content][:-1][-4:]
         payload: dict[str, object] = {
             "id": str(identifier),

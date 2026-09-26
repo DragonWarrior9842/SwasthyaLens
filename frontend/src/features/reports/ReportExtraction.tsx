@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n/core'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/Button'
 import { errorMessage } from '../../services/api-client'
@@ -20,6 +21,7 @@ const failures: Record<string, string> = {
 }
 
 export function ReportExtraction({ reportId, ownerId, onAuthFailure }: { reportId: string; ownerId: string; onAuthFailure: (error: unknown) => void }) {
+  const { t, copy } = useI18n()
   const [open, setOpen] = useState(false)
   const [runs, setRuns] = useState<ProcessingRun[] | null>(null)
   const [result, setResult] = useState<ExtractionResult | null>(null)
@@ -74,30 +76,30 @@ export function ReportExtraction({ reportId, ownerId, onAuthFailure }: { reportI
   }
   const active = runs?.some(run => run.status === 'queued' || run.status === 'processing')
   return <div className="report-extraction">
-    <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => { setOpen(value => !value); setResult(null) }}>{open ? 'Hide text extraction' : 'Text extraction'}</Button>
+    <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => { setOpen(value => !value); setResult(null) }}>{open ? t("Hide text extraction") : t("Text extraction")}</Button>
     {open && <div className="report-extraction__content">
-      <p>The original report is the source of truth. Extracted text may contain errors and is not medical interpretation.</p>
-      {runs === null && !error && <p role="status">Loading extraction status…</p>}
+      <p>{t("The original report is the source of truth. Extracted text may contain errors and is not medical interpretation.")}</p>
+      {runs === null && !error && <p role="status">{t("Loading extraction status…")}</p>}
       {runs && <>
-        <p role="status">{runs[0] ? labels[runs[0].status] : 'Uploaded · Text has not been extracted.'}</p>
-        <Button size="sm" variant="secondary" disabled={busy || active || runs.length >= 3} onClick={() => { void start() }}>{runs.length === 0 ? 'Extract text' : runs[0]?.status === 'failed' ? 'Retry text extraction' : 'Extract again'}</Button>
-        {runs.length >= 3 && <p>Three extraction attempts have been used for this report.</p>}
+        <p role="status">{runs[0] ? copy(labels[runs[0].status]) : t("Uploaded · Text has not been extracted.")}</p>
+        <Button size="sm" variant="secondary" disabled={busy || active || runs.length >= 3} onClick={() => { void start() }}>{runs.length === 0 ? t("Extract text") : runs[0]?.status === 'failed' ? t("Retry text extraction") : t("Extract again")}</Button>
+        {runs.length >= 3 && <p>{t("Three extraction attempts have been used for this report.")}</p>}
         <ol className="extraction-attempts">{runs.map(run => <li key={run.id}>
-          <span>Attempt {run.attempt} · {labels[run.status]}</span>
-          {run.error_category && <p>{failures[run.error_category]}</p>}
-          {run.status === 'completed' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void inspect(run.id) }}>View extracted text · Attempt {run.attempt}</Button>}
+          <span>{"" + t("Attempt") + " "}{run.attempt} · {copy(labels[run.status])}</span>
+          {run.error_category && <p>{copy(failures[run.error_category] ?? 'Text extraction failed. Please try again.')}</p>}
+          {run.status === 'completed' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void inspect(run.id) }}>{"" + t("View extracted text · Attempt") + " "}{run.attempt}</Button>}
         </li>)}</ol>
       </>}
-      {error && <div role="alert"><p className="form-error">{error}</p><Button size="sm" variant="ghost" onClick={() => setRevision(value => value + 1)}>Refresh extraction status</Button></div>}
-      {result && <section aria-label="Extracted text">
-        <h4>Extracted text · Attempt {result.run.attempt}</h4>
+      {error && <div role="alert"><p className="form-error">{copy(error)}</p><Button size="sm" variant="ghost" onClick={() => setRevision(value => value + 1)}>{t("Refresh extraction status")}</Button></div>}
+      {result && <section aria-label={t("Extracted text")}>
+        <h4>{"" + t("Extracted text · Attempt") + " "}{result.run.attempt}</h4>
         <p className="subtle-label">{result.run.processor}</p>
         {result.pages.map(page => <section className="extracted-page" key={page.page_number}>
-          <h4>Page {page.page_number} · {page.method === 'native_text' ? 'Native PDF text' : 'OCR'}</h4>
-          {page.confidence !== null && <p>Mean OCR word score: {page.confidence.toFixed(1)}/100. This is an engine score, not a guarantee of accuracy.</p>}
-          {page.warnings.includes('orientation_uncertain') && <p>Page orientation could not be confirmed.</p>}
-          <p>Compare columns, numbers and units with the original file.</p>
-          <pre>{page.text || 'No text was recovered on this page.'}</pre>
+          <h4>{"" + t("Page") + " "}{page.page_number} · {page.method === 'native_text' ? t("Native PDF text") : 'OCR'}</h4>
+          {page.confidence !== null && <p>{"" + t("Mean OCR word score:") + " "}{page.confidence.toFixed(1)}{t("/100. This is an engine score, not a guarantee of accuracy.")}</p>}
+          {page.warnings.includes('orientation_uncertain') && <p>{t("Page orientation could not be confirmed.")}</p>}
+          <p>{t("Compare columns, numbers and units with the original file.")}</p>
+          <pre>{page.text || t("No text was recovered on this page.")}</pre>
         </section>)}
       </section>}
     </div>}

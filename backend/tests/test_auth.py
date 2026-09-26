@@ -183,10 +183,11 @@ def test_profile_and_settings_are_owned_allowlisted_and_real_transport_updates(
     response = account_client.patch(
         "/settings",
         headers=headers(account_client),
-        json={"preferred_language": "hi", "timezone": "Asia/Kolkata"},
+        json={"preferred_language": "hi", "assistant_language": "hinglish", "timezone": "Asia/Kolkata"},
     )
     assert response.status_code == 200
     assert account_client.get("/settings").json()["preferred_language"] == "hi"
+    assert account_client.get("/settings").json()["assistant_language"] == "hinglish"
     assert provider.timezone == "Asia/Kolkata"
 
 
@@ -202,6 +203,9 @@ def test_profile_and_settings_are_owned_allowlisted_and_real_transport_updates(
         ("/settings", {"user_id": "forged"}),
         ("/settings", {"updated_at": "2026-01-01"}),
         ("/settings", {"preferred_language": None}),
+        ("/settings", {"assistant_language": None}),
+        ("/settings", {"assistant_language": "fr"}),
+        ("/settings", {"preferred_language": "hinglish"}),
         ("/settings", {"timezone": None}),
     ],
 )

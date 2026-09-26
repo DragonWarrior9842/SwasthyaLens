@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n/core'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/Button'
 import { PublishObservation } from '../observations/PublishObservation'
@@ -11,6 +12,7 @@ type Props = { reportId: string; ownerId: string; onAuthFailure: (error: unknown
 const reviewLabel = { confirmed: 'Confirmed by you', corrected: 'Corrected by you', rejected: 'Rejected by you' }
 
 export function ReportParameters({ reportId, ownerId, onAuthFailure }: Props) {
+  const { t, copy } = useI18n()
   const [open, setOpen] = useState(false)
   const [sources, setSources] = useState<ProcessingRun[]>([])
   const [source, setSource] = useState('')
@@ -55,27 +57,27 @@ export function ReportParameters({ reportId, ownerId, onAuthFailure }: Props) {
     if (run.status === 'completed') await inspect(run.id, signal)
   }
   return <div className="report-extraction">
-    <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen(value => !value)}>{open ? 'Hide parameter candidates' : 'Parameter candidates'}</Button>
-    {open && <section className="report-extraction__content" aria-label="Parameter candidates">
-      <h4>Extracted parameter candidates</h4>
-      <p>Compare every candidate with the original report. Personal review does not establish clinical validity. After review, explicitly publish eligible values to add them to health history.</p>
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setRefresh(value => value + 1); setResult(null) }}>Refresh parameter status</Button>
-      {sources.length === 0 ? <p>Complete text extraction first, then refresh parameter status.</p> : <>
-        <label className="parameter-source">Source text attempt<select value={source} disabled={busy} onChange={event => { setSource(event.target.value); requestKey.current = null }}>
-          {sources.map(run => <option key={run.id} value={run.id}>Text attempt {run.attempt}</option>)}
+    <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen(value => !value)}>{open ? t("Hide parameter candidates") : t("Parameter candidates")}</Button>
+    {open && <section className="report-extraction__content" aria-label={t("Parameter candidates")}>
+      <h4>{t("Extracted parameter candidates")}</h4>
+      <p>{t("Compare every candidate with the original report. Personal review does not establish clinical validity. After review, explicitly publish eligible values to add them to health history.")}</p>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setRefresh(value => value + 1); setResult(null) }}>{t("Refresh parameter status")}</Button>
+      {sources.length === 0 ? <p>{t("Complete text extraction first, then refresh parameter status.")}</p> : <>
+        <label className="parameter-source">{t("Source text attempt")}<select value={source} disabled={busy} onChange={event => { setSource(event.target.value); requestKey.current = null }}>
+          {sources.map(run => <option key={run.id} value={run.id}>{"" + t("Text attempt") + " "}{run.attempt}</option>)}
         </select></label>
-        <Button size="sm" variant="secondary" disabled={busy || !source || runs.some(r => r.status === 'processing') || runs.filter(r => r.source_run_id === source).length >= 3} onClick={() => { void perform(start) }}>{busy ? 'Loading candidates…' : 'Extract parameters'}</Button>
-        <p>Up to three parameter attempts per text attempt. Prior results are retained.</p>
+        <Button size="sm" variant="secondary" disabled={busy || !source || runs.some(r => r.status === 'processing') || runs.filter(r => r.source_run_id === source).length >= 3} onClick={() => { void perform(start) }}>{busy ? t("Loading candidates…") : t("Extract parameters")}</Button>
+        <p>{t("Up to three parameter attempts per text attempt. Prior results are retained.")}</p>
       </>}
       <ol className="extraction-attempts">{runs.map(run => <li key={run.id}>
-        <span>Parameter attempt {run.attempt} · Text attempt {sources.find(s => s.id === run.source_run_id)?.attempt ?? 'unavailable'} · {run.status === 'completed' ? `Parameters extracted (${run.candidate_count})` : run.status === 'processing' ? 'Extracting parameters · Refresh to check' : `Extraction failed (${run.error_category})`}</span>
-        {run.status === 'completed' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(signal => inspect(run.id, signal)) }}>Inspect parameter attempt {run.attempt}</Button>}
+        <span>{"" + t("Parameter attempt") + " "}{run.attempt}{" " + t("· Text attempt") + " "}{sources.find(s => s.id === run.source_run_id)?.attempt ?? t("unavailable")} · {run.status === 'completed' ? t("Parameters extracted ({p0})", { p0: run.candidate_count }) : run.status === 'processing' ? t("Extracting parameters · Refresh to check") : t("Extraction failed ({p0})", { p0: run.error_category })}</span>
+        {run.status === 'completed' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(signal => inspect(run.id, signal)) }}>{"" + t("Inspect parameter attempt") + " "}{run.attempt}</Button>}
       </li>)}</ol>
-      {error && <p className="form-error" role="alert">{error}</p>}
-      {result && <section aria-label="Extracted candidates">
+      {error && <p className="form-error" role="alert">{copy(error)}</p>}
+      {result && <section aria-label={t("Extracted candidates")}>
         <p>{result.run.extractor_version} · {result.run.rules_version}</p>
-        {result.run.warnings.includes('unparsed_rows') && <p>Some rows could not be parsed reliably. Inspect the source for missing parameters.</p>}
-        {result.candidates.length === 0 && <p>Unable to reliably extract parameter candidates from this text.</p>}
+        {result.run.warnings.includes('unparsed_rows') && <p>{t("Some rows could not be parsed reliably. Inspect the source for missing parameters.")}</p>}
+        {result.candidates.length === 0 && <p>{t("Unable to reliably extract parameter candidates from this text.")}</p>}
         {result.candidates.map(candidate => <CandidateReview key={`${result.run.id}-${candidate.id}-${candidate.reviews[0]?.revision ?? 0}`} candidate={candidate} reportId={reportId} ownerId={ownerId} sourceRun={result.run.source_run_id} onAuthFailure={onAuthFailure} />)}
       </section>}
     </section>}
@@ -83,6 +85,7 @@ export function ReportParameters({ reportId, ownerId, onAuthFailure }: Props) {
 }
 
 function CandidateReview({ candidate, reportId, ownerId, sourceRun, onAuthFailure }: Props & { candidate: Candidate; sourceRun: string }) {
+  const { t, copy } = useI18n()
   const [reviews, setReviews] = useState(candidate.reviews)
   const [edit, setEdit] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -107,25 +110,25 @@ function CandidateReview({ candidate, reportId, ownerId, sourceRun, onAuthFailur
     const review = await reviewParameter(reportId, candidate.id, body, ownerId, signal)
     if (!signal.aborted) { setReviews([review, ...reviews.filter(r => r.revision !== review.revision)]); setEdit(false); pending.current = null }
   }
-  return <article className="parameter-candidate" aria-label={`Candidate ${candidate.content.fields.original_label}`}>
+  return <article className="parameter-candidate" aria-label={t("Candidate {p0}", { p0: candidate.content.fields.original_label })}>
     <h4>{value.original_label}</h4>
-    <dl className="parameter-fields"><div><dt>Value</dt><dd>{value.raw_value ?? 'Not reported'}</dd></div><div><dt>Unit</dt><dd>{value.original_unit ?? 'Not reported'}</dd></div><div><dt>Reference</dt><dd>{value.raw_reference ?? 'Not reported'}</dd></div><div><dt>Source page</dt><dd>{candidate.content.page_number}</dd></div><div><dt>Review status</dt><dd>{latest ? reviewLabel[latest.action] : 'Needs review'}</dd></div></dl>
-    <p>{value.canonical_metric ? `Mapped identity: ${value.canonical_metric}` : 'Unmapped parameter · original label retained'}{value.source_flag ? ` · Printed flag: ${value.source_flag}` : ''}</p>
-    <details><summary>Inspect source and machine result</summary>
-      <p>Source text attempt: {sourceRun} · Page {candidate.content.page_number} · {candidate.content.source_method === 'ocr' ? 'OCR text' : 'Native PDF text'}</p>
+    <dl className="parameter-fields"><div><dt>{t("Value")}</dt><dd>{value.raw_value ?? t("Not reported")}</dd></div><div><dt>{t("Unit")}</dt><dd>{value.original_unit ?? t("Not reported")}</dd></div><div><dt>{t("Reference")}</dt><dd>{value.raw_reference ?? t("Not reported")}</dd></div><div><dt>{t("Source page")}</dt><dd>{candidate.content.page_number}</dd></div><div><dt>{t("Review status")}</dt><dd>{latest ? copy(reviewLabel[latest.action]) : t("Needs review")}</dd></div></dl>
+    <p>{value.canonical_metric ? t("Mapped identity: {p0}", { p0: value.canonical_metric }) : t("Unmapped parameter · original label retained")}{value.source_flag ? t(" · Printed flag: {p0}", { p0: value.source_flag }) : ''}</p>
+    <details><summary>{t("Inspect source and machine result")}</summary>
+      <p>{"" + t("Source text attempt:") + " "}{sourceRun}{" " + t("· Page") + " "}{candidate.content.page_number} · {candidate.content.source_method === 'ocr' ? t("OCR text") : t("Native PDF text")}</p>
       <pre>{candidate.content.source_text}</pre>
-      <p>Machine result: {candidate.content.fields.original_label} · {candidate.content.fields.raw_value ?? 'Not reported'} · {candidate.content.fields.original_unit ?? 'No unit'} · {candidate.content.fields.raw_reference ?? 'No reference'}</p>
-      <p>Source offsets: {candidate.content.source_start}–{candidate.content.source_end} (Unicode characters, end excluded).</p>
-      {candidate.content.ocr_confidence !== null && <p>Source page mean OCR word score: {candidate.content.ocr_confidence.toFixed(1)}/100. This is not candidate accuracy.</p>}
+      <p>{"" + t("Machine result:") + " "}{candidate.content.fields.original_label} · {candidate.content.fields.raw_value ?? t("Not reported")} · {candidate.content.fields.original_unit ?? t("No unit")} · {candidate.content.fields.raw_reference ?? t("No reference")}</p>
+      <p>{"" + t("Source offsets:") + " "}{candidate.content.source_start}–{candidate.content.source_end}{" " + t("(Unicode characters, end excluded).")}</p>
+      {candidate.content.ocr_confidence !== null && <p>{"" + t("Source page mean OCR word score:") + " "}{candidate.content.ocr_confidence.toFixed(1)}{t("/100. This is not candidate accuracy.")}</p>}
       <p>{candidate.content.warnings.map(w => w.replaceAll('_', ' ')).join(' · ')}</p>
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(async signal => { const source = await getExtraction(reportId, sourceRun, ownerId, signal); if (!signal.aborted) setSourceText(source.pages.find(p => p.page_number === candidate.content.page_number)?.text ?? '') }) }}>View source page text</Button>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(async signal => { const source = await getExtraction(reportId, sourceRun, ownerId, signal); if (!signal.aborted) setSourceText(source.pages.find(p => p.page_number === candidate.content.page_number)?.text ?? '') }) }}>{t("View source page text")}</Button>
       {sourceText !== null && <pre>{sourceText}</pre>}
     </details>
     <div className="parameter-actions">
-      <Button size="sm" variant="secondary" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => { void perform(signal => save('confirmed', signal)) }}>Confirm reviewed</Button>
-      <Button size="sm" variant="ghost" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => setEdit(v => !v)}>Correct fields</Button>
-      <Button size="sm" variant="ghost" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => { void perform(signal => save('rejected', signal)) }}>Reject candidate</Button>
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(async signal => { const history = await parameterReviews(reportId, candidate.id, ownerId, signal); if (!signal.aborted) { setReviews(history); setShowHistory(true) } }) }}>Review history</Button>
+      <Button size="sm" variant="secondary" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => { void perform(signal => save('confirmed', signal)) }}>{t("Confirm reviewed")}</Button>
+      <Button size="sm" variant="ghost" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => setEdit(v => !v)}>{t("Correct fields")}</Button>
+      <Button size="sm" variant="ghost" disabled={busy || (latest?.revision ?? 0) >= 20} onClick={() => { void perform(signal => save('rejected', signal)) }}>{t("Reject candidate")}</Button>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => { void perform(async signal => { const history = await parameterReviews(reportId, candidate.id, ownerId, signal); if (!signal.aborted) { setReviews(history); setShowHistory(true) } }) }}>{t("Review history")}</Button>
     </div>
     {latest && <PublishObservation key={latest.revision} reportId={reportId} candidateId={candidate.id} ownerId={ownerId} review={latest} onAuthFailure={onAuthFailure} />}
     {edit && <form className="parameter-correction" onSubmit={event => {
@@ -133,11 +136,11 @@ function CandidateReview({ candidate, reportId, ownerId, sourceRun, onAuthFailur
       const correction: RawFields = { original_label: String(form.get('original_label') ?? ''), raw_value: String(form.get('raw_value') ?? '') || null, original_unit: String(form.get('original_unit') ?? '') || null, raw_reference: String(form.get('raw_reference') ?? '') || null }
       void perform(signal => save('corrected', signal, correction))
     }}>
-      <p>Correction creates a separate revision. The machine result and source stay available.</p>
-      {([['original_label', 'Parameter', 160], ['raw_value', 'Value', 100], ['original_unit', 'Unit', 60], ['raw_reference', 'Reference', 160]] as const).map(([name, label, length]) => <label key={name}>{label}<input name={name} maxLength={length} required={name === 'original_label'} defaultValue={value[name] ?? ''} /></label>)}
-      <Button size="sm" type="submit" disabled={busy}>Save correction</Button>
+      <p>{t("Correction creates a separate revision. The machine result and source stay available.")}</p>
+      {([['original_label', 'Parameter', 160], ['raw_value', 'Value', 100], ['original_unit', 'Unit', 60], ['raw_reference', 'Reference', 160]] as const).map(([name, label, length]) => <label key={name}>{copy(label)}<input name={name} maxLength={length} required={name === 'original_label'} defaultValue={value[name] ?? ''} /></label>)}
+      <Button size="sm" type="submit" disabled={busy}>{t("Save correction")}</Button>
     </form>}
-    {showHistory && <ol aria-label="Review revisions">{reviews.map(review => <li key={review.revision}>Revision {review.revision} · {reviewLabel[review.action]} · {new Date(review.created_at).toLocaleString()} · {review.fields.original_label} · {review.fields.raw_value ?? 'Not reported'} · {review.fields.original_unit ?? 'No unit'} · {review.fields.raw_reference ?? 'No reference'}<br />Reviewer: {review.actor_id}</li>)}{reviews.length === 0 && <li>No personal reviews yet.</li>}</ol>}
-    {error && <p className="form-error" role="alert">{error}</p>}
+    {showHistory && <ol aria-label={t("Review revisions")}>{reviews.map(review => <li key={review.revision}>{"" + t("Revision") + " "}{review.revision} · {copy(reviewLabel[review.action])} · {new Date(review.created_at).toLocaleString()} · {review.fields.original_label} · {review.fields.raw_value ?? t("Not reported")} · {review.fields.original_unit ?? t("No unit")} · {review.fields.raw_reference ?? t("No reference")}<br />{"" + t("Reviewer:") + " "}{review.actor_id}</li>)}{reviews.length === 0 && <li>{t("No personal reviews yet.")}</li>}</ol>}
+    {error && <p className="form-error" role="alert">{copy(error)}</p>}
   </article>
 }

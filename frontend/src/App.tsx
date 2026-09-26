@@ -7,6 +7,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { TrendsPage } from './pages/TrendsPage'
 import { AuthProvider } from './features/auth/AuthProvider'
+import { LocaleProvider } from './i18n/LocaleProvider'
 import { SessionGate } from './features/auth/SessionGate'
 import { AuthPage } from './pages/AuthPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -14,6 +15,7 @@ import { SettingsPage } from './pages/SettingsPage'
 export function App() {
   return (
     <AuthProvider>
+      <LocaleProvider>
       <Routes>
         <Route path="/auth/sign-in" element={<AuthPage mode="sign-in" />} />
         <Route path="/auth/sign-up" element={<AuthPage mode="sign-up" />} />
@@ -30,6 +32,7 @@ export function App() {
           </Route>
         </Route>
       </Routes>
+      </LocaleProvider>
     </AuthProvider>
   )
 }

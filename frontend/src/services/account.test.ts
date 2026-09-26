@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { decodeProfile, decodeSettings, saveProfile, saveSettings } from './account'
 
 const profile = { id: 'b4d0e66a-c0d1-42dc-b495-d1a29acde1c7', display_name: null, created_at: '2026-09-14T00:00:00Z', updated_at: '2026-09-14T00:00:00Z' }
-const settings = { user_id: profile.id, preferred_language: 'en', timezone: 'Asia/Kolkata', created_at: profile.created_at, updated_at: profile.updated_at }
+const settings = { user_id: profile.id, preferred_language: 'en', assistant_language: 'en' as const, timezone: 'Asia/Kolkata', created_at: profile.created_at, updated_at: profile.updated_at }
 const session = { user: { id: profile.id, email: 'owner@example.test' }, expires_at: Math.floor(Date.now() / 1000) + 3600 }
 
 describe('account records', () => {
@@ -26,6 +26,6 @@ describe('account records', () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(session)).mockResolvedValueOnce(Response.json({ csrf_token: 'test-only' })).mockResolvedValueOnce(Response.json(settings))
     vi.stubGlobal('fetch', fetchMock)
     await saveSettings({ ...settings, preferred_language: 'hi' }, profile.id)
-    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/settings', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ preferred_language: 'hi', timezone: settings.timezone }) }))
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/settings', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ preferred_language: 'hi', assistant_language: 'en', timezone: settings.timezone }) }))
   })
 })

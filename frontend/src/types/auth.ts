@@ -13,6 +13,7 @@ export interface Profile {
 export interface UserSettings {
   user_id: string
   preferred_language: 'en' | 'hi'
+  assistant_language: 'en' | 'hi' | 'hinglish'
   timezone: string
   created_at: string
   updated_at: string

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/core'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
@@ -23,6 +24,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 }
 
 function AuthForm({ mode }: { mode: AuthMode }) {
+  const { t, copy } = useI18n()
   const { state, pendingEmail, notice, setPendingEmail, acceptSession, checkSession } = useAuth()
   const [email, setEmail] = useState(pendingEmail)
   const [password, setPassword] = useState('')
@@ -97,67 +99,67 @@ function AuthForm({ mode }: { mode: AuthMode }) {
 
   return (
     <div className="auth-shell">
-      <aside className="auth-story" aria-label="About SwasthyaLens">
+      <aside className="auth-story" aria-label={t("About SwasthyaLens")}>
         <Brand />
         <div className="auth-story__copy">
-          <p className="eyebrow">A LITTLE MORE CLARITY</p>
-          <h2>Your health.<br />Your understanding.</h2>
-          <p>A thoughtful place to bring your health information together, one step at a time.</p>
+          <p className="eyebrow">{t("A LITTLE MORE CLARITY")}</p>
+          <h2>{t("Your health.")}<br />{t("Your understanding.")}</h2>
+          <p>{t("A thoughtful place to bring your health information together, one step at a time.")}</p>
         </div>
-        <p className="auth-story__note">Health information and understanding.<br />Always yours to explore.</p>
+        <p className="auth-story__note">{t("Health information and understanding.")}<br />{t("Always yours to explore.")}</p>
       </aside>
       <main className="auth-main" id="main-content">
         <div className="auth-mobile-brand auth-brand"><Brand /></div>
         <section className="auth-card" aria-labelledby="auth-heading">
-          <p className="eyebrow">SWASTHYALENS · YOUR ACCOUNT</p>
-          <h1 ref={heading} tabIndex={-1} id="auth-heading">{headings[mode]}</h1>
+          <p className="eyebrow">{t("SWASTHYALENS · YOUR ACCOUNT")}</p>
+          <h1 ref={heading} tabIndex={-1} id="auth-heading">{copy(headings[mode])}</h1>
           <p className="auth-description">
-            {mode === 'sign-in' ? 'Sign in to your personal workspace.' : mode === 'sign-up' ? 'Create an account with your email and a strong password.' : 'Enter the six-digit code sent to your email to finish confirming your account.'}
+            {mode === 'sign-in' ? t("Sign in to your personal workspace.") : mode === 'sign-up' ? t("Create an account with your email and a strong password.") : t("Enter the six-digit code sent to your email to finish confirming your account.")}
           </p>
-          {notice && <div className="form-notice" role="status">{notice}</div>}
-          {state.status === 'checking' ? <LoadingState title="Checking your session…" /> : state.status === 'unavailable' ? (
-            <ErrorState title="Account service unavailable" description={state.message} onRetry={() => { void checkSession() }} />
+          {notice && <div className="form-notice" role="status">{copy(notice)}</div>}
+          {state.status === 'checking' ? <LoadingState title={t("Checking your session…")} /> : state.status === 'unavailable' ? (
+            <ErrorState title={t("Account service unavailable")} description={copy(state.message)} onRetry={() => { void checkSession() }} />
           ) : (
             <>
               <form className="account-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
                 <div className="form-field">
-                  <label htmlFor="auth-email">Email address</label>
+                  <label htmlFor="auth-email">{t("Email address")}</label>
                   <input id="auth-email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} />
                 </div>
                 {mode === 'verify-email' ? (
                   <div className="form-field">
-                    <label htmlFor="auth-code">Confirmation code</label>
+                    <label htmlFor="auth-code">{t("Confirmation code")}</label>
                     <input id="auth-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={token} onChange={(event) => setToken(event.target.value.replace(/\D/g, '').slice(0, 6))} disabled={busy} aria-describedby="code-help" />
-                    <p id="code-help">Codes expire. Never share this code with anyone.</p>
+                    <p id="code-help">{t("Codes expire. Never share this code with anyone.")}</p>
                   </div>
                 ) : (
                   <div className="form-field">
-                    <label htmlFor="auth-password">Password</label>
+                    <label htmlFor="auth-password">{t("Password")}</label>
                     <input id="auth-password" name="password" type="password" autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} minLength={mode === 'sign-up' ? 12 : 1} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} aria-describedby={mode === 'sign-up' ? 'password-help' : undefined} />
-                    {mode === 'sign-up' && <p id="password-help">Use at least 12 characters. A unique passphrase works well.</p>}
+                    {mode === 'sign-up' && <p id="password-help">{t("Use at least 12 characters. A unique passphrase works well.")}</p>}
                   </div>
                 )}
-                {error && <div className="form-error" role="alert">{error}</div>}
-                {message && <div className="form-success" role="status">{message}</div>}
-                {confirmationNeeded && <Link className="text-link" to="/auth/verify-email" state={routeState} onClick={() => setPendingEmail(email.trim())}>Enter your email confirmation code</Link>}
+                {error && <div className="form-error" role="alert">{copy(error)}</div>}
+                {message && <div className="form-success" role="status">{copy(message)}</div>}
+                {confirmationNeeded && <Link className="text-link" to="/auth/verify-email" state={routeState} onClick={() => setPendingEmail(email.trim())}>{t("Enter your email confirmation code")}</Link>}
                 <Button type="submit" disabled={busy} className="auth-submit">
-                  {busy ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Confirm email'}
+                  {busy ? t("Please wait…") : mode === 'sign-in' ? t("Sign in") : mode === 'sign-up' ? t("Create account") : t("Confirm email")}
                 </Button>
               </form>
               {mode === 'verify-email' && (
                 <div className="verification-actions">
-                  <Button variant="secondary" disabled={busy || resendAfter > 0 || !email.trim()} onClick={() => { void resend() }}>{resendAfter > 0 ? `Resend available in ${resendAfter}s` : 'Resend confirmation code'}</Button>
-                  <p>Development email delivery is limited to eligible project addresses. If no code arrives, contact the project administrator.</p>
+                  <Button variant="secondary" disabled={busy || resendAfter > 0 || !email.trim()} onClick={() => { void resend() }}>{resendAfter > 0 ? t("Resend available in {p0}s", { p0: resendAfter }) : t("Resend confirmation code")}</Button>
+                  <p>{t("Development email delivery is limited to eligible project addresses. If no code arrives, contact the project administrator.")}</p>
                 </div>
               )}
               <div className="auth-switch">
-                {mode === 'sign-in' ? <>New here? <Link className="text-link" to="/auth/sign-up" state={routeState}>Create an account</Link></> : <>Already have an account? <Link className="text-link" to="/auth/sign-in" state={routeState}>Sign in</Link></>}
+                {mode === 'sign-in' ? <>{"" + t("New here?") + " "}<Link className="text-link" to="/auth/sign-up" state={routeState}>{t("Create an account")}</Link></> : <>{"" + t("Already have an account?") + " "}<Link className="text-link" to="/auth/sign-in" state={routeState}>{t("Sign in")}</Link></>}
               </div>
-              {mode === 'sign-in' && <p className="auth-help">Need help signing in? Contact the project administrator.</p>}
+              {mode === 'sign-in' && <p className="auth-help">{t("Need help signing in? Contact the project administrator.")}</p>}
             </>
           )}
         </section>
-        <p className="auth-disclaimer">SwasthyaLens offers health information, not medical diagnoses.</p>
+        <p className="auth-disclaimer">{t("SwasthyaLens offers health information, not medical diagnoses.")}</p>
       </main>
     </div>
   )

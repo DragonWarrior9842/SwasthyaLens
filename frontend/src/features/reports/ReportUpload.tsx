@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n/core'
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -11,6 +12,7 @@ type UploadPhase = 'idle' | 'selected' | 'reserving' | 'uploading' | 'uploaded' 
 interface Props { ownerId: string; config: ReportConfig; onChange: () => void; onAuthFailure: (error: unknown) => void }
 
 export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props) {
+  const { t, copy } = useI18n()
   const [task, setTask] = useState<UploadTask | null>(null)
   const [phase, setPhase] = useState<UploadPhase>('idle')
   const [permission, setPermission] = useState(false)
@@ -78,7 +80,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
     } catch (failure) {
       if (!active.current) return
       setPhase('failed')
-      setError(`${errorMessage(failure)} Cancellation has not been confirmed. Retry cancellation or delete the report from its history.`)
+      setError(t("{error} Cancellation has not been confirmed. Retry cancellation or delete the report from its history.", { error: copy(errorMessage(failure)) }))
       onAuthFailure(failure)
       onChange()
     } finally { if (operation.current === controller) operation.current = null }
@@ -118,7 +120,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
       controller.signal.throwIfAborted()
       if (!active.current) return
       setPhase('uploaded')
-      setNotice(`${selected.file.name} was uploaded privately. Open Text extraction in report history to extract its text.`)
+      setNotice(t("{name} was uploaded privately. Open Text extraction in report history to extract its text.", { name: selected.file.name }))
       setTask(currentTask.current)
       onChange()
     } catch (failure) {
@@ -127,7 +129,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
         await completeCancellation(currentTask.current)
       } else {
         setPhase('failed')
-        setError(`${errorMessage(failure)} The upload was not confirmed. Retry the same file or cancel it; report history shows the stored status.`)
+        setError(t("{error} The upload was not confirmed. Retry the same file or cancel it; report history shows the stored status.", { error: copy(errorMessage(failure)) }))
         onAuthFailure(failure)
         onChange()
       }
@@ -147,20 +149,20 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
 
   return (
     <Card className="report-upload">
-      <div className="card-heading"><h2>Upload a report</h2><span className="subtle-label">Private to your account</span></div>
+      <div className="card-heading"><h2>{t("Upload a report")}</h2><span className="subtle-label">{t("Private to your account")}</span></div>
       <form onSubmit={(event) => { void submit(event) }} className="report-upload__body" aria-busy={busy}>
         <div className={`report-dropzone ${dragging && !lockedSelection ? 'report-dropzone--active' : ''}`} onDragOver={(event) => { event.preventDefault(); if (!lockedSelection) setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={drop}>
           <span className="report-upload__icon"><Icon name="report" /></span>
-          <div><h3>{task ? task.file.name : 'Keep your reports together'}</h3><p>{task ? `${formatBytes(task.file.size)} · ${task.file.type === 'application/pdf' ? 'PDF document' : task.file.type === 'image/jpeg' ? 'JPEG image' : 'PNG image'}` : 'Drag one report here, or choose a file from your device.'}</p></div>
-          <Button variant="secondary" disabled={lockedSelection} onClick={() => input.current?.click()}>{task ? 'Choose another file' : 'Choose a file'}</Button>
-          <input ref={input} id="report-file" type="file" aria-label="Report file" accept={config.allowed_media_types.join(',')} hidden disabled={lockedSelection} onChange={(event) => { if (event.target.files) selectFiles(event.target.files); event.target.value = '' }} />
+          <div><h3>{task ? task.file.name : t("Keep your reports together")}</h3><p>{task ? `${formatBytes(task.file.size)} · ${task.file.type === 'application/pdf' ? t("PDF document") : task.file.type === 'image/jpeg' ? t("JPEG image") : t("PNG image")}` : t("Drag one report here, or choose a file from your device.")}</p></div>
+          <Button variant="secondary" disabled={lockedSelection} onClick={() => input.current?.click()}>{task ? t("Choose another file") : t("Choose a file")}</Button>
+          <input ref={input} id="report-file" type="file" aria-label={t("Report file")} accept={config.allowed_media_types.join(',')} hidden disabled={lockedSelection} onChange={(event) => { if (event.target.files) selectFiles(event.target.files); event.target.value = '' }} />
         </div>
-        <p className="report-upload__guidance">PDF, JPEG or PNG · Up to {formatBytes(config.max_upload_bytes)} per file. File contents are validated on upload.</p>
-        <label className="report-permission"><input type="checkbox" checked={permission} onChange={(event) => setPermission(event.target.checked)} disabled={busy} /><span>I have permission to store and extract text from this report. Files and derived text are private to my account and remain stored until I delete the report. Medical analysis is not included.</span></label>
-        {error && <div className="form-error" role="alert">{error}</div>}
-        {notice && <div className={phase === 'deleting' ? 'form-notice' : 'form-success'} role="status">{notice}</div>}
-        {busy && <p className="report-progress" role="status"><span className="loading-spinner" aria-hidden="true" />{phase === 'reserving' ? 'Preparing your private upload…' : phase === 'cancelling' ? 'Confirming cancellation and cleanup…' : 'Uploading and validating your report…'}</p>}
-        {task && phase !== 'uploaded' && <div className="report-upload__actions"><Button type="submit" disabled={busy || !permission}>{phase === 'failed' ? 'Retry upload' : 'Upload report'}</Button><Button variant="ghost" disabled={phase === 'cancelling'} onClick={cancel}>{phase === 'failed' ? 'Retry cancellation' : busy ? 'Cancel upload' : 'Clear selection'}</Button></div>}
+        <p className="report-upload__guidance">{"" + t("PDF, JPEG or PNG · Up to") + " "}{formatBytes(config.max_upload_bytes)}{" " + t("per file. File contents are validated on upload.")}</p>
+        <label className="report-permission"><input type="checkbox" checked={permission} onChange={(event) => setPermission(event.target.checked)} disabled={busy} /><span>{t("I have permission to store and extract text from this report. Files and derived text are private to my account and remain stored until I delete the report. Medical analysis is not included.")}</span></label>
+        {error && <div className="form-error" role="alert">{copy(error)}</div>}
+        {notice && <div className={phase === 'deleting' ? 'form-notice' : 'form-success'} role="status">{copy(notice)}</div>}
+        {busy && <p className="report-progress" role="status"><span className="loading-spinner" aria-hidden="true" />{phase === 'reserving' ? t("Preparing your private upload…") : phase === 'cancelling' ? t("Confirming cancellation and cleanup…") : t("Uploading and validating your report…")}</p>}
+        {task && phase !== 'uploaded' && <div className="report-upload__actions"><Button type="submit" disabled={busy || !permission}>{phase === 'failed' ? t("Retry upload") : t("Upload report")}</Button><Button variant="ghost" disabled={phase === 'cancelling'} onClick={cancel}>{phase === 'failed' ? t("Retry cancellation") : busy ? t("Cancel upload") : t("Clear selection")}</Button></div>}
       </form>
     </Card>
   )

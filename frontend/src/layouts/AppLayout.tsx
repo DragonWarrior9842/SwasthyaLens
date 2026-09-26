@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/core'
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Brand } from '../components/Brand'
@@ -8,6 +9,7 @@ import { ApiStatus } from '../features/system/ApiStatus'
 import { AccountMenu } from '../features/auth/AccountMenu'
 
 export function AppLayout() {
+  const { t } = useI18n()
   const { pathname, key: locationKey } = useLocation()
   const [navigationLocation, setNavigationLocation] = useState<string | null>(null)
   const isNavigationOpen = navigationLocation === locationKey
@@ -43,10 +45,10 @@ export function AppLayout() {
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <a className="skip-link" href="#main-content">{t("Skip to main content")}</a>
       <header className="mobile-header">
         <Brand />
-        <Button ref={menuButtonRef} variant="ghost" className="menu-toggle" aria-label={isNavigationOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={isNavigationOpen} aria-controls="primary-navigation" onClick={() => setNavigationLocation((openedAt) => openedAt === locationKey ? null : locationKey)}>
+        <Button ref={menuButtonRef} variant="ghost" className="menu-toggle" aria-label={isNavigationOpen ? t("Close navigation") : t("Open navigation")} aria-expanded={isNavigationOpen} aria-controls="primary-navigation" onClick={() => setNavigationLocation((openedAt) => openedAt === locationKey ? null : locationKey)}>
           <Icon name={isNavigationOpen ? 'close' : 'menu'} />
         </Button>
       </header>
@@ -58,7 +60,7 @@ export function AppLayout() {
         </main>
         <footer className="app-footer">
           <Icon name="info" />
-          <p>SwasthyaLens is for health information and understanding. It does not provide medical diagnoses.</p>
+          <p>{t("SwasthyaLens is for health information and understanding. It does not provide medical diagnoses.")}</p>
         </footer>
       </div>
     </div>

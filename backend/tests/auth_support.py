@@ -49,6 +49,7 @@ class ProviderFixture:
     failures: dict[str, tuple[int, object]] = field(default_factory=dict)
     name: str | None = None
     language: str = "en"
+    assistant_language: str = "en"
     timezone: str = "UTC"
     profile_exists: bool = False
     settings_exist: bool = False
@@ -119,6 +120,7 @@ class ProviderFixture:
                     self.name = data["display_name"]
                 else:
                     self.language = data.get("preferred_language", self.language)
+                    self.assistant_language = data.get("assistant_language", self.assistant_language)
                     self.timezone = data.get("timezone", self.timezone)
             row: dict[str, object] = {
                 "created_at": "2026-09-14T00:00:00Z",
@@ -130,6 +132,7 @@ class ProviderFixture:
                 else {
                     "user_id": self.user_id,
                     "preferred_language": self.language,
+                    "assistant_language": self.assistant_language,
                     "timezone": self.timezone,
                 }
             )

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/core'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from '../components/Button'
 import { ErrorState } from '../components/ErrorState'
@@ -14,6 +15,7 @@ type AccountData =
   | { status: 'ready'; profile: Profile; settings: UserSettings }
 
 export function SettingsPage() {
+  const { t } = useI18n()
   const { state, checkSession } = useAuth()
   const [data, setData] = useState<AccountData>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
@@ -40,15 +42,16 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="YOUR ACCOUNT" title="Make yourself at home" description="Manage your name and preferences for your SwasthyaLens account." />
-      {(data.status === 'loading' || (data.status === 'ready' && (data.profile.id !== userId || data.settings.user_id !== userId))) && <LoadingState title="Loading your account…" />}
-      {data.status === 'error' && <ErrorState title="Unable to load your account" description={data.message} onRetry={() => { setData({ status: 'loading' }); setAttempt((value) => value + 1) }} />}
+      <PageHeader eyebrow={t("YOUR ACCOUNT")} title={t("Make yourself at home")} description={t("Manage your name and preferences for your SwasthyaLens account.")} />
+      {(data.status === 'loading' || (data.status === 'ready' && (data.profile.id !== userId || data.settings.user_id !== userId))) && <LoadingState title={t("Loading your account…")} />}
+      {data.status === 'error' && <ErrorState title={t("Unable to load your account")} description={data.message} onRetry={() => { setData({ status: 'loading' }); setAttempt((value) => value + 1) }} />}
       {data.status === 'ready' && data.profile.id === userId && data.settings.user_id === userId && <div className="settings-grid"><ProfileForm key={`${userId}-profile`} profile={data.profile} /><PreferencesForm key={`${userId}-settings`} settings={data.settings} /></div>}
     </>
   )
 }
 
 function ProfileForm({ profile }: { profile: Profile }) {
+  const { t, copy } = useI18n()
   const { state, checkSession } = useAuth()
   const [displayName, setDisplayName] = useState(profile.display_name ?? '')
   const [busy, setBusy] = useState(false)
@@ -74,22 +77,25 @@ function ProfileForm({ profile }: { profile: Profile }) {
 
   return (
     <section className="card settings-card" aria-labelledby="profile-heading">
-      <h2 id="profile-heading">Personal details</h2>
-      <p className="settings-card__description">Choose how your name appears in your account.</p>
+      <h2 id="profile-heading">{t("Personal details")}</h2>
+      <p className="settings-card__description">{t("Choose how your name appears in your account.")}</p>
       <form className="account-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
-        <div className="form-field"><label htmlFor="profile-name">Display name <span>(optional)</span></label><input id="profile-name" name="display_name" type="text" autoComplete="nickname" maxLength={80} value={displayName} disabled={busy} onChange={(event) => { setDisplayName(event.target.value); setSaved(false) }} aria-describedby="profile-name-help" /><p id="profile-name-help">Up to 80 characters. You can leave this blank.</p></div>
-        <div className="form-field"><span className="field-label">Email address</span><p className="account-email">{state.status === 'authenticated' ? state.session.user.email : ''}</p></div>
-        {error && <div className="form-error" role="alert">{error}</div>}
-        {saved && <div className="form-success" role="status">Your profile has been saved.</div>}
-        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>
+        <div className="form-field"><label htmlFor="profile-name">{"" + t("Display name") + " "}<span>{t("(optional)")}</span></label><input id="profile-name" name="display_name" type="text" autoComplete="nickname" maxLength={80} value={displayName} disabled={busy} onChange={(event) => { setDisplayName(event.target.value); setSaved(false) }} aria-describedby="profile-name-help" /><p id="profile-name-help">{t("Up to 80 characters. You can leave this blank.")}</p></div>
+        <div className="form-field"><span className="field-label">{t("Email address")}</span><p className="account-email">{state.status === 'authenticated' ? state.session.user.email : ''}</p></div>
+        {error && <div className="form-error" role="alert">{copy(error)}</div>}
+        {saved && <div className="form-success" role="status">{t("Your profile has been saved.")}</div>}
+        <Button type="submit" disabled={busy}>{busy ? t("Saving…") : t("Save profile")}</Button>
       </form>
     </section>
   )
 }
 
 function PreferencesForm({ settings }: { settings: UserSettings }) {
+  const { t, copy } = useI18n()
   const { checkSession } = useAuth()
   const [language, setLanguage] = useState(settings.preferred_language)
+  const [assistantLanguage, setAssistantLanguage] = useState(settings.assistant_language)
+  const [savedTimezone, setSavedTimezone] = useState(settings.timezone)
   const [timezone, setTimezone] = useState(settings.timezone)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -105,10 +111,12 @@ function PreferencesForm({ settings }: { settings: UserSettings }) {
     catch { setError('Enter a valid time zone, such as Asia/Kolkata or UTC.'); return }
     setBusy(true)
     try {
-      const updated = await saveSettings({ preferred_language: language, timezone: selectedTimezone }, settings.user_id)
+      const updated = await saveSettings({ preferred_language: language, assistant_language: assistantLanguage, ...(selectedTimezone === savedTimezone ? {} : { timezone: selectedTimezone }) }, settings.user_id)
       if (updated.user_id !== settings.user_id) throw new Error('Mismatched settings')
       setLanguage(updated.preferred_language)
+      setAssistantLanguage(updated.assistant_language)
       setTimezone(updated.timezone)
+      setSavedTimezone(updated.timezone)
       setSaved(true)
     } catch (failure) {
       setError(errorMessage(failure))
@@ -118,14 +126,15 @@ function PreferencesForm({ settings }: { settings: UserSettings }) {
 
   return (
     <section className="card settings-card" aria-labelledby="preferences-heading">
-      <h2 id="preferences-heading">Your preferences</h2>
-      <p className="settings-card__description">Saved to your account, so they stay with you.</p>
+      <h2 id="preferences-heading">{t("Your preferences")}</h2>
+      <p className="settings-card__description">{t("Saved to your account, so they stay with you.")}</p>
       <form className="account-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
-        <div className="form-field"><label htmlFor="preferred-language">Preferred language</label><select id="preferred-language" value={language} disabled={busy} onChange={(event) => { setLanguage(event.target.value === 'hi' ? 'hi' : 'en'); setSaved(false) }} aria-describedby="language-help"><option value="en">English</option><option value="hi">हिन्दी · Hindi</option></select><p id="language-help">Your preference is saved. The interface is currently available in English.</p></div>
-        <div className="form-field"><label htmlFor="account-timezone">Time zone</label><input id="account-timezone" name="timezone" type="text" list="common-timezones" required maxLength={64} value={timezone} disabled={busy} onChange={(event) => { setTimezone(event.target.value); setSaved(false) }} aria-describedby="timezone-help" autoCapitalize="none" spellCheck={false} /><datalist id="common-timezones"><option value="Asia/Kolkata" /><option value="UTC" /><option value="Europe/London" /><option value="America/New_York" /><option value="Asia/Dubai" /></datalist><p id="timezone-help">Use an IANA time zone, such as Asia/Kolkata.</p></div>
-        {error && <div className="form-error" role="alert">{error}</div>}
-        {saved && <div className="form-success" role="status">Your preferences have been saved.</div>}
-        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save preferences'}</Button>
+        <div className="form-field"><label htmlFor="preferred-language">{t("Interface language")}</label><select id="preferred-language" value={language} disabled={busy} onChange={(event) => { setLanguage(event.target.value === 'hi' ? 'hi' : 'en'); setSaved(false) }} aria-describedby="language-help"><option value="en">English</option><option value="hi">हिन्दी · Hindi</option></select><p id="language-help">{t("Choose the language for application menus and controls.")}</p></div>
+        <div className="form-field"><label htmlFor="assistant-language">{t("Assistant response language")}</label><select id="assistant-language" value={assistantLanguage} disabled={busy} onChange={event => { const value = event.target.value; setAssistantLanguage(value === 'hi' || value === 'hinglish' ? value : 'en'); setSaved(false) }} aria-describedby="assistant-language-help"><option value="en">English</option><option value="hi">हिन्दी · Hindi</option><option value="hinglish">Hinglish · Hindi in Latin script</option></select><p id="assistant-language-help">{t("New answers use this preference. Existing messages and report text stay unchanged.")}</p></div>
+        <div className="form-field"><label htmlFor="account-timezone">{t("Time zone")}</label><input id="account-timezone" name="timezone" type="text" list="common-timezones" required maxLength={64} value={timezone} disabled={busy} onChange={(event) => { setTimezone(event.target.value); setSaved(false) }} aria-describedby="timezone-help" autoCapitalize="none" spellCheck={false} /><datalist id="common-timezones"><option value="Asia/Kolkata" /><option value="UTC" /><option value="Europe/London" /><option value="America/New_York" /><option value="Asia/Dubai" /></datalist><p id="timezone-help">{t("Use an IANA time zone, such as Asia/Kolkata.")}</p></div>
+        {error && <div className="form-error" role="alert">{copy(error)}</div>}
+        {saved && <div className="form-success" role="status">{t("Your preferences have been saved.")}</div>}
+        <Button type="submit" disabled={busy}>{busy ? t("Saving…") : t("Save preferences")}</Button>
       </form>
     </section>
   )

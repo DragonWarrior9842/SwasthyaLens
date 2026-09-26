@@ -88,7 +88,9 @@ def assistant_request(context: "Context") -> AssistantRequest:
 
     # Only the serialized, minimized view crosses the provider boundary.
     # The source map and database/report identifiers remain in the service.
-    return AssistantRequest(PROMPT, context.model_input(), MultilingualModelAnswer.model_json_schema())
+    return AssistantRequest(
+        PROMPT, context.model_input(), MultilingualModelAnswer.model_json_schema()
+    )
 
 
 class LockedAssistantCapability:

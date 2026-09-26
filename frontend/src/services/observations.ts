@@ -1,3 +1,4 @@
+import { translate, type Locale } from '../i18n/core'
 import { accountMutation, accountOwnedRead } from './auth'
 import { reportChanged } from './report-events'
 import { historyChanged } from './history-events'
@@ -75,4 +76,4 @@ export async function deleteObservation(identifier: string, expected_revision: n
   await accountMutation(path(identifier), { expected_revision }, v => { if (!object(v) || v.message !== 'Observation deleted.') throw new Error('Invalid deletion'); }, owner, 'DELETE', signal)
   historyChanged()
 }
-export function measurementLabel(r: Revision) { return r.measured_at ? `${new Date(r.measured_at).toISOString().replace('T', ' ').replace('.000Z', ' UTC')}` : r.measurement_date ? `${r.measurement_date} · day only, supplied by you` : 'Measurement date unknown' }
+export function measurementLabel(r: Revision, locale: Locale = 'en') { return r.measured_at ? `${new Date(r.measured_at).toISOString().replace('T', ' ').replace('.000Z', ' UTC')}` : r.measurement_date ? `${r.measurement_date} · ${translate(locale, 'day only, supplied by you')}` : translate(locale, 'Measurement date unknown') }

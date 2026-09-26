@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from typing import Literal
 from uuid import UUID
 
-from app.core.auth_service import AuthenticatedRequest
 from app.core.assistant_language import Language, wording
+from app.core.auth_service import AuthenticatedRequest
 from app.core.errors import ApiProblem
 from app.core.observations import ObservationService
 from app.core.trends import TrendService
@@ -91,7 +91,7 @@ ALIASES: dict[Metric, str] = {
     "heart_rate": r"\bheart[ -]?rate\b|\bpulse\b|हृदय गति|धड़कन|\bdhadkan\b",
     "hemoglobin": r"\bhemoglobin\b|\bhaemoglobin\b|हीमोग्लोबिन",
     "tsh": r"\btsh\b",
-    "vitamin_d_unspecified": r"\bvitamin[ -]?d\b|विटामिन डी|विटामिन डी",
+    "vitamin_d_unspecified": r"\bvitamin[ -]?d\b|विटामिन डी|विटामिन d",
     "glucose_unspecified": r"\bglucose\b|ग्लूकोज़|ग्लूकोज",
     "crp": r"\bcrp\b",
 }
@@ -130,7 +130,9 @@ def route(question: str, recent_questions: list[str]) -> Intent:
         q,
     ):
         return Intent("rules", code="safety")
-    if re.search(r"correlat|caus|relationship|association|सहसंबंध|कारण|संबंध|\bsambandh\b|\bkaran\b", q):
+    if re.search(
+        r"correlat|caus|relationship|association|सहसंबंध|कारण|संबंध|\bsambandh\b|\bkaran\b", q
+    ):
         return Intent("rules", code="unsupported_correlation")
     metrics = [m for m, pattern in ALIASES.items() if re.search(pattern, q)]
     if not metrics and re.fullmatch(
@@ -147,13 +149,18 @@ def route(question: str, recent_questions: list[str]) -> Intent:
     if len(metrics) > 1:
         return Intent("rules")
     if metrics:
-        trend = bool(re.search(r"trend|increas|decreas|chang|compar|period|days|week|month|रुझान|बढ़|घट|तुलना|दिन|महीन|\bbadha|\bghata|\btulna|\bdin\b|\bbadla", q))
+        trend = bool(
+            re.search(
+                r"trend|increas|decreas|chang|compar|period|days|week|month|रुझान|बढ़|घट|तुलना|दिन|महीन|\bbadha|\bghata|\btulna|\bdin\b|\bbadla",
+                q,
+            )
+        )
         return Intent(
             "trend" if trend else "metric",
             metrics[0],
             "30d" if re.search(r"30|thirty|month|महीन|\bmahine\b", q) else "7d",
         )
-    if re.search(r"latest|नवीनतम|हाल की|\bhaal ki\b", q) and re.search(r"report|रिपोर्ट", q):
+    if re.search(r"latest|नवीनतम|सबसे हाल में|हाल की|\bhaal ki\b", q) and re.search(r"report|रिपोर्ट", q):
         return Intent("report")
     return Intent("rules")
 
@@ -298,7 +305,13 @@ class ContextBuilder:
         self.observations = observations
         self.trends = TrendService(observations)
 
-    def build(self, question: str, history: list[str], current: AuthenticatedRequest, language: Language = "en") -> Context:
+    def build(
+        self,
+        question: str,
+        history: list[str],
+        current: AuthenticatedRequest,
+        language: Language = "en",
+    ) -> Context:
         intent = route(question, history)
         context = Context(question, history[-4:], intent.code, language=language)
         if intent.kind == "rules":

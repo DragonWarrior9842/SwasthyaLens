@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/core'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Brand } from './Brand'
@@ -19,17 +20,18 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onNavigate, footer }: SidebarProps) {
+  const { t, copy } = useI18n()
   return (
-    <aside id="primary-navigation" className={`sidebar ${isOpen ? 'sidebar--open' : ''}`} aria-label="Application sidebar">
+    <aside id="primary-navigation" className={`sidebar ${isOpen ? 'sidebar--open' : ''}`} aria-label={t("Application sidebar")}>
       <div className="sidebar__brand"><Brand /></div>
       <div className="sidebar__navigation">
-        <p className="sidebar__label">YOUR WORKSPACE</p>
-        <nav aria-label="Primary navigation">
+        <p className="sidebar__label">{t("YOUR WORKSPACE")}</p>
+        <nav aria-label={t("Primary navigation")}>
           <ul>
             {destinations.map(({ to, label, icon }) => (
               <li key={to}>
                 <NavLink to={to} end={to === '/'} onClick={onNavigate} className={({ isActive }) => `nav-link ${isActive ? 'nav-link--active' : ''}`}>
-                  <Icon name={icon} /><span>{label}</span><span className="nav-link__indicator" aria-hidden="true" />
+                  <Icon name={icon} /><span>{copy(label)}</span><span className="nav-link__indicator" aria-hidden="true" />
                 </NavLink>
               </li>
             ))}
@@ -39,8 +41,8 @@ export function Sidebar({ isOpen, onNavigate, footer }: SidebarProps) {
       <div className="sidebar__bottom">
         <div className="sidebar__message">
           <span className="sidebar__message-icon"><Icon name="heart" /></span>
-          <p>A clearer view<br />of your health.</p>
-          <span>One place for the information<br className="desktop-break" /> that matters to you.</span>
+          <p>{t("A clearer view")}<br />{t("of your health.")}</p>
+          <span>{t("One place for the information")}<br className="desktop-break" />{" " + t("that matters to you.")}</span>
         </div>
         {footer && <div className="sidebar__footer">{footer}</div>}
       </div>

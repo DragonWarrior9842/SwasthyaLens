@@ -1,6 +1,8 @@
+import { useI18n } from '../../i18n/core'
 import { useApiHealth } from '../../hooks/useApiHealth'
 
 export function ApiStatus() {
+  const { t, copy } = useI18n()
   const { state, retry } = useApiHealth()
 
   return (
@@ -11,25 +13,23 @@ export function ApiStatus() {
           className={`size-2 shrink-0 rounded-full ${state.status === 'connected' ? 'bg-emerald-300' : state.status === 'checking' ? 'bg-white/70' : 'bg-amber-300'}`}
         />
         {state.status === 'connected'
-          ? 'Local API connected'
+          ? t("Local API connected")
           : state.status === 'checking'
-            ? 'Checking local API…'
-            : 'Local API unavailable'}
+            ? t("Checking local API…")
+            : t("Local API unavailable")}
       </p>
       {state.status === 'unavailable' && (
         <>
-          <p className="mt-2 text-xs leading-relaxed text-white/85">{state.message}</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/85">{copy(state.message)}</p>
           <button
             type="button"
             onClick={retry}
             className="mt-2 min-h-11 rounded-md px-1 text-xs font-semibold underline decoration-white/50 underline-offset-4 hover:decoration-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-          >
-            Retry connection
-          </button>
+          >{t("Retry connection")}</button>
         </>
       )}
       {state.status === 'connected' && (
-        <p className="mt-1 text-xs leading-relaxed text-white/75">Service connection only</p>
+        <p className="mt-1 text-xs leading-relaxed text-white/75">{t("Service connection only")}</p>
       )}
     </div>
   )

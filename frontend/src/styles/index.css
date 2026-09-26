@@ -427,3 +427,9 @@ h1, h2, h3, p { margin: 0; }
 .assistant-suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
 .assistant-suggestions button { white-space: normal; text-align: left; }
 @media (max-width: 850px) { .assistant-workspace { grid-template-columns: minmax(0, 1fr); } .assistant-sidebar, .assistant-thread { padding: 18px; } }
+
+/* System Devanagari fonts; no third-party font requests. */
+:lang(hi) { font-family: "Nirmala UI", "Mangal", "Noto Sans Devanagari", "Segoe UI", sans-serif; line-height: 1.65; letter-spacing: normal; }
+:lang(hi) :is(h1,h2,h3,h4,label,button,select,.eyebrow) { letter-spacing: normal; }
+:lang(hi) :is(button,label,p,h1,h2,h3,.nav-link,.form-error) { overflow-wrap: anywhere; }
+:lang(hi) select { max-width: 100%; min-width: 0; }
