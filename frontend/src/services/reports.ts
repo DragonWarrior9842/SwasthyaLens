@@ -80,7 +80,7 @@ export function validateReportFile(file: File, config: ReportConfig): string | n
   const invalidName = filenameError(file.name)
   if (invalidName) return invalidName
   if (file.size === 0) return 'This file is empty. Choose a report that contains data.'
-  if (file.size > config.max_upload_bytes) return `This file exceeds the ${formatBytes(config.max_upload_bytes)} limit. Choose a smaller report.`
+  if (file.size > config.max_upload_bytes) return 'This file exceeds the upload limit. Choose a smaller report.'
   const expectedType = filenameMediaType(file.name)
   if (!expectedType || file.type !== expectedType || !config.allowed_media_types.includes(expectedType)) return 'Choose a PDF, JPEG or PNG with a matching filename and file type.'
   return null

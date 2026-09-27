@@ -58,7 +58,7 @@ insert into public.health_observations(id,user_id,source_type,idempotency_key)
  select observation,owner,'manual',gen_random_uuid() from assistant_test;
 insert into public.health_observation_revisions(observation_id,revision,status,fields,measured_at,idempotency_key)
  select observation,1,'active','{"original_label":"Weight","raw_value":"70.250","numeric_value":"70.250","original_unit":"kg","canonical_metric":"weight","value_kind":"numeric"}',now()-interval '1 day',gen_random_uuid() from assistant_test;
-select pg_temp.assistant_assert((select count(*)=2 from public.assistant_messages where status='stale' and answer is null),'source change discards pending output');
+select pg_temp.assistant_assert((select count(*)=2 from public.assistant_messages where status='stale' and answer is null and user_id in(select owner from assistant_test)),'source change discards pending output');
 -- Owner mismatch cannot be inserted even by a privileged application writer.
 do $$ declare a record; b record; begin
  select * into a from assistant_test where label='A'; select * into b from assistant_test where label='B';

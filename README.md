@@ -4,7 +4,7 @@ SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentic
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its mock-only acceptance boundary. Formal multilingual support, voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its mock-only acceptance boundary. Phase 10 adds English/Hindi interface copy and independent English/Hindi/Hinglish assistant preferences. Voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -317,7 +317,7 @@ API/production preview, with `PLAYWRIGHT_MODULE` pointing to an installed Playwr
 
 ## Phase 9 context-aware assistant
 
-Open **AI Assistant**, choose **New chat**, enter an English question and choose **Send**.
+Open **AI Assistant**, choose **New chat**, enter a supported question and choose **Send**.
 Suggestions fill the composer only. Conversations and messages persist privately under
 owner/active-session RLS; delete a conversation to remove its messages. No chat content
 is stored in localStorage. Source corrections/deletions clear saved derived answers and
@@ -334,4 +334,28 @@ already applied to development; apply it after the earlier migrations for a fres
 Synthetic acceptance uses `backend/tests/integration/test_live_assistant.py` with explicit
 Supabase opt-in and a test-only injected mock. The UI harness is
 `backend/tests/browser_assistant.cjs`. See the [handoff](docs/phase-9-handoff.md) for
-contracts, limits, acceptance results and manual checks. Phase 10 remains unstarted.
+contracts, limits, acceptance results and manual checks. See Phase 10 below for multilingual preferences.
+
+
+## Phase 10 multilingual support
+
+Open **Account settings** and set **Interface language** (English or Hindi) and
+**Assistant response language** (English, Hindi or Hinglish), then save. Preferences
+are stored per account. The interface updates without signing out or generating an
+answer. Hinglish is Latin-script Hindi for assistant replies, not an interface locale.
+
+A recognized, unambiguous language request in the current question overrides the saved
+assistant preference; otherwise the saved preference applies, defaulting to English.
+For example, “Explain my latest Vitamin D result in Hindi.” Historical message text,
+original report/OCR text, source labels, numbers, units, ranges and provenance stay
+unchanged. Fixed clarification/safety responses support all three response languages.
+Evidence-bearing live AI answers remain blocked; normal UI never uses the test mock.
+
+Migration `20260926182238_multilingual_preferences.sql` adds the response preference
+and frozen per-turn language/version contract. Apply it after Phase 9 on a fresh
+installation; it is already applied to development. No new key, environment variable,
+translation service or billing change is needed. Keep `RUN_AI_INTEGRATION` unset;
+Gemini attempts remain 2/20. The synthetic browser harness is
+`backend/tests/browser_multilingual.cjs`, with real settings persistence and explicitly
+routed synthetic evidence. See [the Phase 10 handoff](docs/phase-10-handoff.md) for
+architecture, exact precedence, verification and limitations. Phase 11 is not started.

@@ -1,0 +1,316 @@
+{
+  "conversation": {
+    "id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+    "created_at": "2026-04-11T00:00:00+00:00",
+    "updated_at": "2026-04-11T00:00:00+00:00"
+  },
+  "messages": [
+    {
+      "id": "b50d09e9-2a8f-4ce6-b705-be118882566e",
+      "conversation_id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+      "role": "assistant",
+      "status": "ready",
+      "content": null,
+      "answer": {
+        "selection": "recent_metric",
+        "choice": {
+          "scope": "educational",
+          "evidence_ids": [
+            "e1"
+          ],
+          "explanation_code": "sources",
+          "limitation": "bounded_current_evidence_not_diagnosis",
+          "follow_up": "professional_context"
+        },
+        "facts": [
+          {
+            "evidence_id": "e1",
+            "label": "Synthetic",
+            "value": "73.125",
+            "unit": "kg",
+            "reference": null,
+            "source_flag": null,
+            "value_kind": "numeric",
+            "comparator": null,
+            "canonical_metric": "weight",
+            "measurement_date": null,
+            "measured_at": "2026-04-10T12:00:00+00:00",
+            "source_type": "manual",
+            "page_number": null,
+            "calculated_range_status": "unknown"
+          }
+        ],
+        "calculation": null,
+        "sources": [
+          {
+            "evidence_id": "e1",
+            "observation_id": "1f2fcf90-52e7-442f-a485-da69de20cd3f",
+            "revision": 1,
+            "report_id": null,
+            "candidate_id": null,
+            "review_revision": null,
+            "page_number": null,
+            "fields": {
+              "original_label": "Synthetic",
+              "raw_value": "73.125",
+              "original_unit": "kg",
+              "raw_reference": null,
+              "parsing_version": "table-candidates-v1",
+              "alias_version": "synthetic-aliases-v1",
+              "canonical_metric": "weight",
+              "numeric_value": "73.125",
+              "comparator": null,
+              "value_kind": "numeric",
+              "qualitative_result": null,
+              "reference_low": null,
+              "reference_high": null,
+              "reference_low_inclusive": null,
+              "reference_high_inclusive": null,
+              "source_flag": null,
+              "calculated_range_status": "unknown"
+            }
+          }
+        ],
+        "text": "These are the selected current observations. Values, units and supplied reference text are shown exactly as recorded; they do not establish a diagnosis."
+      },
+      "error_category": null,
+      "provider": "mock-test",
+      "model": "deterministic-test",
+      "prompt_version": "assistant-evidence-v1",
+      "schema_version": "assistant-closed-v1",
+      "created_at": "2026-04-11T00:00:00+00:00"
+    },
+    {
+      "id": "7e694587-5d01-401f-8c8e-8e36aaf809b5",
+      "conversation_id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+      "role": "assistant",
+      "status": "ready",
+      "content": null,
+      "answer": {
+        "selection": "none",
+        "choice": {
+          "scope": "educational",
+          "evidence_ids": [
+            "e1"
+          ],
+          "explanation_code": "sources",
+          "limitation": "bounded_current_evidence_not_diagnosis",
+          "follow_up": "professional_context",
+          "response_language": "en"
+        },
+        "facts": [
+          {
+            "evidence_id": "e1",
+            "label": "Synthetic",
+            "value": "18",
+            "unit": "ng/mL",
+            "reference": "30–100",
+            "source_flag": null,
+            "value_kind": "numeric",
+            "comparator": null,
+            "canonical_metric": "vitamin_d_unspecified",
+            "measurement_date": null,
+            "measured_at": null,
+            "source_type": "report",
+            "page_number": 1,
+            "calculated_range_status": "unknown"
+          }
+        ],
+        "calculation": null,
+        "sources": [
+          {
+            "evidence_id": "e1",
+            "observation_id": "7382065e-b993-4da8-888d-afce5e6a2034",
+            "revision": 1,
+            "report_id": "fa647959-e21b-4e9d-8448-61f5df437d01",
+            "candidate_id": "31aa1345-b702-46ae-ab58-3cef12ba3d6e",
+            "review_revision": 1,
+            "page_number": 1,
+            "fields": {
+              "original_label": "Synthetic",
+              "raw_value": "18",
+              "original_unit": "ng/mL",
+              "raw_reference": "30–100",
+              "parsing_version": "table-candidates-v1",
+              "alias_version": "synthetic-aliases-v1",
+              "canonical_metric": "vitamin_d_unspecified",
+              "numeric_value": "18",
+              "comparator": null,
+              "value_kind": "numeric",
+              "qualitative_result": null,
+              "reference_low": null,
+              "reference_high": null,
+              "reference_low_inclusive": null,
+              "reference_high_inclusive": null,
+              "source_flag": null,
+              "calculated_range_status": "unknown"
+            }
+          }
+        ],
+        "text": "These are the selected current observations. Values, units and supplied reference text are shown exactly as recorded; they do not establish a diagnosis."
+      },
+      "error_category": null,
+      "provider": "mock-test",
+      "model": "deterministic-test",
+      "prompt_version": "assistant-evidence-v2",
+      "schema_version": "assistant-closed-v2",
+      "created_at": "2026-04-11T00:00:00+00:00",
+      "response_language": "en"
+    },
+    {
+      "id": "4daa6678-ca3a-4ea9-82f1-50677f487e6f",
+      "conversation_id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+      "role": "assistant",
+      "status": "ready",
+      "content": null,
+      "answer": {
+        "selection": "none",
+        "choice": {
+          "scope": "educational",
+          "evidence_ids": [
+            "e1"
+          ],
+          "explanation_code": "sources",
+          "limitation": "bounded_current_evidence_not_diagnosis",
+          "follow_up": "professional_context",
+          "response_language": "hi"
+        },
+        "facts": [
+          {
+            "evidence_id": "e1",
+            "label": "Synthetic",
+            "value": "18",
+            "unit": "ng/mL",
+            "reference": "30–100",
+            "source_flag": null,
+            "value_kind": "numeric",
+            "comparator": null,
+            "canonical_metric": "vitamin_d_unspecified",
+            "measurement_date": null,
+            "measured_at": null,
+            "source_type": "report",
+            "page_number": 1,
+            "calculated_range_status": "unknown"
+          }
+        ],
+        "calculation": null,
+        "sources": [
+          {
+            "evidence_id": "e1",
+            "observation_id": "7382065e-b993-4da8-888d-afce5e6a2034",
+            "revision": 1,
+            "report_id": "fa647959-e21b-4e9d-8448-61f5df437d01",
+            "candidate_id": "31aa1345-b702-46ae-ab58-3cef12ba3d6e",
+            "review_revision": 1,
+            "page_number": 1,
+            "fields": {
+              "original_label": "Synthetic",
+              "raw_value": "18",
+              "original_unit": "ng/mL",
+              "raw_reference": "30–100",
+              "parsing_version": "table-candidates-v1",
+              "alias_version": "synthetic-aliases-v1",
+              "canonical_metric": "vitamin_d_unspecified",
+              "numeric_value": "18",
+              "comparator": null,
+              "value_kind": "numeric",
+              "qualitative_result": null,
+              "reference_low": null,
+              "reference_high": null,
+              "reference_low_inclusive": null,
+              "reference_high_inclusive": null,
+              "source_flag": null,
+              "calculated_range_status": "unknown"
+            }
+          }
+        ],
+        "text": "ये चुने गए वर्तमान अवलोकन हैं। मान, इकाइयाँ और दी गई संदर्भ जानकारी ठीक उसी रूप में दिखाई गई हैं जिसमें वे दर्ज हैं। इनसे निदान स्थापित नहीं होता।"
+      },
+      "error_category": null,
+      "provider": "mock-test",
+      "model": "deterministic-test",
+      "prompt_version": "assistant-evidence-v2",
+      "schema_version": "assistant-closed-v2",
+      "created_at": "2026-04-11T00:00:00+00:00",
+      "response_language": "hi"
+    },
+    {
+      "id": "07409abe-e457-47d2-a8db-852275e258e7",
+      "conversation_id": "5990ef4f-aca7-4a1b-be4e-75c0dc0e5249",
+      "role": "assistant",
+      "status": "ready",
+      "content": null,
+      "answer": {
+        "selection": "none",
+        "choice": {
+          "scope": "educational",
+          "evidence_ids": [
+            "e1"
+          ],
+          "explanation_code": "sources",
+          "limitation": "bounded_current_evidence_not_diagnosis",
+          "follow_up": "professional_context",
+          "response_language": "hinglish"
+        },
+        "facts": [
+          {
+            "evidence_id": "e1",
+            "label": "Synthetic",
+            "value": "18",
+            "unit": "ng/mL",
+            "reference": "30–100",
+            "source_flag": null,
+            "value_kind": "numeric",
+            "comparator": null,
+            "canonical_metric": "vitamin_d_unspecified",
+            "measurement_date": null,
+            "measured_at": null,
+            "source_type": "report",
+            "page_number": 1,
+            "calculated_range_status": "unknown"
+          }
+        ],
+        "calculation": null,
+        "sources": [
+          {
+            "evidence_id": "e1",
+            "observation_id": "7382065e-b993-4da8-888d-afce5e6a2034",
+            "revision": 1,
+            "report_id": "fa647959-e21b-4e9d-8448-61f5df437d01",
+            "candidate_id": "31aa1345-b702-46ae-ab58-3cef12ba3d6e",
+            "review_revision": 1,
+            "page_number": 1,
+            "fields": {
+              "original_label": "Synthetic",
+              "raw_value": "18",
+              "original_unit": "ng/mL",
+              "raw_reference": "30–100",
+              "parsing_version": "table-candidates-v1",
+              "alias_version": "synthetic-aliases-v1",
+              "canonical_metric": "vitamin_d_unspecified",
+              "numeric_value": "18",
+              "comparator": null,
+              "value_kind": "numeric",
+              "qualitative_result": null,
+              "reference_low": null,
+              "reference_high": null,
+              "reference_low_inclusive": null,
+              "reference_high_inclusive": null,
+              "source_flag": null,
+              "calculated_range_status": "unknown"
+            }
+          }
+        ],
+        "text": "Ye chune gaye maujooda observations hain. Values, units aur diye gaye reference text ko bilkul waise hi dikhaya gaya hai jaise record mein hain. Inse diagnosis tay nahi hota."
+      },
+      "error_category": null,
+      "provider": "mock-test",
+      "model": "deterministic-test",
+      "prompt_version": "assistant-evidence-v2",
+      "schema_version": "assistant-closed-v2",
+      "created_at": "2026-04-11T00:00:00+00:00",
+      "response_language": "hinglish"
+    }
+  ],
+  "provider_available": true
+}

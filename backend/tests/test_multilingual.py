@@ -238,7 +238,7 @@ def test_invalid_language_settings_rejected(value: object) -> None:
 
 def test_legacy_and_mixed_history_are_not_retranslated() -> None:
     path = Path(__file__).parents[2] / "frontend/src/services/fixtures/assistant.json"
-    value = json.loads(path.read_text())
+    value = json.loads(path.read_text(encoding="utf-8"))
     owner = uuid4()
     current = Mock()
     current.identity.user_id = owner
@@ -263,6 +263,10 @@ def test_legacy_and_mixed_history_are_not_retranslated() -> None:
     assert old_answer is not None and new_answer is not None
     assert old_answer.text == original
     assert new_answer.text == HINDI["sources"]
+    del newer["response_language"]
+    with pytest.raises(ApiProblem):
+        service.thread(value, current)
+    newer["response_language"] = "hi"
     newer["answer"]["choice"]["response_language"] = "hinglish"
     with pytest.raises(ApiProblem):
         service.thread(value, current)

@@ -64,4 +64,6 @@ Browser baseline similarly revealed empty-account assumptions and ambiguous
 inactive-observation selectors. Test corrections compare original account counts,
 use unique fixture names and scope deleted/inactive evidence to the generated
 report. No existing report or observation was deleted to force an empty state.
-Final baseline results and subsequent Phase 10 results belong in the handoff.
+The corrected isolated live check passed (all 11 baseline checks covered), and all 91
+established browser groups passed before localization. Subsequent Phase 10 results
+belong in the handoff.

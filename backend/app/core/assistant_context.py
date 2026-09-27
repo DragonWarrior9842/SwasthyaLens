@@ -160,7 +160,9 @@ def route(question: str, recent_questions: list[str]) -> Intent:
             metrics[0],
             "30d" if re.search(r"30|thirty|month|महीन|\bmahine\b", q) else "7d",
         )
-    if re.search(r"latest|नवीनतम|सबसे हाल में|हाल की|\bhaal ki\b", q) and re.search(r"report|रिपोर्ट", q):
+    if re.search(r"latest|नवीनतम|सबसे हाल में|हाल की|\bhaal ki\b", q) and re.search(
+        r"report|रिपोर्ट", q
+    ):
         return Intent("report")
     return Intent("rules")
 

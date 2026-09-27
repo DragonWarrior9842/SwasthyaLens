@@ -120,7 +120,9 @@ class ProviderFixture:
                     self.name = data["display_name"]
                 else:
                     self.language = data.get("preferred_language", self.language)
-                    self.assistant_language = data.get("assistant_language", self.assistant_language)
+                    self.assistant_language = data.get(
+                        "assistant_language", self.assistant_language
+                    )
                     self.timezone = data.get("timezone", self.timezone)
             row: dict[str, object] = {
                 "created_at": "2026-09-14T00:00:00Z",

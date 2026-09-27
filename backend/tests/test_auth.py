@@ -183,7 +183,11 @@ def test_profile_and_settings_are_owned_allowlisted_and_real_transport_updates(
     response = account_client.patch(
         "/settings",
         headers=headers(account_client),
-        json={"preferred_language": "hi", "assistant_language": "hinglish", "timezone": "Asia/Kolkata"},
+        json={
+            "preferred_language": "hi",
+            "assistant_language": "hinglish",
+            "timezone": "Asia/Kolkata",
+        },
     )
     assert response.status_code == 200
     assert account_client.get("/settings").json()["preferred_language"] == "hi"

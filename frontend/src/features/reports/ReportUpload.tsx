@@ -1,4 +1,4 @@
-import { useI18n } from '../../i18n/core'
+import { useI18n, type AppMessage } from '../../i18n/core'
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -16,8 +16,8 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
   const [task, setTask] = useState<UploadTask | null>(null)
   const [phase, setPhase] = useState<UploadPhase>('idle')
   const [permission, setPermission] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<AppMessage | null>(null)
+  const [notice, setNotice] = useState<AppMessage | null>(null)
   const [dragging, setDragging] = useState(false)
   const input = useRef<HTMLInputElement>(null)
   const active = useRef(true)
@@ -80,7 +80,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
     } catch (failure) {
       if (!active.current) return
       setPhase('failed')
-      setError(t("{error} Cancellation has not been confirmed. Retry cancellation or delete the report from its history.", { error: copy(errorMessage(failure)) }))
+      setError({ key: "{error} Cancellation has not been confirmed. Retry cancellation or delete the report from its history.", error: errorMessage(failure) })
       onAuthFailure(failure)
       onChange()
     } finally { if (operation.current === controller) operation.current = null }
@@ -120,7 +120,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
       controller.signal.throwIfAborted()
       if (!active.current) return
       setPhase('uploaded')
-      setNotice(t("{name} was uploaded privately. Open Text extraction in report history to extract its text.", { name: selected.file.name }))
+      setNotice({ key: "{name} was uploaded privately. Open Text extraction in report history to extract its text.", parameters: { name: selected.file.name } })
       setTask(currentTask.current)
       onChange()
     } catch (failure) {
@@ -129,7 +129,7 @@ export function ReportUpload({ ownerId, config, onChange, onAuthFailure }: Props
         await completeCancellation(currentTask.current)
       } else {
         setPhase('failed')
-        setError(t("{error} The upload was not confirmed. Retry the same file or cancel it; report history shows the stored status.", { error: copy(errorMessage(failure)) }))
+        setError({ key: "{error} The upload was not confirmed. Retry the same file or cancel it; report history shows the stored status.", error: errorMessage(failure) })
         onAuthFailure(failure)
         onChange()
       }

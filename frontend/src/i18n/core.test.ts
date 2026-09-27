@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import ts from 'typescript'
@@ -7,6 +8,7 @@ import { codeLabels, displayCode, translate } from './core'
 import { decodeSettings } from '../services/account'
 import { decodeThread } from '../services/assistant'
 import fixture from '../services/fixtures/assistant.json'
+import multilingual from '../services/fixtures/multilingual.json'
 
 const placeholders = (s: string) => [...s.matchAll(/\{([a-zA-Z][a-zA-Z0-9]*)\}/g)].map(m => m[1]).sort()
 describe('local application language contract', () => {
@@ -31,7 +33,7 @@ describe('local application language contract', () => {
           if (ts.isJsxText(node)) {
             const text = node.text.replace(/\s+/g, ' ').trim()
             // Language self-names, product name and file formats are intentional.
-            if (/[A-Za-z]{3}/.test(text) && !['English', 'हिन्दी · Hindi', 'Hinglish · Hindi in Latin script', 'SwasthyaLens'].includes(text)) missing.push(path + ': ' + text)
+            if (/[A-Za-z]{3}/.test(text) && !['English', 'हिन्दी · Hindi', 'Hinglish · Hindi in Latin script', 'SwasthyaLens', 'Swasthya', 'Lens'].includes(text)) missing.push(path + ': ' + text)
           }
           ts.forEachChild(node, visit)
         }
@@ -44,7 +46,41 @@ describe('local application language contract', () => {
   })
   it('falls back deterministically to readable English for an unknown key', () => {
     expect(translate('hi', 'A newly introduced sentence.')).toBe('A newly introduced sentence.')
+    for (const key of ['constructor', 'toString', '__proto__']) expect(translate('hi', key)).toBe(key)
     expect(displayCode('hi', 'active')).toBe(hindi.Active)
+  })
+  it('audits dynamic status, safety, navigation and public error catalogs', () => {
+    const missing: string[] = []
+    const names = new Set(['labels', 'failures', 'descriptions', 'reviewLabel', 'reasons', 'patterns', 'headings', 'publicErrors', 'suggestions', 'destinations', 'metrics'])
+    function scan(dir: string) {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name)
+        if (entry.isDirectory()) { scan(path); continue }
+        if (!/\.tsx?$/.test(path) || /\.test\./.test(path)) continue
+        const source = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, path.endsWith('tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+        function check(node: ts.Node) {
+          if (ts.isStringLiteral(node) && /[A-Z][a-z]/.test(node.text) && !(node.text in hindi)) missing.push(node.text)
+          ts.forEachChild(node, check)
+        }
+        function visit(node: ts.Node) {
+          if (ts.isVariableDeclaration(node) && names.has(node.name.getText(source)) && node.initializer) check(node.initializer)
+          ts.forEachChild(node, visit)
+        }
+        visit(source)
+      }
+    }
+    scan('src')
+    expect(missing).toEqual([])
+  })
+  it('accepts server-authored synthetic mixed history without changing facts or dates', () => {
+    const decoded = decodeThread(multilingual)
+    for (const message of decoded.messages.slice(1)) {
+      expect(message.answer!.facts[0]!.value).toBe('18')
+      expect(message.answer!.facts[0]!.unit).toBe('ng/mL')
+      expect(message.answer!.facts[0]!.reference).toBe('30–100')
+      expect(message.answer!.facts[0]!.measurement_date).toBeNull()
+      expect(message.answer!.facts[0]!.measured_at).toBeNull()
+    }
   })
   it.each(['13.20', '18', '2.4', '<5', '>10', '0.4–4.0', '30–100', '1:80'])('does not parse or reformat source value %s', value => {
     for (const locale of ['en', 'hi'] as const) for (const unit of ['mg/dL', 'g/dL', 'ng/mL', 'mIU/L', 'kg', 'bpm']) {
@@ -60,7 +96,7 @@ describe('local application language contract', () => {
   })
   it.each(['en', 'hi', 'hinglish'])('validates frozen v2 language while preserving legacy history: %s', language => {
     const old = fixture.messages[0]!
-    const message = { ...old, id: '33333333-3333-4333-8333-333333333333', sequence: old.sequence + 1, prompt_version: 'assistant-evidence-v2', schema_version: 'assistant-closed-v2', response_language: language, answer: { ...old.answer, text: 'Synthetic saved text 13.20 g/dL', choice: { ...old.answer.choice, response_language: language } } }
+    const message = { ...old, id: '33333333-3333-4333-8333-333333333333', prompt_version: 'assistant-evidence-v2', schema_version: 'assistant-closed-v2', response_language: language, answer: { ...old.answer, text: 'Synthetic saved text 13.20 g/dL', choice: { ...old.answer.choice, response_language: language } } }
     const thread = decodeThread({ ...fixture, messages: [old, message] })
     expect(thread.messages[0]!.answer!.text).toBe(old.answer.text)
     expect(thread.messages[1]!.answer!.text).toBe(message.answer.text)

@@ -53,6 +53,8 @@ class AssistantService:
                 raise ValueError
             for raw, message in zip(value["messages"], result.messages, strict=True):
                 legacy = message.schema_version == "assistant-closed-v1"
+                if not legacy and "response_language" not in raw:
+                    raise ValueError
                 if message.prompt_version != (
                     "assistant-evidence-v1" if legacy else "assistant-evidence-v2"
                 ) or (legacy and message.response_language != "en"):

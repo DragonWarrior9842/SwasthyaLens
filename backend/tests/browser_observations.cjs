@@ -126,7 +126,7 @@ const candidate = () => report().getByRole('article', { name: 'Candidate Hemoglo
   await page.goto('http://127.0.0.1:5173/history?report_id=' + [...created][0]);
   await page.getByLabel('Include inactive observations').check();
   await page.getByRole('button', { name: 'Apply filters' }).click();
-  await hb.waitFor(); assert.ok((await hb.textContent()).includes('superseded'));
+  await hb.waitFor(); assert.ok((await hb.textContent()).includes('Superseded'));
   await inspectCandidate(page);
   await candidate().getByRole('button', { name: 'Publish to health history', exact: true }).click();
   await candidate().getByRole('button', { name: 'Published to health history', exact: true }).waitFor();

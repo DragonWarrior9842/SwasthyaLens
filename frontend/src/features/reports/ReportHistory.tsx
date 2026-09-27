@@ -1,4 +1,4 @@
-import { useI18n } from '../../i18n/core'
+import { useI18n, type AppMessage } from '../../i18n/core'
 import { useEffect, useRef, useState } from 'react'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
@@ -52,7 +52,7 @@ function ReportRow({ report, ownerId, onChange, onAuthFailure }: { report: Repor
   const { t, copy } = useI18n()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState<'download' | 'delete' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppMessage | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const operation = useRef<AbortController | null>(null)
   useEffect(() => () => { operation.current?.abort() }, [])
@@ -91,7 +91,7 @@ function ReportRow({ report, ownerId, onChange, onAuthFailure }: { report: Repor
       setNotice(result.status === 'deleted' ? 'Report and stored file deleted.' : 'Deletion is pending. Refresh to check cleanup; the report has not been confirmed deleted.')
       onChange()
     } catch (failure) {
-      if (!controller.signal.aborted) { setError(t("{error} Deletion has not been confirmed.", { error: copy(errorMessage(failure)) })); onAuthFailure(failure) }
+      if (!controller.signal.aborted) { setError({ key: "{error} Deletion has not been confirmed.", error: errorMessage(failure) }); onAuthFailure(failure) }
     } finally {
       if (!controller.signal.aborted) setBusy(null)
       if (operation.current === controller) operation.current = null

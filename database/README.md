@@ -211,6 +211,25 @@ them concurrently with live/browser acceptance against the shared fixture accoun
 The [Phase 9 handoff](../docs/phase-9-handoff.md) records live two-user/mock acceptance,
 rate/retention limitations and the unchanged Gemini external availability blocker.
 
+## Phase 10 multilingual preferences
+
+`20260926182238_multilingual_preferences.sql` extends existing settings with
+`assistant_language` (`en`, `hi`, `hinglish`; default `en`). The existing
+`preferred_language` field stays the interface locale (`en`, `hi`). Existing RLS,
+active-session policies and narrowly granted columns remain intact.
+
+Messages gain `response_language` and support both legacy v1 English and v2
+multilingual prompt/schema pairs. The worker-gated RPC freezes the selected language
+when a new turn is reserved; idempotent replay never re-resolves preferences.
+Language-only changes do not invalidate history. Timezone/source invalidation remains
+unchanged. No source text or historical answer body is rewritten by this migration.
+
+Run `verification/multilingual.sql` plus the eighteen preceding verification scripts,
+sequentially and separately from live/browser tests. All fixtures roll back. The
+assistant lifecycle count is scoped to its synthetic owners so unrelated saved
+messages do not influence its assertion. The [Phase 10 handoff](../docs/phase-10-handoff.md)
+records acceptance and the unchanged live AI blocker.
+
 ## Reference links
 
 - [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security) explains their combined effect and anonymous-role behavior.

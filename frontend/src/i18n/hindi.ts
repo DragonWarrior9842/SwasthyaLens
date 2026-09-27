@@ -622,7 +622,7 @@ export const hindi = {
   "Trends are temporarily unavailable. Please try again.": "रुझान अभी उपलब्ध नहीं हैं। दोबारा प्रयास करें।",
   "Unexpected attachment": "अप्रत्याशित संलग्न फ़ाइल",
   "Unexpected attachment size": "संलग्न फ़ाइल का आकार अप्रत्याशित है",
-  "Unparsed": "विश्लेषित नहीं",
+  "Unparsed": "पढ़ा नहीं जा सका",
   "Upload completion is not yet confirmed. Refresh to check its status.": "अपलोड पूरा होने की पुष्टि नहीं हुई है। स्थिति जाँचने के लिए ताज़ा करें।",
   "Upload did not complete. Retry from the selected file, or delete this record.": "अपलोड पूरा नहीं हुआ। चुनी फ़ाइल से दोबारा प्रयास करें या यह रिकॉर्ड हटाएं।",
   "Upload in progress": "अपलोड जारी है",
@@ -663,4 +663,10 @@ export const hindi = {
   "{error} Cancellation has not been confirmed. Retry cancellation or delete the report from its history.": "{error} रद्द होने की पुष्टि नहीं हुई है। फिर से रद्द करें या रिपोर्ट इतिहास से रिपोर्ट हटाएँ।",
   "{error} The upload was not confirmed. Retry the same file or cancel it; report history shows the stored status.": "{error} अपलोड की पुष्टि नहीं हुई है। उसी फ़ाइल का अपलोड फिर करें या रद्द करें; संग्रहित स्थिति रिपोर्ट इतिहास में दिखती है।",
   "{error} Deletion has not been confirmed.": "{error} हटाए जाने की पुष्टि नहीं हुई है।",
+  "Back to dashboard": "डैशबोर्ड पर वापस जाएँ",
+  "Text extraction failed. Please try again.": "पाठ निष्कर्षण विफल हुआ। कृपया फिर प्रयास करें।",
+  "Missing": "उपलब्ध नहीं",
+  "Interrupted": "बाधित",
+  "Rate limit": "अनुरोध सीमा",
+  "Source changed": "स्रोत बदल गया"
 } as const
