@@ -30,5 +30,6 @@ export function HistoryPage() {
       {history.data?.items.map(observation => <ObservationCard key={`${observation.id}-${observation.current.revision}-${observation.current.status}`} observation={observation} owner={owner} authFailure={authFailure} onChange={history.refresh} />)}
       <div className="parameter-actions">{params.has('offset') && <Button variant="ghost" onClick={() => { const next = new URLSearchParams(params); next.delete('offset'); setParams(next) }}>{t("First page")}</Button>}{history.data?.next_offset != null && <Button variant="secondary" onClick={() => { const next = new URLSearchParams(params); next.set('offset', String(history.data!.next_offset)); setParams(next) }}>{t("Next observations")}</Button>}</div>
       <ButtonLink to="/reports" variant="ghost">{t("Open reports")}</ButtonLink>
+      <ButtonLink to={params.get('report_id') ? `/exports?report_id=${encodeURIComponent(params.get('report_id')!)}` : '/exports'} variant="secondary">{t('Export health history')}</ButtonLink>
     </Card></div></>
 }

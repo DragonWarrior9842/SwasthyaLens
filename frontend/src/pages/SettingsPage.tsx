@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n/core'
 import { useEffect, useState, type FormEvent } from 'react'
-import { Button } from '../components/Button'
+import { Button, ButtonLink } from '../components/Button'
 import { ErrorState } from '../components/ErrorState'
 import { LoadingState } from '../components/LoadingState'
 import { PageHeader } from '../components/PageHeader'
@@ -46,6 +46,7 @@ export function SettingsPage() {
       {(data.status === 'loading' || (data.status === 'ready' && (data.profile.id !== userId || data.settings.user_id !== userId))) && <LoadingState title={t("Loading your account…")} />}
       {data.status === 'error' && <ErrorState title={t("Unable to load your account")} description={data.message} onRetry={() => { setData({ status: 'loading' }); setAttempt((value) => value + 1) }} />}
       {data.status === 'ready' && data.profile.id === userId && data.settings.user_id === userId && <div className="settings-grid"><ProfileForm key={`${userId}-profile`} profile={data.profile} /><PreferencesForm key={`${userId}-settings`} settings={data.settings} /></div>}
+      <section className="card settings-card data-management"><h2>{t('Manage your data')}</h2><p>{t('Export current health history, or open the relevant section to delete an individual report, manual observation or assistant conversation.')}</p><div className="parameter-actions"><ButtonLink to="/exports">{t('Export health history')}</ButtonLink><ButtonLink to="/reports" variant="secondary">{t('Open reports')}</ButtonLink><ButtonLink to="/history" variant="secondary">{t('Open health history')}</ButtonLink><ButtonLink to="/assistant" variant="secondary">{t('AI Assistant')}</ButtonLink></div></section>
     </>
   )
 }
@@ -95,6 +96,7 @@ function PreferencesForm({ settings }: { settings: UserSettings }) {
   const { checkSession } = useAuth()
   const [language, setLanguage] = useState(settings.preferred_language)
   const [assistantLanguage, setAssistantLanguage] = useState(settings.assistant_language)
+  const [notifications, setNotifications] = useState(settings.in_app_notifications)
   const [savedTimezone, setSavedTimezone] = useState(settings.timezone)
   const [timezone, setTimezone] = useState(settings.timezone)
   const [busy, setBusy] = useState(false)
@@ -111,10 +113,11 @@ function PreferencesForm({ settings }: { settings: UserSettings }) {
     catch { setError('Enter a valid time zone, such as Asia/Kolkata or UTC.'); return }
     setBusy(true)
     try {
-      const updated = await saveSettings({ preferred_language: language, assistant_language: assistantLanguage, ...(selectedTimezone === savedTimezone ? {} : { timezone: selectedTimezone }) }, settings.user_id)
+      const updated = await saveSettings({ preferred_language: language, assistant_language: assistantLanguage, in_app_notifications: notifications, ...(selectedTimezone === savedTimezone ? {} : { timezone: selectedTimezone }) }, settings.user_id)
       if (updated.user_id !== settings.user_id) throw new Error('Mismatched settings')
       setLanguage(updated.preferred_language)
       setAssistantLanguage(updated.assistant_language)
+      setNotifications(updated.in_app_notifications)
       setTimezone(updated.timezone)
       setSavedTimezone(updated.timezone)
       setSaved(true)
@@ -134,6 +137,7 @@ function PreferencesForm({ settings }: { settings: UserSettings }) {
         <div className="form-field"><label htmlFor="account-timezone">{t("Time zone")}</label><input id="account-timezone" name="timezone" type="text" list="common-timezones" required maxLength={64} value={timezone} disabled={busy} onChange={(event) => { setTimezone(event.target.value); setSaved(false) }} aria-describedby="timezone-help" autoCapitalize="none" spellCheck={false} /><datalist id="common-timezones"><option value="Asia/Kolkata" /><option value="UTC" /><option value="Europe/London" /><option value="America/New_York" /><option value="Asia/Dubai" /></datalist><p id="timezone-help">{t("Use an IANA time zone, such as Asia/Kolkata.")}</p></div>
         {error && <div className="form-error" role="alert">{copy(error)}</div>}
         {saved && <div className="form-success" role="status">{t("Your preferences have been saved.")}</div>}
+        <label className="checkbox-label"><input type="checkbox" checked={notifications} disabled={busy} onChange={e => { setNotifications(e.target.checked); setSaved(false) }} />{t('Receive in-app operational notifications')}</label><p>{t('Applies to future report events. Existing notifications remain until dismissed or expired. No email or push is sent.')}</p>
         <Button type="submit" disabled={busy}>{busy ? t("Saving…") : t("Save preferences")}</Button>
       </form>
     </section>

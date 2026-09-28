@@ -1,5 +1,5 @@
 import type { Session } from '../types/auth'
-import { ApiError, isUnauthorized, requestJson, requestReportBlob, requestReportUpload } from './api-client'
+import { ApiError, isUnauthorized, requestJson, requestReportBlob, requestReportUpload, requestExportBlob } from './api-client'
 
 const REFRESH_MARGIN_SECONDS = 60
 let refreshPromise: Promise<Session | null> | null = null
@@ -81,6 +81,13 @@ export function accountUpload<T>(path: string, file: Blob, decode: (payload: unk
 
 export function accountDownload(path: string, expectedType: string, expectedBytes: number, expectedOwnerId: string, signal?: AbortSignal): Promise<Blob> {
   return withCurrentAccount(expectedOwnerId, () => requestReportBlob(path, expectedType, expectedBytes, { credentials: 'include', timeoutMs: 60_000, ...(signal ? { signal } : {}) }), signal)
+}
+
+export function accountExport(body: object, format: 'csv' | 'json', expectedOwnerId: string, signal: AbortSignal): Promise<Blob> {
+  return withCurrentAccount(expectedOwnerId, async () => {
+    const csrfToken = await requestJson('/auth/csrf', decodeCsrf, { credentials: 'include', timeoutMs: 15_000, signal })
+    return requestExportBlob(format, { credentials: 'include', method: 'POST', body, csrfToken, signal, timeoutMs: 25_000 })
+  }, signal)
 }
 
 /** One refresh attempt, with another-tab recheck, and no replay of account mutations. */

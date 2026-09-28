@@ -16,15 +16,16 @@ export function decodeProfile(value: unknown): Profile {
 }
 
 export function decodeSettings(value: unknown): UserSettings {
+  if (!isRecord(value) || typeof value.in_app_notifications !== 'boolean') throw new Error('Invalid notification preference')
   if (!isRecord(value) || typeof value.user_id !== 'string' || !['en', 'hi'].includes(String(value.preferred_language)) || !['en', 'hi', 'hinglish'].includes(String(value.assistant_language ?? 'en')) || value.assistant_language === null || typeof value.timezone !== 'string' || !hasAuditDates(value)) throw new Error('Invalid settings')
-  return { user_id: value.user_id, preferred_language: value.preferred_language as 'en' | 'hi', assistant_language: (value.assistant_language ?? 'en') as UserSettings['assistant_language'], timezone: value.timezone, created_at: String(value.created_at), updated_at: String(value.updated_at) }
+  return { user_id: value.user_id, preferred_language: value.preferred_language as 'en' | 'hi', assistant_language: (value.assistant_language ?? 'en') as UserSettings['assistant_language'], timezone: value.timezone, in_app_notifications: value.in_app_notifications, created_at: String(value.created_at), updated_at: String(value.updated_at) }
 }
 
 export function getProfile(signal?: AbortSignal) { return accountRead('/profile', decodeProfile, signal) }
 export function getSettings(signal?: AbortSignal) { return accountRead('/settings', decodeSettings, signal) }
 export function saveProfile(displayName: string | null, expectedOwnerId: string) { return accountPatch('/profile', { display_name: displayName }, decodeProfile, expectedOwnerId) }
-export async function saveSettings({ preferred_language, assistant_language, timezone }: Partial<Pick<UserSettings, 'preferred_language' | 'assistant_language' | 'timezone'>>, expectedOwnerId: string) {
-  const result = await accountPatch('/settings', { preferred_language, ...(assistant_language === undefined ? {} : { assistant_language }), ...(timezone === undefined ? {} : { timezone }) }, decodeSettings, expectedOwnerId)
+export async function saveSettings({ preferred_language, assistant_language, timezone, in_app_notifications }: Partial<Pick<UserSettings, 'preferred_language' | 'assistant_language' | 'timezone' | 'in_app_notifications'>>, expectedOwnerId: string) {
+  const result = await accountPatch('/settings', { ...(preferred_language === undefined ? {} : { preferred_language }), ...(assistant_language === undefined ? {} : { assistant_language }), ...(timezone === undefined ? {} : { timezone }), ...(in_app_notifications === undefined ? {} : { in_app_notifications }) }, decodeSettings, expectedOwnerId)
   if (timezone !== undefined) historyChanged()
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('swasthyalens-settings-changed', { detail: result }))

@@ -11,6 +11,7 @@ export interface Profile {
 }
 
 export interface UserSettings {
+  in_app_notifications: boolean
   user_id: string
   preferred_language: 'en' | 'hi'
   assistant_language: 'en' | 'hi' | 'hinglish'

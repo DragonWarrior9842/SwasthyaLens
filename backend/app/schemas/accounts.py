@@ -47,6 +47,15 @@ class ProfilePatch(InputModel):
 
 
 class SettingsPatch(InputModel):
+    in_app_notifications: bool | None = None
+
+    @field_validator("in_app_notifications")
+    @classmethod
+    def notification_boolean(cls, value: bool | None) -> bool:
+        if value is None:
+            raise ValueError("Setting cannot be null")
+        return value
+
     preferred_language: Literal["en", "hi"] | None = None
     assistant_language: Literal["en", "hi", "hinglish"] | None = None
     timezone: Annotated[str | None, Field(min_length=1, max_length=64)] = None
@@ -77,6 +86,7 @@ class Profile(BaseModel):
 
 
 class UserSettings(BaseModel):
+    in_app_notifications: bool = True
     user_id: UUID
     preferred_language: Literal["en", "hi"]
     assistant_language: Literal["en", "hi", "hinglish"] = "en"

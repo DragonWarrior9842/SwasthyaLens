@@ -50,6 +50,7 @@ class ProviderFixture:
     name: str | None = None
     language: str = "en"
     assistant_language: str = "en"
+    notifications: bool = True
     timezone: str = "UTC"
     profile_exists: bool = False
     settings_exist: bool = False
@@ -124,6 +125,7 @@ class ProviderFixture:
                         "assistant_language", self.assistant_language
                     )
                     self.timezone = data.get("timezone", self.timezone)
+                    self.notifications = data.get("in_app_notifications", self.notifications)
             row: dict[str, object] = {
                 "created_at": "2026-09-14T00:00:00Z",
                 "updated_at": "2026-09-14T00:00:00Z",
@@ -135,6 +137,7 @@ class ProviderFixture:
                     "user_id": self.user_id,
                     "preferred_language": self.language,
                     "assistant_language": self.assistant_language,
+                    "in_app_notifications": self.notifications,
                     "timezone": self.timezone,
                 }
             )

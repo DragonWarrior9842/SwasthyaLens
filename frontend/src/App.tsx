@@ -11,6 +11,8 @@ import { LocaleProvider } from './i18n/LocaleProvider'
 import { SessionGate } from './features/auth/SessionGate'
 import { AuthPage } from './pages/AuthPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { ExportsPage } from './pages/ExportsPage'
+import { NotificationsPage } from './features/system/Notifications'
 
 export function App() {
   return (
@@ -28,6 +30,8 @@ export function App() {
         <Route path="trends" element={<TrendsPage />} />
         <Route path="assistant" element={<AssistantPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="exports" element={<ExportsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

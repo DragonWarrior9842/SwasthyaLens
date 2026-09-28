@@ -89,7 +89,7 @@ describe('local application language contract', () => {
     }
   })
   it.each(['en', 'hi', 'hinglish'])('keeps interface and assistant preferences independent: %s', language => {
-    const record = { user_id: fixture.conversation.id, preferred_language: 'hi', assistant_language: language, timezone: 'UTC', created_at: '2026-09-20T00:00:00Z', updated_at: '2026-09-20T00:00:00Z' }
+    const record = { user_id: fixture.conversation.id, in_app_notifications: true, preferred_language: 'hi', assistant_language: language, timezone: 'UTC', created_at: '2026-09-20T00:00:00Z', updated_at: '2026-09-20T00:00:00Z' }
     expect(decodeSettings(record).assistant_language).toBe(language)
     expect(() => decodeSettings({ ...record, preferred_language: 'hinglish' })).toThrow()
     expect(() => decodeSettings({ ...record, assistant_language: 'fr' })).toThrow()

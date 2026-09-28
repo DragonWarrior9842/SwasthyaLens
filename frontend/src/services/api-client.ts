@@ -1,6 +1,14 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  export_unavailable: 'The export could not be verified. Please try again.',
+  export_timeout: 'The export took too long. Choose a smaller period or source.',
+  export_capacity: 'Export limit reached: choose at most 200 observations from 20 reports and a smaller period.',
+  export_invalid: 'Choose a valid export period of at most 366 days and a valid source.',
+  export_csv_unsafe: 'Some source text could be interpreted as a spreadsheet formula. Choose JSON to preserve it safely.',
+  notification_unavailable: 'Notifications are temporarily unavailable.',
+  notification_not_found: 'This notification was removed or expired. Refresh notifications.',
+  notification_invalid: 'Check the notification request and try again.',
   trend_unavailable: 'Trends are temporarily unavailable. Please try again.',
   trend_capacity: 'This analysis exceeds 500 observations or 50 metric/unit groups. Choose a shorter period or another end date; no partial statistics are shown.',
   trend_unit: 'This exact unit is not supported for this metric. The original remains in health history.',
@@ -120,6 +128,29 @@ export async function requestReportBlob(path: string, expectedType: string, expe
       return new Blob(parts, { type: expectedType })
     } finally { await reader.cancel().catch(() => undefined); reader.releaseLock() }
   }, options, undefined, expectedType)
+}
+
+/** A separate strict boundary for explicit JSON-to-private-attachment exports. */
+export async function requestExportBlob(format: 'csv' | 'json', options: RequestOptions): Promise<Blob> {
+  const expected = format === 'csv' ? 'text/csv' : 'application/json'
+  if (!['csv', 'json'].includes(format) || options.method !== 'POST' || !options.csrfToken || options.credentials !== 'include' || !options.body) throw new ApiError('configuration', 'The export request is not configured correctly.')
+  return request('/exports', async response => {
+    const length = response.headers.get('Content-Length')
+    if (response.headers.get('Content-Type')?.split(';')[0] !== expected || response.headers.get('Content-Disposition') !== `attachment; filename="swasthyalens-health.${format}"` || !response.headers.get('Cache-Control')?.includes('no-store') || !response.body || !length || !/^\d+$/.test(length) || Number(length) < 1 || Number(length) > 2 * 1024 * 1024) throw new Error('Invalid export attachment')
+    const reader = response.body.getReader(), parts: Uint8Array<ArrayBuffer>[] = []
+    let size = 0
+    try {
+      while (true) {
+        const part = await reader.read()
+        if (part.done) break
+        size += part.value.byteLength
+        if (size > Number(length)) throw new Error('Oversized export')
+        parts.push(new Uint8Array(part.value))
+      }
+      if (size !== Number(length)) throw new Error('Incomplete export')
+      return new Blob(parts, { type: expected })
+    } finally { await reader.cancel().catch(() => undefined); reader.releaseLock() }
+  }, options, undefined, expected)
 }
 
 async function request<T>(path: string, decode: (response: Response) => Promise<T>, options: RequestOptions, rawBody?: Blob, accept = 'application/json'): Promise<T> {

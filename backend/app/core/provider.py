@@ -42,6 +42,8 @@ class SupabaseGateway:
             response_limit = 2_500_000  # At most 501 bounded Phase 6 snapshots.
         if method == "POST" and path == "/rest/v1/rpc/assistant_call":
             response_limit = 2_000_000  # 25 turns, at most 60 KB per answer.
+        if method == "POST" and path == "/rest/v1/rpc/export_context":
+            response_limit = 2_097_152  # At most 200 current facts; no source documents.
         try:
             with self.client.stream(
                 method,
@@ -79,6 +81,10 @@ class SupabaseGateway:
                 if code == "P0001" and isinstance(error, dict):
                     message = error.get("message")
                     report_errors = {
+                        "export_invalid": (422, "Choose a valid export period and source."),
+                        "export_capacity": (422, "Choose a smaller export period or source."),
+                        "notification_invalid": (422, "Invalid notification request."),
+                        "notification_not_found": (404, "Notification not found or expired."),
                         "assistant_not_found": (404, "Conversation not found."),
                         "assistant_conflict": (
                             409,

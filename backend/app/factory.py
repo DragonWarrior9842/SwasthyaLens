@@ -15,8 +15,10 @@ from app.api.accounts import router as accounts_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.explanations import router as explanations_router
+from app.api.exports import router as exports_router
 from app.api.extraction import router as extraction_router
 from app.api.health import router as health_router
+from app.api.notifications import router as notifications_router
 from app.api.observations import router as observations_router
 from app.api.parameters import router as parameters_router
 from app.api.reports import router as reports_router
@@ -72,6 +74,7 @@ def create_app(
                 else None
             )
             application.state.report_upload_slots = asyncio.Semaphore(4)
+            application.state.export_slots = asyncio.Semaphore(2)
             extraction = (
                 ExtractionService(application.state.reports_service, config)
                 if config.auth_enabled
@@ -150,4 +153,6 @@ def create_app(
     application.include_router(explanations_router)
     application.include_router(trends_router)
     application.include_router(assistant_router)
+    application.include_router(exports_router)
+    application.include_router(notifications_router)
     return application
