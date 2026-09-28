@@ -358,4 +358,33 @@ translation service or billing change is needed. Keep `RUN_AI_INTEGRATION` unset
 Gemini attempts remain 2/20. The synthetic browser harness is
 `backend/tests/browser_multilingual.cjs`, with real settings persistence and explicitly
 routed synthetic evidence. See [the Phase 10 handoff](docs/phase-10-handoff.md) for
-architecture, exact precedence, verification and limitations. Phase 11 is not started.
+architecture, exact precedence, verification and limitations.
+
+## Phase 11 private exports and operational notifications
+
+Open **Account settings → Export health history** or the export link in Health history.
+Choose source, measurement period (at most 366 days), CSV/JSON and English/Hindi,
+then explicitly **Generate and download**. Include unknown measurement dates only
+when wanted. Each request reads current owned, active manual and personally reviewed,
+published report observations. Original values, units, ranges, flags and provenance
+remain exact; AI answers and unpublished/deleted data are excluded.
+
+Downloads are private direct responses, with no retained export, public URL or
+Storage artifact. Limits are 200 observations, 20 reports and 2 MiB. Import CSV
+columns as text to retain trailing zeros; use JSON for lossless strings or
+formula-like source text. Device copies cannot be recalled after source deletion.
+
+**Notifications** in the account bar opens generic report upload, extraction and
+parameter-processing updates. Read, mark all read or dismiss notices; they expire
+after 30 days and are capped at 100 per owner. Settings can disable future notices.
+English/Hindi copy contains no measurements or report text. No SMTP, email, SMS,
+push service, new key or environment variable is needed.
+
+Migration `20260928125713_exports_notifications.sql` is applied to development;
+apply it after Phase 10 for a fresh installation. See the
+[Phase 11 handoff](docs/phase-11-handoff.md) for API contracts, security, acceptance
+and manual checks. Synthetic browser acceptance is
+`backend/tests/browser_exports_notifications.cjs`; live Supabase acceptance is
+`backend/tests/integration/test_live_exports_notifications.py` and requires the
+existing explicit Supabase integration opt-in. Keep `RUN_AI_INTEGRATION` unset.
+Gemini remains 2/20 and externally blocked. Phase 12 voice is not implemented.

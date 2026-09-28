@@ -34,6 +34,7 @@ async function login(p, account) {
   await p.reload(); await p.getByLabel('Interface language', { exact: true }).waitFor();
 }
 async function screenshot(name) {
+  await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
   await page.screenshot({ path: path.join(output, name), fullPage: true, mask: [page.locator('.account-bar__identity')] });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal overflow');
 }
@@ -173,9 +174,9 @@ async function download(p, label) {
   manuals.length = 0;
   for (const [p, id] of reports) assert.equal((await write(p, 'DELETE', '/reports/' + id, {})).status, 200);
   reports.length = 0;
-  await page.getByRole('button', { name: hi['Sign out'], exact: true }).click(); await page.waitForURL('**/auth/sign-in');
+  await page.getByRole('button', { name: new RegExp('^(Sign out|' + hi['Sign out'] + ')$') }).click(); await page.waitForURL('**/auth/sign-in');
   assert.equal((await read(page, '/notifications')).status, 401);
-  await page.goto(origin + '/exports'); await page.waitForURL('**/auth/sign-in?*'); assert.equal(await page.locator('.export-controls').count(), 0); pass();
+  await page.goto(origin + '/exports'); await page.waitForURL(url => url.pathname === '/auth/sign-in'); assert.equal(await page.locator('.export-controls').count(), 0); pass();
   stage = 'zero browser errors, zero AI requests and explicit downloads only';
   assert.equal(errors, 0); assert.equal(ai, 0); assert.equal(exportsSent, 5); pass();
   fs.writeFileSync(path.join(output, 'browser-results.json'), JSON.stringify({ checks, errors, ai, exportsSent, syntheticOnly: true }, null, 2));

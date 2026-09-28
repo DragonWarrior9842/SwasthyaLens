@@ -230,6 +230,32 @@ assistant lifecycle count is scoped to its synthetic owners so unrelated saved
 messages do not influence its assertion. The [Phase 10 handoff](../docs/phase-10-handoff.md)
 records acceptance and the unchanged live AI blocker.
 
+## Phase 11 direct exports and operational notifications
+
+`20260928125713_exports_notifications.sql` adds the strictly boolean
+`user_settings.in_app_notifications` preference and the forced-RLS `notifications`
+table. Existing account grants stay narrow. An owner/active-session invoker RPC
+selects at most 200 active observations from at most 20 reports in a 366-day period.
+It verifies current report reviews and excludes deleted/inactive/unpublished data.
+There is no export table, job, bucket or retained file.
+
+Database AFTER UPDATE triggers emit five generic event types only on real report,
+extraction and parameter-processing transitions. A unique event identity prevents
+replay duplication. No source text or translated copy is stored in notices. The
+private worker-gated lifecycle function authorizes the caller, bounds pagination,
+and persists read/dismiss state. Authenticated clients have SELECT-only table access
+under owner/active-session/expiry/available-report RLS. No anonymous access is granted.
+
+Owner history, report lookup and expiration indexes bound access. Notices are capped
+at 100 per owner and hidden after 30 days; access and event writes prune stale rows.
+An hourly `swasthyalens-notification-retention` cron job performs physical expiration
+cleanup. Report deletion intent removes its notices in the same transaction.
+
+Run all 22 rollback-only verification scripts sequentially, including the three
+`exports-notifications-*` scripts. Do not overlap them with shared-account live or
+browser acceptance. The [handoff](../docs/phase-11-handoff.md) records test/advisor
+results and the unchanged external Gemini blocker. No new secrets are required.
+
 ## Reference links
 
 - [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security) explains their combined effect and anonymous-role behavior.
