@@ -8,12 +8,14 @@ import { useHistoryAccount, useOwnedHistory } from '../features/observations/use
 import { errorMessage } from '../services/api-client'
 import { createConversation, deleteConversation, getConversation, listConversations, sendMessage } from '../services/assistant'
 import type { Answer, Thread } from '../services/assistant'
+import { ReadAloud, VoiceInput } from '../features/voice/VoiceControls'
 
 const suggestions = ['Explain my latest report.', 'What was my latest weight?', 'How has my Vitamin D changed over 30 days?', 'What does my report say about TSH?']
-function EvidenceAnswer({ answer }: { answer: Answer }) {
+function EvidenceAnswer({ answer, voice }: { answer: Answer; voice: boolean }) {
   const { t, locale } = useI18n()
   const c = answer.calculation
   return <><p lang={answer.choice.response_language === 'hi' ? 'hi' : answer.choice.response_language === 'hinglish' ? 'hi-Latn' : 'en'}>{answer.text}</p>
+    {voice && <ReadAloud text={answer.text} language={answer.choice.response_language ?? 'en'} />}
     {answer.selection === 'latest_uploaded_report' && <p>{t("Selected report: most recently uploaded. Upload time is not the measurement date. Only reviewed, explicitly published findings are included.")}</p>}
     {answer.selection === 'recent_metric' && <p>{t("Up to five recent matching observations, known measurement days first. Unknown dates cannot establish which result is clinically latest.")}</p>}
     {answer.facts.map((f, index) => { const s = answer.sources[index]!; return <details key={f.evidence_id} className="assistant-evidence"><summary>{"" + t("Source fact:") + " "}{f.label} · {f.value} {f.unit ?? t("(unit not supplied)")}</summary>
@@ -42,6 +44,7 @@ function EvidenceAnswer({ answer }: { answer: Answer }) {
 function Workspace({ owner, authFailure }: { owner: string; authFailure: (error: unknown) => void }) {
   const { t, copy } = useI18n()
   const [selected, setSelected] = useState<string | null>(null), [question, setQuestion] = useState('')
+  const [voice, setVoice] = useState(false)
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [confirmDelete, setConfirmDelete] = useState(false)
   const operation = useRef<AbortController | null>(null), pending = useRef<{ content: string; conversation: string; key: string } | null>(null), createKey = useRef<string | null>(null)
   const composer = useRef<HTMLTextAreaElement | null>(null)
@@ -75,6 +78,9 @@ function Workspace({ owner, authFailure }: { owner: string; authFailure: (error:
   }
   return <><PageHeader eyebrow={t("AI HEALTH ASSISTANT")} title={t("More understanding, less jargon")} description={t("Private conversations grounded in reviewed observations and deterministic trends.")} />
     <p className="assistant-notice" role="status">{t("Live AI answers are unavailable while provider acceptance is blocked. Conversations are saved privately. Clarifications and safety guidance are deterministic application responses.")}</p>
+    <div className="voice-preference"><label className="checkbox-label"><input type="checkbox" checked={voice} onChange={event => setVoice(event.target.checked)} />{t('Enable optional voice for this visit')}</label>
+      {voice && <p className="form-hint">{t('Only browser-reported local speech services are used. Raw audio is not saved by SwasthyaLens. Submitted text is saved as a normal private chat message. Check your surroundings before reading a health response aloud.')}</p>}
+    </div>
     <div className="assistant-workspace"><Card className="assistant-sidebar"><div className="card-heading"><h2>{t("Conversations")}</h2><Button size="sm" disabled={busy} onClick={() => { void perform(async signal => { createKey.current ??= crypto.randomUUID(); const result = await createConversation(createKey.current, owner, signal); if (!signal.aborted) { createKey.current = null; setSelected(result.conversation.id); setQuestion(''); setConfirmDelete(false); list.refresh() } }) }}>{t("New chat")}</Button></div>
       {list.loading && <p role="status">{t("Loading conversations…")}</p>}{list.error && <p role="alert">{copy(list.error)}</p>}
       {list.data?.conversations.length === 0 && <><p>{t("Your health story comes first.")}</p><p>{t("Start a new chat when you have a question.")}</p></>}
@@ -86,7 +92,7 @@ function Workspace({ owner, authFailure }: { owner: string; authFailure: (error:
       {!selected && <p>{t("Choose New chat to begin. No question is sent until you choose Send.")}</p>}
       {thread.data?.messages.length === 0 && <p>{t("No messages yet. Ask about one metric or your latest uploaded report.")}</p>}
       <div className="assistant-messages" aria-label={t("Conversation messages")}>{thread.data?.messages.map((m, index) => <article key={m.id} className={`assistant-message assistant-message--${m.role}`} aria-label={m.role === 'user' ? t("Your message") : t("Assistant response")}><h3>{m.role === 'user' ? t("You") : m.provider === 'rules' ? t("Application guidance") : m.provider === 'mock-test' ? t("Deterministic mock · testing only") : t("Assistant")}</h3>
-        {m.content && <p className="assistant-user-text">{m.content}</p>}{m.answer && <EvidenceAnswer answer={m.answer} />}
+        {m.content && <p className="assistant-user-text">{m.content}</p>}{m.answer && <EvidenceAnswer answer={m.answer} voice={voice} />}
         {m.status === 'generating' && <p role="status">{t("Answer pending. Refresh to check its status; no automatic generation retry occurs.")}</p>}
         {m.status === 'stale' && <p>{t("Source data changed or was removed. This answer and its source links have been cleared. Ask again for current evidence.")}</p>}
         {m.status === 'failed' && <p role="status">{m.error_category === 'invalid_output' ? t("The answer failed verification and was not displayed.") : m.error_category === 'timeout' ? t("The answer timed out.") : t("An AI answer is unavailable. Your question was saved.")}{" " + t("No automatic retry was made.")}</p>}
@@ -94,6 +100,7 @@ function Workspace({ owner, authFailure }: { owner: string; authFailure: (error:
       </article>)}</div>
       {selected && <form className="assistant-composer" aria-label={t("Send an assistant question")} onSubmit={event => { event.preventDefault(); void send(question) }}>
         <div className="assistant-suggestions">{suggestions.map(prompt => <Button key={copy(prompt)} variant="ghost" size="sm" disabled={busy} onClick={() => setQuestion(copy(prompt))}>{copy(prompt)}</Button>)}</div>
+        {voice && !busy && thread.data && <VoiceInput key={selected} onUse={text => { const combined = question ? `${question}\n${text}` : text; if (combined.length > 2000) return false; setQuestion(combined); composer.current?.focus(); return true }} />}
         <label htmlFor="assistant-question">{t("Your question")}</label><textarea ref={composer} id="assistant-question" value={question} onChange={event => setQuestion(event.target.value)} maxLength={2000} rows={4} required disabled={busy} aria-describedby="assistant-limit" />
         <p id="assistant-limit" className="form-hint">{question.length}{t("/2000 characters. Ask in English, Hindi or Hinglish. New answers follow your assistant preference; an explicit language request in this question overrides it. Do not use chat for emergencies.")}</p>
         <Button type="submit" disabled={busy || !question.trim() || thread.loading}>{busy ? t("Saving question…") : error ? t("Retry sending") : t("Send")}</Button>
