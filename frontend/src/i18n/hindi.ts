@@ -1,5 +1,7 @@
 /** Application copy only. Never translate source evidence or historical messages. */
 export const hindi = {
+  "Transcript ready. Review and edit it before use.": "बोला गया पाठ तैयार है। उपयोग से पहले उसकी समीक्षा करें और सुधारें।",
+  "Playback finished.": "वाचन पूरा हुआ।",
   "Enable optional voice for this visit": "इस बार वैकल्पिक आवाज़ सुविधाएँ चालू करें",
   "Only browser-reported local speech services are used. Raw audio is not saved by SwasthyaLens. Submitted text is saved as a normal private chat message. Check your surroundings before reading a health response aloud.": "केवल ब्राउज़र द्वारा स्थानीय बताई गई वाणी सेवाओं का उपयोग होता है। SwasthyaLens मूल ऑडियो सहेजता नहीं है। भेजा गया पाठ सामान्य निजी चैट संदेश की तरह सहेजा जाता है। स्वास्थ्य संबंधी उत्तर सुनने से पहले आसपास की गोपनीयता का ध्यान रखें।",
   "Optional voice input": "वैकल्पिक आवाज़ इनपुट",

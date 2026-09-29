@@ -4,7 +4,7 @@ SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentic
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its mock-only acceptance boundary. Phase 10 adds English/Hindi interface copy and independent English/Hindi/Hinglish assistant preferences. Voice, notifications and exports remain unimplemented. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its mock-only acceptance boundary. Phase 10 adds English/Hindi interface copy and independent English/Hindi/Hinglish assistant preferences. Phase 11 adds private exports and operational notifications. Phase 12 adds optional local-only browser speech with editable transcripts; hardware and speech quality require manual verification. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -387,4 +387,34 @@ and manual checks. Synthetic browser acceptance is
 `backend/tests/browser_exports_notifications.cjs`; live Supabase acceptance is
 `backend/tests/integration/test_live_exports_notifications.py` and requires the
 existing explicit Supabase integration opt-in. Keep `RUN_AI_INTEGRATION` unset.
-Gemini remains 2/20 and externally blocked. Phase 12 voice is not implemented.
+Gemini remains 2/20 and externally blocked.
+
+## Phase 12 optional local voice
+
+In Assistant, choose **Enable optional voice for this visit**. Select a recognition
+language independently of the interface/answer language, then **Check local voice
+availability**. If an installed local pack is available, **Start voice input** requests
+microphone permission when needed. Listening is bounded to 30 seconds; Stop finalizes
+the transcript and Cancel discards it. Review and edit every word, number and unit,
+then **Use reviewed transcript** to append it to the question. Only the ordinary
+**Send** action submits a private assistant message. Speech never creates a trusted
+observation or bypasses assistant safety, evidence or account checks.
+
+**Read aloud** explicitly plays the already-displayed answer paragraph using only
+a browser-reported local voice matching its frozen English/Hindi language. Stop,
+pause/resume where supported, and explicit replay are available. No autoplay, remote
+voice fallback or Hinglish synthesis is used. Source facts remain visible for review.
+
+Text remains fully usable if local recognition or matching local voices are missing.
+Browser-native recognition can otherwise be remote; this implementation requires
+the explicit local-processing API and installed packs. No language packs are downloaded
+by the app. No raw audio is uploaded, logged or stored by SwasthyaLens. No new key,
+environment variable, package, server endpoint, database table or billing setup is needed.
+Browser/OS local-processing behavior remains a platform trust boundary.
+
+Normal speech tests use deterministic mocks, no microphone and no provider credits.
+The synthetic browser harness is `backend/tests/browser_voice.cjs`; it uses the
+existing dedicated A/B accounts and loopback backend. Keep `RUN_AI_INTEGRATION`
+unset. See [the architecture decision](docs/phase-12-decision.md) and
+[Phase 12 handoff](docs/phase-12-handoff.md) for exact acceptance scope, physical-device
+checklist, browser/language limitations and reproduction. Phase 13 remains unstarted.

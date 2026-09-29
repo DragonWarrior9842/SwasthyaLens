@@ -82,6 +82,9 @@ function speechMock() {
   stage = 'numeric transcript is exact editable and never automatically submitted';
   const numeric = '13.2 18 80 2.4 0.4 30–100 TSH Vitamin D mg/dL ng/mL bpm kg';
   await result(numeric); assert.equal(await page.getByLabel('Review and edit transcript', { exact: true }).inputValue(), numeric); assert.equal(bodies.length, 0);
+  await button('Refresh conversations').click();
+  await page.waitForFunction(() => !document.querySelector('.voice-panel button')?.disabled);
+  assert.equal(await page.getByLabel('Review and edit transcript', { exact: true }).inputValue(), numeric);
   await page.getByLabel('Review and edit transcript', { exact: true }).fill(numeric + ' reviewed');
   await button('Use reviewed transcript').click(); assert.equal(await page.getByLabel('Your question', { exact: true }).inputValue(), numeric + ' reviewed'); assert.equal(bodies.length, 0);
   await send(); assert.equal(bodies.length, 1); assert.deepEqual(Object.keys(bodies[0]).sort(), ['content', 'idempotency_key']); assert.equal(bodies[0].content, numeric + ' reviewed');
@@ -90,14 +93,22 @@ function speechMock() {
   await page.getByLabel('Your question', { exact: true }).fill('Typed draft'); await start();
   await page.evaluate(() => window.__voice.recognition.onresult({ results: [{ isFinal: true, 0: { transcript: '18' } }] }));
   await button('Stop listening').click(); await button('Use reviewed transcript').click(); assert.equal(await page.getByLabel('Your question', { exact: true }).inputValue(), 'Typed draft\n18'); pass();
+  stage = 'combined length limit never truncates or overwrites the existing draft';
+  await page.getByLabel('Your question', { exact: true }).fill('a'.repeat(1999)); await start(); await result('80'); await button('Use reviewed transcript').click();
+  await page.getByText('Your question and transcript together exceed 2000 characters. Shorten either before combining them.', { exact: true }).waitFor();
+  assert.equal((await page.getByLabel('Your question', { exact: true }).inputValue()).length, 1999); await cancel(); await page.getByLabel('Your question', { exact: true }).fill('Typed draft\n18'); pass();
   stage = 'Cancel ignores late results and preserves ordinary text';
   await start(); await page.evaluate(() => { window.__voice.late = window.__voice.recognition.onresult; }); await cancel();
   await page.evaluate(() => window.__voice.late({ results: [{ isFinal: true, 0: { transcript: 'late synthetic text' } }] }));
   assert.equal(await page.getByLabel('Review and edit transcript', { exact: true }).count(), 0); assert.equal(await page.getByLabel('Your question', { exact: true }).inputValue(), 'Typed draft\n18'); pass();
   stage = 'permission denial leaves typing available without automatic retry';
   await page.evaluate(() => { window.__voice.error = 'not-allowed'; }); await ready(); await button('Start voice input').click();
-  await page.getByText(hi['unused'] || 'Microphone permission was not granted. You can continue by typing or change permission in your browser settings.', { exact: true }).waitFor();
+  await page.getByText('Microphone permission was not granted. You can continue by typing or change permission in your browser settings.', { exact: true }).waitFor();
   assert.equal(await page.getByLabel('Your question', { exact: true }).isEnabled(), true); await cancel(); await page.evaluate(() => { window.__voice.error = null; }); pass();
+  stage = 'pending microphone permission can be cancelled without submission';
+  await page.evaluate(() => { window.__voice.pending = true; }); await ready(); await button('Start voice input').click();
+  await page.getByText('Waiting for microphone permission or startup. You can cancel.', { exact: true }).waitFor(); await cancel();
+  await page.evaluate(() => { window.__voice.pending = false; }); pass();
   stage = 'missing language pack and unsupported browser fall back without recording';
   const count = await page.evaluate(() => window.__voice.starts); await page.evaluate(() => { window.__voice.availability = 'downloadable'; }); await button('Check local voice availability').click();
   await page.getByText('An installed local recognition pack is not available for this language. You can continue by typing.', { exact: true }).waitFor(); assert.equal(await page.evaluate(() => window.__voice.starts), count);
@@ -135,12 +146,15 @@ function speechMock() {
   assert.equal((await write(page, 'PATCH', '/settings', { preferred_language: 'hi', assistant_language: 'hi' })).status, 200);
   await page.reload(); locale = 'hi'; await page.getByRole('button', { name: new RegExp(hi['Health conversation']) }).first().click(); await enable();
   await page.getByLabel(hi['Recognition language'], { exact: true }).selectOption('hi-IN'); await start(); await result('मेरी रिपोर्ट में TSH 2.4 है');
-  assert.equal(await page.getByLabel(hi['Review and edit transcript'], { exact: true }).inputValue(), 'मेरी रिपोर्ट में TSH 2.4 है'); assert.equal(await page.evaluate(() => window.__voice.lastLanguage), 'hi-IN'); await cancel();
+  assert.equal(await page.getByLabel(hi['Review and edit transcript'], { exact: true }).inputValue(), 'मेरी रिपोर्ट में TSH 2.4 है'); assert.equal(await page.evaluate(() => window.__voice.lastLanguage), 'hi-IN');
+  await page.getByLabel(hi['Review and edit transcript'], { exact: true }).fill('मुझे सांस लेने में दिक्कत है। हिंदी में उत्तर दें।'); await button('Use reviewed transcript').click(); await send();
+  const hindiAnswer = (await read(page, '/assistant/conversations/' + conversation)).body.messages.at(-1);
+  assert.equal(hindiAnswer.answer.choice.explanation_code, 'emergency'); assert.equal(hindiAnswer.response_language, 'hi'); assert.equal(hindiAnswer.provider, 'rules');
   let routed = structuredClone(fixture); routed.conversation.id = conversation; routed.messages.forEach(m => { m.conversation_id = conversation; });
   await page.route('**/api/assistant/conversations/' + conversation, route => route.request().method() === 'GET' ? route.fulfill({ json: routed }) : route.continue());
   await button('Refresh conversations').click(); await page.getByText(hi['Hinglish read-aloud is unavailable. Read the displayed response instead.'], { exact: true }).waitFor();
   const answers = page.getByRole('article', { name: hi['Assistant response'] });
-  for (const [index, lang] of [[0, 'en-US'], [1, 'hi-IN']]) { await answers.nth(index).getByRole('button', { name: hi['Read aloud'], exact: true }).click(); assert.deepEqual(await page.evaluate(() => window.__voice.speaks.at(-1)), { text: routed.messages[index].answer.text, lang, local: true }); await answers.nth(index).getByRole('button', { name: hi['Stop playback'], exact: true }).click(); } pass();
+  for (const [index, lang] of [[0, 'en-US'], [1, 'en-US'], [2, 'hi-IN']]) { await answers.nth(index).getByRole('button', { name: hi['Read aloud'], exact: true }).click(); assert.deepEqual(await page.evaluate(() => window.__voice.speaks.at(-1)), { text: routed.messages[index].answer.text, lang, local: true }); await answers.nth(index).getByRole('button', { name: hi['Stop playback'], exact: true }).click(); } pass();
   stage = 'mobile Hindi transcript keyboard controls and no horizontal overflow';
   await page.setViewportSize({ width: 375, height: 812 }); await start(); await result('13.2 mg/dL'); await page.getByLabel(hi['Review and edit transcript'], { exact: true }).focus(); await page.keyboard.press('Tab');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -155,12 +169,22 @@ function speechMock() {
   assert.equal(await button('Stop listening').count(), 0);
   await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' }); });
   await start(); await page.getByLabel(hi['Enable optional voice for this visit'], { exact: true }).uncheck(); assert.equal(await page.locator('.voice-panel').count(), 0); pass();
+  stage = 'changing conversation cancels active recognition without carrying input';
+  await page.unroute('**/api/assistant/conversations/' + conversation);
+  await button('Refresh conversations').click(); await enable(); await start();
+  const aborts = await page.evaluate(() => window.__voice.aborts);
+  const newChat = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/assistant/conversations');
+  await button('New chat').click(); const switched = await newChat; assert.equal(switched.status(), 200); const temporaryConversation = (await switched.json()).conversation.id;
+  try { await page.waitForFunction(n => window.__voice.aborts > n, aborts); assert.equal(await page.getByLabel(hi['Your question'], { exact: true }).inputValue(), ''); assert.equal(await page.getByLabel(hi['Review and edit transcript'], { exact: true }).count(), 0); }
+  finally { assert.equal((await write(page, 'DELETE', '/assistant/conversations/' + temporaryConversation, {})).status, 200); }
+  pass();
   stage = 'real logout and account transition remove voice state with zero external requests';
   await page.unroute('**/api/assistant/conversations/' + conversation);
   assert.equal((await write(page, 'DELETE', '/assistant/conversations/' + conversation, {})).status, 200); conversation = null;
   for (const [p, body] of originals) assert.equal((await write(p, 'PATCH', '/settings', body)).status, 200); originals.length = 0;
   await page.getByRole('button', { name: hi['Sign out'], exact: true }).click(); await page.waitForURL('**/auth/sign-in');
   assert.equal(await page.locator('.voice-panel,.voice-output').count(), 0); assert.equal((await read(page, '/assistant/conversations')).status, 401);
+  await login(page, 'B'); assert.equal(await page.getByLabel('Enable optional voice for this visit', { exact: true }).isChecked(), false); assert.equal(await page.locator('.voice-panel,.voice-output').count(), 0);
   assert.equal(errors, 0); assert.equal(external, 0); pass();
   fs.writeFileSync(path.join(output, 'browser-results.json'), JSON.stringify({ checks, errors, external, syntheticOnly: true, physicalDeviceVerified: false }, null, 2));
 })().catch(error => { console.error('FAIL: ' + stage + ' (' + error.name + ')'); console.error(String(error.stack).split('\n').filter(line => line.includes('browser_voice.cjs')).join('\n')); process.exitCode = 1; }).finally(async () => {

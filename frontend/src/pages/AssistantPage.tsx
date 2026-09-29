@@ -100,7 +100,7 @@ function Workspace({ owner, authFailure }: { owner: string; authFailure: (error:
       </article>)}</div>
       {selected && <form className="assistant-composer" aria-label={t("Send an assistant question")} onSubmit={event => { event.preventDefault(); void send(question) }}>
         <div className="assistant-suggestions">{suggestions.map(prompt => <Button key={copy(prompt)} variant="ghost" size="sm" disabled={busy} onClick={() => setQuestion(copy(prompt))}>{copy(prompt)}</Button>)}</div>
-        {voice && !busy && thread.data && <VoiceInput key={selected} onUse={text => { const combined = question ? `${question}\n${text}` : text; if (combined.length > 2000) return false; setQuestion(combined); composer.current?.focus(); return true }} />}
+        {voice && !busy && <VoiceInput key={selected} disabled={thread.loading || !thread.data} onUse={text => { const combined = question ? `${question}\n${text}` : text; if (combined.length > 2000) return false; setQuestion(combined); composer.current?.focus(); return true }} />}
         <label htmlFor="assistant-question">{t("Your question")}</label><textarea ref={composer} id="assistant-question" value={question} onChange={event => setQuestion(event.target.value)} maxLength={2000} rows={4} required disabled={busy} aria-describedby="assistant-limit" />
         <p id="assistant-limit" className="form-hint">{question.length}{t("/2000 characters. Ask in English, Hindi or Hinglish. New answers follow your assistant preference; an explicit language request in this question overrides it. Do not use chat for emergencies.")}</p>
         <Button type="submit" disabled={busy || !question.trim() || thread.loading}>{busy ? t("Saving question…") : error ? t("Retry sending") : t("Send")}</Button>

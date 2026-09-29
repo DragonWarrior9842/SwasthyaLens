@@ -30,7 +30,7 @@ function useCancellation(cancel: () => void) {
   }, [cancel])
 }
 
-export function VoiceInput({ onUse }: { onUse: (text: string) => boolean }) {
+export function VoiceInput({ onUse, disabled }: { onUse: (text: string) => boolean; disabled: boolean }) {
   const { t } = useI18n(), id = useId()
   const [language, setLanguage] = useState<InputLanguage>('en-US')
   const [full, setFull] = useState(false)
@@ -45,8 +45,8 @@ export function VoiceInput({ onUse }: { onUse: (text: string) => boolean }) {
     </select>
     <p className="form-hint">{t('Recognition language is separate from interface and answer language. Mixed Hindi/English recognition is not guaranteed. No language packs are downloaded here.')}</p>
     <div className="voice-actions">
-      {['idle', 'error'].includes(state.phase) && <Button variant="secondary" onClick={() => { setFull(false); void controller.prepare(language) }}>{t('Check local voice availability')}</Button>}
-      {state.phase === 'ready' && <Button onClick={controller.start}>{t('Start voice input')}</Button>}
+      {['idle', 'error'].includes(state.phase) && <Button variant="secondary" disabled={disabled} onClick={() => { setFull(false); void controller.prepare(language) }}>{t('Check local voice availability')}</Button>}
+      {state.phase === 'ready' && <Button disabled={disabled} onClick={controller.start}>{t('Start voice input')}</Button>}
       {['starting', 'listening'].includes(state.phase) && <Button onClick={controller.stop}>{t('Stop listening')}</Button>}
       {state.phase !== 'idle' && <Button variant="ghost" onClick={() => { controller.cancel(); setFull(false) }}>{t('Cancel voice input')}</Button>}
     </div>
@@ -56,13 +56,14 @@ export function VoiceInput({ onUse }: { onUse: (text: string) => boolean }) {
       {state.phase === 'starting' && <p>{t('Waiting for microphone permission or startup. You can cancel.')}</p>}
       {state.phase === 'listening' && <p className="voice-listening">{t('Microphone active — listening. Stops after 30 seconds.')}</p>}
       {state.phase === 'stopping' && <p>{t('Stopping microphone and finishing the transcript…')}</p>}
+      {state.phase === 'review' && <p>{t('Transcript ready. Review and edit it before use.')}</p>}
       {state.error && <p>{t(voiceErrors[state.error])}</p>}
     </div>
     {state.phase === 'review' && <>
       <label htmlFor={`${id}-transcript`}>{t('Review and edit transcript')}</label>
       <textarea id={`${id}-transcript`} lang={language} rows={4} maxLength={2000} value={state.transcript} onChange={event => { controller.edit(event.target.value); setFull(false) }} aria-describedby={`${id}-review`} />
       <p id={`${id}-review`} className="form-hint">{t('Check every word, number and unit. Nothing has been sent. Use the reviewed transcript in your question, then choose Send.')}</p>
-      <Button variant="secondary" disabled={!state.transcript.trim()} onClick={() => { if (onUse(state.transcript)) { controller.cancel(); setFull(false) } else setFull(true) }}>{t('Use reviewed transcript')}</Button>
+      <Button variant="secondary" disabled={disabled || !state.transcript.trim()} onClick={() => { if (onUse(state.transcript)) { controller.cancel(); setFull(false) } else setFull(true) }}>{t('Use reviewed transcript')}</Button>
       {full && <p role="alert">{t('Your question and transcript together exceed 2000 characters. Shorten either before combining them.')}</p>}
     </>}
   </div>
@@ -90,6 +91,7 @@ export function ReadAloud({ text, language }: { text: string; language: string }
         {state.phase === 'starting' && <p>{t('Starting local playback…')}</p>}
         {state.phase === 'speaking' && <p>{t('Reading the displayed response aloud.')}</p>}
         {state.phase === 'paused' && <p>{t('Playback paused.')}</p>}
+        {state.phase === 'done' && <p>{t('Playback finished.')}</p>}
         {state.error && <p>{t(state.error === 'timeout' ? 'Playback reached its time limit and stopped.' : voiceErrors.tts)}</p>}
       </div>
     </>}
