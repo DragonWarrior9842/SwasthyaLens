@@ -85,6 +85,11 @@ class ExplanationService:
             raw = value["record"]
             if raw is not None:
                 if (
+                    self.observations.parameters.extraction.settings.secure_cookies
+                    and raw.get("provider") == "mock-test"
+                ):
+                    raise ValueError
+                if (
                     UUID(raw["user_id"]) != current.identity.user_id
                     or UUID(raw["report_id"]) != report
                     or raw["model"] != PROVIDER_MODELS[raw["provider"]]

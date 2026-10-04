@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.accounts import router as accounts_router
 from app.api.assistant import router as assistant_router
@@ -49,9 +50,17 @@ def create_app(
 ) -> FastAPI:
     """Construct the API with validated configuration and a bounded CORS policy."""
     config = settings if settings is not None else Settings()
+    if config.secure_cookies and any(
+        item is not None for item in (provider_transport, explanation_provider, assistant_provider)
+    ):
+        raise ValueError("Release environments prohibit injected providers and transports")
     # Explicit test Settings never read the real provider env files, even if a local key exists.
     ai = explanation_provider or GeminiExplanationProvider(
-        GeminiSettings() if settings is None else GeminiSettings(_env_file=None, ai_api_key=None)
+        GeminiSettings()
+        if settings is None and not config.secure_cookies
+        else GeminiSettings(
+            _env_file=None, ai_provider="gemini", ai_model="gemini-3.8-flash", ai_api_key=None
+        )
     )
 
     @asynccontextmanager
@@ -100,15 +109,21 @@ def create_app(
                 if extraction
                 else None
             )
-            yield
-            if extraction:
-                extraction.close()
+            try:
+                yield
+            finally:
+                if extraction:
+                    extraction.close()
 
     application = FastAPI(
         title="SwasthyaLens API",
         version="0.1.0",
         description="Private reports, authentication and source-preserving text extraction.",
         lifespan=lifespan,
+        debug=False,
+        docs_url=None if config.secure_cookies else "/docs",
+        redoc_url=None if config.secure_cookies else "/redoc",
+        openapi_url=None if config.secure_cookies else "/openapi.json",
     )
     application.add_middleware(
         CORSMiddleware,
@@ -118,7 +133,12 @@ def create_app(
         allow_headers=["Content-Type", "X-CSRF-Token"] if config.auth_enabled else [],
     )
     application.add_middleware(
-        BrowserSecurityMiddleware, report_max_upload_bytes=config.report_max_upload_bytes
+        TrustedHostMiddleware, allowed_hosts=list(config.allowed_hosts), www_redirect=False
+    )
+    application.add_middleware(
+        BrowserSecurityMiddleware,
+        report_max_upload_bytes=config.report_max_upload_bytes,
+        secure=config.secure_cookies,
     )
 
     @application.exception_handler(ApiProblem)

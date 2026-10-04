@@ -15,6 +15,7 @@ def clear_cors_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (
         "CORS_ALLOWED_ORIGINS",
         "ENVIRONMENT",
+        "ALLOWED_HOSTS",
         "APP_ORIGIN",
         "SUPABASE_URL",
         "SUPABASE_PUBLISHABLE_KEY",

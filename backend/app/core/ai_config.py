@@ -16,7 +16,7 @@ class AISettings(BaseSettings):
         hide_input_in_errors=True,
     )
     ai_provider: Literal["openai"] = "openai"
-    ai_model: Literal["gpt-5.6-terra"] = "gpt-5.6-terra"
+    ai_model: Literal["gpt-5.6-terra", "gpt-6.1-sol"] = "gpt-5.6-terra"
     ai_api_key: SecretStr | None = None
 
 

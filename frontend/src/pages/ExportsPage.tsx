@@ -38,7 +38,7 @@ export function ExportsPage() {
   }
   return <><PageHeader eyebrow={t('YOUR DATA')} title={t('Export health history')} description={t('Download current personally reviewed and published report observations and manual measurements.')} />
     <Card className="history-panel export-panel"><p>{t('Exports include exact source values, units, supplied ranges and report provenance. AI answers, unpublished candidates and deleted or inactive observations are excluded.')}</p>
-      <form className="account-form" onSubmit={event => { void submit(event) }} aria-busy={status === 'generating'}>
+      <form className="account-form" onSubmit={event => { void submit(event) }} aria-busy={status === 'generating'} aria-describedby={error ? 'export-error' : undefined}>
         <fieldset disabled={status === 'generating'} className="export-controls"><legend>{t('Export selection')}</legend>
           {report && <p>{t('This export is limited to the selected report. Its ownership is checked again when you download.')}</p>}
           <div><label htmlFor="export-source">{t('Source')}</label><select id="export-source" value={source} onChange={e => setSource(e.target.value)} disabled={!!report}><option value="">{t('All sources')}</option><option value="report">{t('From report')}</option><option value="manual">{t('Manually entered')}</option></select></div>
@@ -54,7 +54,7 @@ export function ExportsPage() {
         <Button type="submit" disabled={status === 'generating'}>{status === 'generating' ? t('Generating export…') : t('Generate and download')}</Button>
         {status === 'generating' && <p role="status">{t('Generating export…')}</p>}
         {status === 'ready' && <p role="status">{t('Export ready. Download started; your browser controls where the file is saved.')}</p>}
-        {error && <p className="form-error" role="alert">{copy(error)}</p>}
+        {error && <p id="export-error" className="form-error" role="alert">{copy(error)}</p>}
       </form>
     </Card></>
 }

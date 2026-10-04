@@ -78,9 +78,9 @@ function Workspace({ owner, authFailure }: { owner: string; authFailure: (error:
   }
   return <><PageHeader eyebrow={t("AI HEALTH ASSISTANT")} title={t("More understanding, less jargon")} description={t("Private conversations grounded in reviewed observations and deterministic trends.")} />
     <p className="assistant-notice" role="status">{t("Live AI answers are unavailable while provider acceptance is blocked. Conversations are saved privately. Clarifications and safety guidance are deterministic application responses.")}</p>
-    <div className="voice-preference"><label className="checkbox-label"><input type="checkbox" checked={voice} onChange={event => setVoice(event.target.checked)} />{t('Enable optional voice for this visit')}</label>
+    {import.meta.env.VITE_ENABLE_VOICE === 'true' ? <div className="voice-preference"><label className="checkbox-label"><input type="checkbox" checked={voice} onChange={event => setVoice(event.target.checked)} />{t('Enable optional voice for this visit')}</label>
       {voice && <p className="form-hint">{t('Only browser-reported local speech services are used. Raw audio is not saved by SwasthyaLens. Submitted text is saved as a normal private chat message. Check your surroundings before reading a health response aloud.')}</p>}
-    </div>
+    </div> : <p className="form-hint">{t('Voice is disabled in this release. You can type your question.')}</p>}
     <div className="assistant-workspace"><Card className="assistant-sidebar"><div className="card-heading"><h2>{t("Conversations")}</h2><Button size="sm" disabled={busy} onClick={() => { void perform(async signal => { createKey.current ??= crypto.randomUUID(); const result = await createConversation(createKey.current, owner, signal); if (!signal.aborted) { createKey.current = null; setSelected(result.conversation.id); setQuestion(''); setConfirmDelete(false); list.refresh() } }) }}>{t("New chat")}</Button></div>
       {list.loading && <p role="status">{t("Loading conversations…")}</p>}{list.error && <p role="alert">{copy(list.error)}</p>}
       {list.data?.conversations.length === 0 && <><p>{t("Your health story comes first.")}</p><p>{t("Start a new chat when you have a question.")}</p></>}

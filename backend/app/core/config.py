@@ -1,5 +1,7 @@
 """Validated server configuration with explicit local development defaults."""
 
+import os
+import re
 from pathlib import Path
 from typing import Literal, Self
 from urllib.parse import urlsplit
@@ -25,7 +27,8 @@ class Settings(BaseSettings):
     )
 
     cors_allowed_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS
-    environment: Literal["development", "production"] = "development"
+    environment: Literal["development", "test", "staging", "production"] = "development"
+    allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1", "testserver")
     app_origin: str = "http://127.0.0.1:5173"
     supabase_url: str | None = None
     supabase_publishable_key: SecretStr | None = None
@@ -43,7 +46,72 @@ class Settings(BaseSettings):
 
     @property
     def secure_cookies(self) -> bool:
-        return self.environment == "production"
+        return self.environment in {"staging", "production"}
+
+    @field_validator("allowed_hosts")
+    @classmethod
+    def validate_hosts(cls, hosts: tuple[str, ...]) -> tuple[str, ...]:
+        if not hosts or any(
+            not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host) or ".." in host
+            for host in hosts
+        ):
+            raise ValueError("ALLOWED_HOSTS requires exact lowercase hostnames without ports")
+        return hosts
+
+    @model_validator(mode="after")
+    def validate_release(self) -> Self:
+        if not self.secure_cookies:
+            return self
+        if any(
+            name in os.environ
+            for name in (
+                "RUN_AI_INTEGRATION",
+                "RUN_SUPABASE_INTEGRATION",
+                "RUN_OCR_EVALUATION",
+                "DISPOSABLE_TEST_ACCOUNTS_CONFIRMED",
+            )
+        ):
+            raise ValueError("Release environments cannot enable integration test flags")
+        host = urlsplit(self.app_origin).hostname
+        if host not in self.allowed_hosts or any(
+            item in {"localhost", "127.0.0.1", "testserver"}
+            or item.endswith((".localhost", ".example", ".invalid", ".test"))
+            or item in {"example.com", "example.org", "example.net"}
+            for item in self.allowed_hosts
+        ):
+            raise ValueError(
+                "Release ALLOWED_HOSTS must include the chosen public application host"
+            )
+        for secret in (
+            self.supabase_publishable_key,
+            self.csrf_signing_key,
+            self.report_processing_key,
+        ):
+            value = secret.get_secret_value() if secret else ""
+            if (
+                len(value) < 40
+                or any(
+                    marker in value.lower()
+                    for marker in (
+                        "placeholder",
+                        "replace",
+                        "change-me",
+                        "changeme",
+                        "your-",
+                        "your_",
+                        "example",
+                        "isolated",
+                        "synthetic",
+                        "<",
+                        ">",
+                    )
+                )
+                or len(set(value)) < 12
+            ):
+                raise ValueError("Release credentials must be configured non-placeholder values")
+        if not self.ocr_tessdata_dir or not Path(self.ocr_tessdata_dir).is_absolute():
+            raise ValueError("Release OCR_TESSDATA_DIR must be an absolute model directory")
+        return self
 
     @field_validator("app_origin")
     @classmethod
@@ -83,13 +151,13 @@ class Settings(BaseSettings):
                     "CSRF_SIGNING_KEY requires at least 32 random bytes encoded as text"
                 )
             parsed = urlsplit(self.app_origin)
-            if self.environment == "development" and (
+            if self.environment in {"development", "test"} and (
                 parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
             ):
                 raise ValueError(
                     "Development authentication is restricted to an HTTP loopback origin"
                 )
-            if self.environment == "production" and (
+            if self.secure_cookies and (
                 parsed.scheme != "https" or self.auth_rate_limit_mode != "edge"
             ):
                 raise ValueError(
@@ -97,7 +165,7 @@ class Settings(BaseSettings):
                 )
             if set(self.cors_allowed_origins) - {self.app_origin}:
                 raise ValueError("Authenticated CORS origins must match APP_ORIGIN exactly")
-        elif self.environment == "production":
+        elif self.secure_cookies:
             raise ValueError("Production requires authentication configuration")
         return self
 

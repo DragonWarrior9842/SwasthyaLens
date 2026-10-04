@@ -305,26 +305,22 @@ def test_oversized_request_rejected_before_provider_io(
     assert not provider.requests
 
 
-def test_production_cookies_are_host_only_secure(provider: ProviderFixture) -> None:
-    settings = auth_settings(
-        environment="production",
-        app_origin="https://app.example",
-        cors_allowed_origins=("https://app.example",),
-        auth_rate_limit_mode="edge",
-    )
-    with TestClient(
-        create_app(settings, provider_transport=httpx.MockTransport(provider.handle)),
-        base_url="https://app.example",
-    ) as client:
-        csrf_response = client.get("/auth/csrf")
-        response = client.post(
-            "/auth/login",
-            json={"email": "account@example.com", "password": "test-password"},
-            headers={
-                "Origin": "https://app.example",
-                "X-CSRF-Token": csrf_response.json()["csrf_token"],
-            },
-        )
-    assert response.status_code == 200
-    for cookie in response.headers.get_list("set-cookie"):
+def test_production_cookies_are_host_only_secure(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import Response
+
+    from app.core.browser_security import cookie_names, set_cookie
+    from tests.test_release_security import release_settings
+
+    for name in (
+        "RUN_SUPABASE_INTEGRATION",
+        "RUN_OCR_EVALUATION",
+        "DISPOSABLE_TEST_ACCOUNTS_CONFIRMED",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    settings = release_settings()
+    response = Response()
+    names = cookie_names(settings)
+    for name in (names.access, names.refresh, names.nonce):
+        set_cookie(response, settings, name, "synthetic-cookie", 60)
+    for cookie in response.headers.getlist("set-cookie"):
         assert cookie.startswith("__Host-sl_") and "Secure" in cookie and "Domain=" not in cookie

@@ -11,6 +11,7 @@ from starlette.requests import ClientDisconnect
 
 from app.api.dependencies import Auth, CurrentUser, protect_write
 from app.core.errors import ApiProblem
+from app.core.http_security import BodyReadTimeout
 from app.core.report_validation import ALLOWED_MEDIA_TYPES
 from app.core.reports import ReportsService, report_unavailable
 from app.schemas.accounts import EmptyInput
@@ -115,9 +116,13 @@ async def upload_report(
                 if len(data) + len(chunk) > service.max_bytes:
                     raise ApiProblem(413, "file_too_large", "The file exceeds the upload limit.")
                 data.extend(chunk)
-        except ClientDisconnect:
+        except (ClientDisconnect, BodyReadTimeout) as error:
             await run_in_threadpool(service.fail, row, current, "upload_interrupted")
-            raise ApiProblem(400, "upload_interrupted", "The upload was interrupted.") from None
+            raise ApiProblem(
+                408 if isinstance(error, BodyReadTimeout) else 400,
+                "upload_interrupted",
+                "The upload was interrupted.",
+            ) from None
         return await run_in_threadpool(service.upload, row, current, bytes(data), media_type)
     finally:
         slots.release()

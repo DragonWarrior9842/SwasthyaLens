@@ -4,8 +4,10 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+assert.equal(process.env.RUN_SUPABASE_INTEGRATION, '1');
+assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
 const root = path.resolve(__dirname, '../..');
-const python = path.join(root, 'backend/.venv/Scripts/python.exe');
+const python = (process.env.QA_PYTHON || path.join(root, process.platform === 'win32' ? 'backend/.venv/Scripts/python.exe' : 'backend/.venv/bin/python'));
 const config = JSON.parse(execFileSync(python, ['-c', 'import json; from dotenv import dotenv_values; print(json.dumps(dotenv_values(".env.integration")))'], { cwd: path.join(root, 'backend'), encoding: 'utf8' }));
 assert.equal(config.DISPOSABLE_TEST_ACCOUNTS_CONFIRMED, '1');
 assert.notEqual(process.env.RUN_AI_INTEGRATION, '1');
@@ -27,6 +29,7 @@ async function write(target, method, route, body) {
 }
 function watch(target) {
   target.on('pageerror', () => errors++);
+  target.on('console', message => { if (message.text().includes('Content Security Policy')) errors++; });
   target.on('response', async r => {
     if (r.status() >= 400 && new URL(r.url()).pathname.startsWith('/api/trends')) console.log('Trend HTTP status: ' + r.status());
     if (r.request().method() === 'POST' && r.status() === 200 && new URL(r.url()).pathname === '/api/observations/manual') manuals.add((await r.json()).id);

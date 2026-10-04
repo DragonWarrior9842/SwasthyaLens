@@ -107,17 +107,19 @@ class LockedAssistantCapability:
         raise ApiProblem(503, "assistant_unavailable", "Live assistant generation is unavailable.")
 
 
-def request_body(context: list[ModelFact]) -> dict[str, object]:
+def request_body(
+    context: list[ModelFact], *, model: str = MODEL, max_output_tokens: int = MAX_OUTPUT_TOKENS
+) -> dict[str, object]:
     return {
-        "model": MODEL,
+        "model": model,
         "store": False,
         "stream": False,
         "background": False,
         "tools": [],
         "tool_choice": "none",
         "parallel_tool_calls": False,
-        "max_output_tokens": MAX_OUTPUT_TOKENS,
-        "reasoning": {"effort": "none"},
+        "max_output_tokens": max_output_tokens,
+        "reasoning": {"effort": "low" if model == "gpt-6.1-sol" else "none"},
         "service_tier": "default",
         "instructions": SYSTEM_PROMPT,
         "input": [
@@ -138,10 +140,20 @@ class OpenAIExplanationProvider(LockedAssistantCapability):
     name = "openai"
 
     def __init__(
-        self, settings: AISettings, transport: httpx.AsyncBaseTransport | None = None
+        self,
+        settings: AISettings,
+        transport: httpx.AsyncBaseTransport | None = None,
+        *,
+        max_output_tokens: int = MAX_OUTPUT_TOKENS,
     ) -> None:
+        if not 1 <= max_output_tokens <= MAX_OUTPUT_TOKENS:
+            raise ValueError("Invalid output token bound")
         self.settings = settings
         self._transport = transport
+        self.max_output_tokens = max_output_tokens
+        self.http_status: int | None = None
+        self.error_code: str | None = None
+        self.model_confirmed = False
 
     @property
     def available(self) -> bool:
@@ -165,15 +177,23 @@ class OpenAIExplanationProvider(LockedAssistantCapability):
                 "explanation_evaluation_only",
                 "Only enrolled synthetic evaluation reports are enabled.",
             )
-        body = json.dumps(request_body(context), ensure_ascii=False, separators=(",", ":")).encode()
+        body = json.dumps(
+            request_body(
+                context, model=self.settings.ai_model, max_output_tokens=self.max_output_tokens
+            ),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode()
         if len(body) > MAX_REQUEST_BYTES:
             raise ApiProblem(
                 413, "explanation_evidence", "The explanation request exceeds its size limit."
             )
         assert self.settings.ai_api_key is not None
-        # Owner has stopped OpenAI live evaluation. Preserve the adapter for
-        # in-memory contract tests, without allowing any real network invocation.
-        if not isinstance(self._transport, httpx.MockTransport):
+        # Ordinary app construction stays locked. Only the explicit single-use
+        # acceptance transport can send a live request; a flag alone is insufficient.
+        from app.core.openai_acceptance import OneShotOpenAITransport
+
+        if not isinstance(self._transport, (httpx.MockTransport, OneShotOpenAITransport)):
             raise ApiProblem(503, "explanation_disabled", "OpenAI live evaluation is stopped.")
         try:
             async with asyncio.timeout(45):
@@ -193,10 +213,32 @@ class OpenAIExplanationProvider(LockedAssistantCapability):
                             "Content-Type": "application/json",
                         },
                     ) as response:
+                        self.http_status = response.status_code
                         if response.status_code != 200:
+                            # Only closed error codes may leave this boundary, never messages,
+                            # response bodies, headers or exception representations.
+                            error_content = bytearray()
+                            async for chunk in response.aiter_bytes():
+                                error_content.extend(chunk)
+                                if len(error_content) > 131072:
+                                    break
+                            try:
+                                code = json.loads(error_content).get("error", {}).get("code")
+                                if code in (
+                                    "model_not_found",
+                                    "invalid_api_key",
+                                    "insufficient_quota",
+                                    "rate_limit_exceeded",
+                                    "permission_denied",
+                                    "invalid_model",
+                                ):
+                                    self.error_code = code
+                            except (ValueError, AttributeError, TypeError):
+                                pass
                             category = {
                                 401: "authentication",
-                                403: "authentication",
+                                403: "permission",
+                                404: "model_access",
                                 429: "rate_limit",
                             }.get(response.status_code, "provider_failure")
                             raise ApiProblem(
@@ -223,12 +265,18 @@ class OpenAIExplanationProvider(LockedAssistantCapability):
             raw = json.loads(content)
             if not isinstance(raw, dict) or raw.get("status") != "completed" or raw.get("error"):
                 raise ValueError
-            if raw.get("model") != MODEL or raw.get("store") is not False:
+            if raw.get("model") != self.settings.ai_model or raw.get("store") is not False:
                 raise ValueError
+            self.model_confirmed = True
             output = raw.get("output")
-            if not isinstance(output, list) or len(output) != 1:
+            if not isinstance(output, list) or not 1 <= len(output) <= 2:
                 raise ValueError
-            message = output[0]
+            # Reasoning models may emit one reasoning item before the final message.
+            # No tool calls, extra messages or other output types are accepted.
+            if len(output) == 2:
+                if output[0].get("type") != "reasoning":
+                    raise ValueError
+            message = output[-1]
             if (
                 message.get("type") != "message"
                 or message.get("role") != "assistant"
@@ -249,7 +297,7 @@ class OpenAIExplanationProvider(LockedAssistantCapability):
                 type(input_tokens) is not int
                 or type(output_tokens) is not int
                 or not 0 <= input_tokens <= 53000
-                or not 0 <= output_tokens <= MAX_OUTPUT_TOKENS
+                or not 0 <= output_tokens <= self.max_output_tokens
             ):
                 raise ValueError
             return GenerationResult(parsed, input_tokens, output_tokens)

@@ -1,5 +1,19 @@
 # Phase 7 — grounded report explanations
 
+## Persisted-gate follow-up — 2026-10-04
+
+The separately authorized Phase 9 persisted run stopped during synthetic report preparation on 2026-10-03 at 23:42 Asia/Calcutta, **before any new OpenAI request**. Gate 1's direct adapter PASS below is unchanged. Total OpenAI requests remain **1**; Gemini remains **2/20**. Full persisted Phase 7 acceptance is still pending. Cleanup passed, the live flag is unset and no acceptance process remains. A public-observation ownership-check defect was identified and corrected offline; no automatic rerun occurred. See the [separate Gate 2 record](openai-acceptance-2026-10-03.md#gate-2--persisted-phase-9-flow-stopped-before-openai).
+
+## Current OpenAI acceptance update — 2026-10-03
+
+**One explicitly authorized synthetic OpenAI / `gpt-6.1-sol` request PASSED (HTTP 200).** Exact response model, strict schema, opaque evidence ID, `18`, `ng/mL`, `30–100`, and the closed educational safety contract all passed. OpenAI live acceptance attempts: **1**; retries: **0**. Usage: 1,242 input / 122 output tokens; estimated standard cost $0.003704.
+
+This verifies the Phase 7 adapter for one in-memory synthetic fixture using the existing fact/validation pipeline. **Full persisted Phase 7 live application acceptance remains PENDING**: no database/Storage, enrolled report lifecycle, API/UI or source invalidation was exercised in this authorized run. Phase 9 remains locked and unverified. Normal defaults remain unchanged; `RUN_AI_INTEGRATION` is unset, no acceptance process remains, and the key remains private/ignored/untracked. Offline regression: 675 passed, 22 gated skips. See the [complete attempt report](openai-acceptance-2026-10-03.md) for wiring fixes, tests, cost controls and cleanup evidence.
+
+**Historical Gemini status is unchanged: 2/20 attempts, both HTTP 503 UNAVAILABLE.** No Gemini request or ledger reset occurred. The September checkpoint below is preserved as historical evidence, including its then-current provider and phase scope; it is superseded by this update only for current OpenAI status.
+
+## Historical September checkpoint
+
 Updated 24 September 2026 (Asia/Calcutta).
 **Phase 7 implementation-complete; live-provider acceptance blocked by external
 Gemini availability (HTTP 503 UNAVAILABLE).**

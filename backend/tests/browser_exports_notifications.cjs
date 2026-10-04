@@ -2,7 +2,9 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '../..'), python = path.join(root, 'backend/.venv/Scripts/python.exe');
+assert.equal(process.env.RUN_SUPABASE_INTEGRATION, '1');
+assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
+const root = path.resolve(__dirname, '../..'), python = (process.env.QA_PYTHON || path.join(root, process.platform === 'win32' ? 'backend/.venv/Scripts/python.exe' : 'backend/.venv/bin/python'));
 assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
 const config = JSON.parse(execFileSync(python, ['-c', 'import json; from dotenv import dotenv_values; print(json.dumps(dotenv_values(".env.integration")))'], { cwd: path.join(root, 'backend'), encoding: 'utf8' }));
 assert.equal(config.DISPOSABLE_TEST_ACCOUNTS_CONFIRMED, '1');

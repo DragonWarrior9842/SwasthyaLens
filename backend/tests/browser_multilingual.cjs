@@ -2,8 +2,10 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
+assert.equal(process.env.RUN_SUPABASE_INTEGRATION, '1');
+assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
 const root = path.resolve(__dirname, '../..');
-const config = JSON.parse(execFileSync(path.join(root, 'backend/.venv/Scripts/python.exe'), ['-c', 'import json; from dotenv import dotenv_values; print(json.dumps(dotenv_values(".env.integration")))'], { cwd: path.join(root, 'backend'), encoding: 'utf8' }));
+const config = JSON.parse(execFileSync((process.env.QA_PYTHON || path.join(root, process.platform === 'win32' ? 'backend/.venv/Scripts/python.exe' : 'backend/.venv/bin/python')), ['-c', 'import json; from dotenv import dotenv_values; print(json.dumps(dotenv_values(".env.integration")))'], { cwd: path.join(root, 'backend'), encoding: 'utf8' }));
 assert.equal(config.DISPOSABLE_TEST_ACCOUNTS_CONFIRMED, '1');
 assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
 const catalog = fs.readFileSync(path.join(root, 'frontend/src/i18n/hindi.ts'), 'utf8');
@@ -48,7 +50,7 @@ async function screenshot(name) {
   const aContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const bContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   for (const c of [aContext, bContext]) {
-    c.on('page', p => p.on('pageerror', () => errors++));
+    c.on('page', p => { p.on('pageerror', () => errors++); p.on('console', m => { if (m.text().includes('Content Security Policy')) errors++; }); });
     await c.route('**/*', route => {
       const url = new URL(route.request().url());
       if (['api.openai.com', 'generativelanguage.googleapis.com'].includes(url.hostname)) { ai++; return route.abort(); }

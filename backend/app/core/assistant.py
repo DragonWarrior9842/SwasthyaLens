@@ -52,6 +52,22 @@ class AssistantService:
             if len({m.id for m in result.messages}) != len(result.messages):
                 raise ValueError
             for raw, message in zip(value["messages"], result.messages, strict=True):
+                if (
+                    message.model
+                    != {
+                        None: None,
+                        "gemini": "gemini-3.8-flash",
+                        "openai": "gpt-6.1-sol",
+                        "mock-test": "deterministic-test",
+                        "rules": "rules-v1",
+                    }[message.provider]
+                ):
+                    raise ValueError
+                if (
+                    self.observations.parameters.extraction.settings.secure_cookies
+                    and message.provider == "mock-test"
+                ):
+                    raise ValueError
                 legacy = message.schema_version == "assistant-closed-v1"
                 if not legacy and "response_language" not in raw:
                     raise ValueError
@@ -183,11 +199,15 @@ class AssistantService:
                             "Live assistant generation is unavailable.",
                         )
                     # No product mock selector/env flag; tests inject it explicitly.
+                    provider_models = {
+                        "mock-test": "deterministic-test",
+                        "gemini": "gemini-3.8-flash",
+                        "openai": "gpt-6.1-sol",
+                    }
+                    if self.provider.name not in provider_models:
+                        raise ApiProblem(503, "assistant_unavailable", "Unsupported provider.")
                     payload.update(
-                        provider=self.provider.name,
-                        model="deterministic-test"
-                        if self.provider.name == "mock-test"
-                        else "gemini-3.8-flash",
+                        provider=self.provider.name, model=provider_models[self.provider.name]
                     )
                     async with asyncio.timeout(45):
                         output = await self.provider.generate_assistant(assistant_request(context))

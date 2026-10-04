@@ -3,19 +3,57 @@
 import base64
 import hashlib
 import json
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import uuid4
 
 import httpx
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from app.factory import create_app
 from tests.auth_support import ORIGIN, auth_settings
 from tests.report_fixtures import valid_jpeg, valid_pdf, valid_png
 from tests.reports_support import ReportsProvider
+
+
+def test_timed_out_upload_releases_slot_and_marks_failure(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.http_security import BodyReadTimeout
+
+    login(client)
+    row = reserve(client)
+    headers = {**csrf(client), "Content-Type": "application/pdf"}
+
+    async def stalled(self: Request) -> AsyncIterator[bytes]:
+        yield b"%PDF-"
+        raise BodyReadTimeout
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Request, "stream", stalled)
+        response = client.put(f"/reports/{row['id']}/file", headers=headers, content=b"x")
+    assert response.status_code == 408
+    assert client.get(f"/reports/{row['id']}").json()["status"] == "upload_failed"
+    assert cast(FastAPI, client.app).state.report_upload_slots._value == 4
+    assert upload(client, reserve(client)).status_code == 200
+
+
+def test_every_mutation_requires_csrf_even_with_authenticated_cookie(client: TestClient) -> None:
+    import re
+
+    login(client)
+    checked = 0
+    for route, methods in cast(FastAPI, client.app).openapi()["paths"].items():
+        for method in set(methods) & {"post", "put", "patch", "delete"}:
+            path = re.sub(r"\{[^}]+\}", "11111111-1111-4111-8111-111111111111", route)
+            response = client.request(method, path, headers={"Origin": ORIGIN}, json={})
+            assert response.status_code == 403, (method, route, response.status_code)
+            checked += 1
+    assert checked >= 20
 
 
 @pytest.fixture

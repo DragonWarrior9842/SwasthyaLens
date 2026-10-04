@@ -1,5 +1,21 @@
 # Phase 9 handoff — context-aware assistant
 
+## Persisted-gate outcome — 2026-10-04
+
+**Phase 9 live acceptance remains NOT COMPLETE.** The authorized persisted flow stopped during synthetic report preparation on 2026-10-03 at 23:42 Asia/Calcutta. Recorded failure: `local_or_provider_failure` at `synthetic_report_workflow`. No conversation/provider call or persisted assistant message was reached; readback and two-user conversation isolation remain unverified. **Zero new OpenAI requests, no retry/fallback, $0 new OpenAI usage. Total OpenAI requests remain 1; Gemini remains 2/20.**
+
+Prepared exact OpenAI metadata support in backend/frontend and applied additive migration `20261003180952_assistant_openai_acceptance` to the development project; no RLS/grant/RPC changes. Forced RLS and schema verification passed. An offline review identified an invalid `user_id` read from the public Observation DTO; it is now checked through the owner's RLS-scoped Data API instead. The generic saved failure lacks an exact exception location, so that defect is a confirmed code issue consistent with the failure, not a proven captured traceback. The run was not repeated.
+
+Before runtime preparation: 685 backend tests/22 gated skips and 372 frontend tests passed, frontend lint/types/build passed. After the harness correction, 212 targeted offline tests passed. Backend mypy is blocked by Windows Application Control. Synthetic cleanup/preference restoration passed; `RUN_AI_INTEGRATION` is unset, no acceptance process remains and the private key file remains ignored/untracked. The saved result now blocks accidental restart. See the [complete Gate 2 record](openai-acceptance-2026-10-03.md#gate-2--persisted-phase-9-flow-stopped-before-openai). Normal app startup still cannot enable live assistant generation.
+
+## Current acceptance update — 2026-10-03
+
+The one authorized OpenAI / `gpt-6.1-sol` request succeeded with HTTP 200 for a **Phase 7 single-report educational fixture**; schema, evidence and safety checks passed. It did not call `generate_assistant`, use conversations/history, or access database/Storage. **Phase 9 live assistant acceptance is NOT COMPLETE** and its provider capability remains locked. Do not infer assistant acceptance from the report adapter result.
+
+OpenAI authorized live acceptance attempts: **1**, zero retries. Gemini remains **2/20**, both HTTP 503 UNAVAILABLE; no Gemini request or ledger change. `RUN_AI_INTEGRATION` returned to unset, the child process exited, and no secret was exposed. Full offline backend regression passed 675 tests with 22 gated skips. The [complete attempt report](openai-acceptance-2026-10-03.md) records implementation changes, bounds and cleanup. Any further live test or release enablement requires fresh authorization. Earlier phase completion/results below remain historical evidence.
+
+## Historical implementation handoff
+
 Phase 9 implements persisted private conversations and a bounded, grounded assistant
 contract. Evidence-bearing generation is evaluated through an explicitly injected
 deterministic mock. **Live provider acceptance remains externally blocked.** The normal

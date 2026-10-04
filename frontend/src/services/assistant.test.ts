@@ -3,6 +3,11 @@ import fixture from './fixtures/assistant.json'
 import { decodeAnswer, decodeConversationList, decodeThread } from './assistant'
 
 describe('owned assistant response contract', () => {
+  it('accepts only the selected OpenAI model in persisted metadata', () => {
+    const message = { ...fixture.messages[0], provider: 'openai', model: 'gpt-6.1-sol' }
+    expect(decodeThread({ ...fixture, messages: [message] }).messages[0]!.model).toBe('gpt-6.1-sol')
+    expect(() => decodeThread({ ...fixture, messages: [{ ...message, model: 'gpt-5.6-terra' }] })).toThrow()
+  })
   it('preserves the exact server-generated fact and provenance', () => {
     const thread = decodeThread(fixture)
     expect(thread.messages[0]!.answer!.facts[0]!.value).toBe('73.125')

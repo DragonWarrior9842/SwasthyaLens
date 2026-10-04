@@ -121,7 +121,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
             <ErrorState title={t("Account service unavailable")} description={copy(state.message)} onRetry={() => { void checkSession() }} />
           ) : (
             <>
-              <form className="account-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
+              <form className="account-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy} aria-describedby={error ? 'auth-error' : undefined}>
                 <div className="form-field">
                   <label htmlFor="auth-email">{t("Email address")}</label>
                   <input id="auth-email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} />
@@ -139,7 +139,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
                     {mode === 'sign-up' && <p id="password-help">{t("Use at least 12 characters. A unique passphrase works well.")}</p>}
                   </div>
                 )}
-                {error && <div className="form-error" role="alert">{copy(error)}</div>}
+                {error && <div id="auth-error" className="form-error" role="alert">{copy(error)}</div>}
                 {message && <div className="form-success" role="status">{copy(message)}</div>}
                 {confirmationNeeded && <Link className="text-link" to="/auth/verify-email" state={routeState} onClick={() => setPendingEmail(email.trim())}>{t("Enter your email confirmation code")}</Link>}
                 <Button type="submit" disabled={busy} className="auth-submit">

@@ -10,6 +10,7 @@ backend.env.integration
 # Dependencies, generated output and tool caches.
 node_modules/
 dist/
+dist-acceptance/
 .venv/
 __pycache__/
 *.py[cod]

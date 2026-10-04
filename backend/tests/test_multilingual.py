@@ -3,6 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import cast
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -246,8 +247,13 @@ def test_legacy_and_mixed_history_are_not_retranslated() -> None:
     for message in value["messages"]:
         message["user_id"] = str(owner)
     service = AssistantService(Mock(), Mock(assistant_available=False))
+    cast(Mock, service.observations).parameters.extraction.settings.secure_cookies = False
     before = service.thread(value, current)
     assert before.messages[-1].answer is not None
+    cast(Mock, service.observations).parameters.extraction.settings.secure_cookies = True
+    with pytest.raises(ApiProblem):
+        service.thread(value, current)
+    cast(Mock, service.observations).parameters.extraction.settings.secure_cookies = False
     original = before.messages[-1].answer.text
     newer = dict(value["messages"][-1])
     newer["id"] = str(uuid4())

@@ -757,5 +757,9 @@ export const hindi = {
   "Missing": "उपलब्ध नहीं",
   "Interrupted": "बाधित",
   "Rate limit": "अनुरोध सीमा",
-  "Source changed": "स्रोत बदल गया"
+  "Source changed": "स्रोत बदल गया",
+  "This page could not be displayed.": "यह पेज दिखाया नहीं जा सका।",
+  "Reload to reconnect to your private workspace. Unsaved edits may need to be entered again.": "अपने निजी कार्यक्षेत्र से दोबारा जुड़ने के लिए पेज फिर से लोड करें। सहेजे नहीं गए बदलाव दोबारा दर्ज करने पड़ सकते हैं।",
+  "Reload application": "ऐप फिर से लोड करें",
+  "Voice is disabled in this release. You can type your question.": "इस संस्करण में आवाज़ की सुविधा बंद है। आप अपना सवाल टाइप कर सकते हैं।"
 } as const

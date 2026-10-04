@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, cast
+from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
@@ -15,7 +16,9 @@ from tests.explanation_fixtures import MockExplanationProvider, synthetic_source
 
 class RepositoryFixture(ExplanationService):
     def __init__(self) -> None:
-        super().__init__(cast(Any, None), MockExplanationProvider())
+        observations = Mock()
+        observations.parameters.extraction.settings.secure_cookies = False
+        super().__init__(observations, MockExplanationProvider())
         self.owner, self.report = uuid4(), uuid4()
         self.current = AuthenticatedRequest(
             VerifiedIdentity(self.owner, uuid4(), "synthetic@example.invalid", 1), "synthetic", 1
@@ -79,6 +82,18 @@ def test_generation_snapshot_validation_and_idempotent_reuse() -> None:
     assert replay.record == result.record
     assert cast(MockExplanationProvider, service.provider).calls == 1
     assert service.operations == ["state", "request", "finish", "state", "request"]
+
+
+def test_release_rejects_stored_mock_record() -> None:
+    service = RepositoryFixture()
+    asyncio.run(
+        service.generate(
+            service.report, ExplanationInput(idempotency_key=uuid4(), consent=True), service.current
+        )
+    )
+    cast(Mock, service.observations).parameters.extraction.settings.secure_cookies = True
+    with pytest.raises(ApiProblem):
+        service.get(service.report, service.current)
 
 
 def test_concurrent_source_correction_never_returns_stale_items() -> None:

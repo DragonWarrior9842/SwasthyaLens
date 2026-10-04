@@ -1,8 +1,9 @@
 # Phase 12 handoff — optional voice input/output
 
-Date: 2026-09-29. Implementation and isolated voice acceptance are complete;
-the final full browser regression is in progress. Physical-device acceptance is
-not performed. No Phase 13 work and no live AI request.
+Implementation and automated acceptance: 2026-09-29. Closure verified: 2026-10-03.
+**Phase 12 development scope is complete.** The final full browser regression passed
+all 139 groups (119 established + 20 voice). Physical-device acceptance is not performed.
+No Phase 13 work and no live AI request.
 
 ## 1. Architecture and decision
 
@@ -192,20 +193,26 @@ recognition accuracy or audible numeric pronunciation**.
 
 ## 14. Automated browser acceptance
 
-`backend/tests/browser_voice.cjs`: 19 groups passed in the isolated run, using deterministic
+`backend/tests/browser_voice.cjs`: 20 groups passed in the final run, using deterministic
 speech constructors and real A/B sessions/CSRF/assistant API. No physical microphone,
 speech output or model request. Covers default off/no auto-send; keyboard Start;
 numeric edit/review/refresh/send; draft append/overflow; Stop/Cancel/late events;
 permission denial/pending cancellation; missing packs/API; mic/no-speech errors;
 English/Hindi emergency and injection rules; two-user and CSRF boundaries; exact local
 TTS/pause/replay/stop/remote rejection/errors; frozen legacy/English/Hindi/Hinglish;
-375px Hindi UI; source invalidation; hidden document/disable; logout cleanup.
+375px Hindi UI; source invalidation; hidden document/disable; conversation switching;
+logout and subsequent B-account login with voice reset to off.
 
 The first run exposed a harness fixture index error (the multilingual fixture contains
 both legacy English and v2 English before Hindi). Corrected the test indices and reran
-successfully. No provider/model switch or weakening of assertions. Mobile screenshot
+successfully. The isolated run passed 19 groups; the final run added an explicit
+conversation-switch cancellation check and passed all 20. No provider/model switch
+or weakening of assertions. Mobile screenshot
 review found no horizontal overflow; account identity is masked. Generated artifacts
-are ignored under `.cache/qa/phase12/`. Final full regression status is recorded below.
+are ignored under `.cache/qa/phase12/`. The final result JSON records 20 checks,
+zero browser errors, zero external requests, synthetic-only fixtures and physical
+verification false. Full-run evidence is `.cache/qa/phase12-final-browser.log` (139
+PASS entries across 11 suites). All established suites passed against the final build.
 
 ## 15. Physical-device verification status and checklist
 
@@ -268,8 +275,8 @@ Performance advisors had no findings. No billing/security configuration changed 
 | Local OCR evaluation | 9 passed before edits; OCR code unchanged |
 | Live Supabase regression | 13 passed / 665.04 seconds before edits; backend/schema unchanged |
 | SQL | All 22 rollback verification scripts passed before edits; no schema/RLS changes |
-| Established browser regression | Baseline 119 groups passed; final rerun in progress |
-| Voice browser simulations | 19 groups passed in isolated run; included in final rerun |
+| Established browser regression | All 119 groups passed again against the final build |
+| Voice browser simulations | All 20 groups passed in the final run; 139 combined browser groups |
 | Physical speech/device tests | Not performed |
 
 Existing backend Starlette/httpx/anyio deprecation warnings remain. The initial sandbox
@@ -302,8 +309,10 @@ Gemini remains externally blocked at **2/20 attempts** after two previously auth
 synthetic HTTP 503 UNAVAILABLE responses. No prior authentication failure or explicit
 quota exhaustion/value was returned. No new live AI request, automatic retry, provider
 switch, billing upgrade or funding change occurred. `RUN_AI_INTEGRATION` remains unset.
-The pre-change ledger was 2 attempts / 50 reserved cents; final read-only confirmation
-will be recorded after regression. API keys remain private. Voice does not reopen Phase 7.
+The final read-only ledger check on 2026-10-03 confirmed **2 attempts / 50 reserved
+cents**, unchanged from the baseline. The reserved ledger amount is not a new charge.
+The integration flag was confirmed absent again at closure. API keys remain private.
+Voice does not reopen Phase 7.
 
 ## 20. Files created/modified and schema
 
@@ -335,9 +344,10 @@ blocked independently; deterministic safety/clarification responses remain usabl
 
 ## 22. Suggested commit
 
-The owner committed the first implementation as `48d8642` (`Success`) during acceptance.
-This handoff covers the entire phase, including subsequent refresh/accessibility fixes,
-harness verification and documentation. No agent commit or push.
+The owner committed the first implementation as `48d8642` and the acceptance changes
+as `d75def0` (both titled `Success`). This handoff covers the entire phase, including
+refresh/accessibility fixes, harness verification and documentation. The closure update
+records completed results after the second commit. No agent commit or push.
 
 Suggested complete-phase message: `feat: add optional local voice input and read-aloud`.
 Remaining closure message: `test: verify Phase 12 voice safety and browser regressions`.

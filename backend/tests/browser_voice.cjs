@@ -2,9 +2,11 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
+assert.equal(process.env.RUN_SUPABASE_INTEGRATION, '1');
+assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
 const root = path.resolve(__dirname, '../..');
 assert.equal(process.env.RUN_AI_INTEGRATION, undefined);
-const config = JSON.parse(execFileSync(path.join(root, 'backend/.venv/Scripts/python.exe'), ['-c', 'import json; from dotenv import dotenv_values; print(json.dumps(dotenv_values(".env.integration")))'], { cwd: path.join(root, 'backend'), encoding: 'utf8' }));
+const config = JSON.parse(execFileSync((process.env.QA_PYTHON || path.join(root, process.platform === 'win32' ? 'backend/.venv/Scripts/python.exe' : 'backend/.venv/bin/python')), ['-c', 'import json; from dotenv import dotenv_values; print(json.dumps(dotenv_values(".env.integration")))'], { cwd: path.join(root, 'backend'), encoding: 'utf8' }));
 assert.equal(config.DISPOSABLE_TEST_ACCOUNTS_CONFIRMED, '1');
 const catalog = fs.readFileSync(path.join(root, 'frontend/src/i18n/hindi.ts'), 'utf8');
 const hi = JSON.parse(catalog.slice(catalog.indexOf('{'), catalog.lastIndexOf('}') + 1).replace(/,\s*}/g, '}'));
@@ -63,7 +65,7 @@ function speechMock() {
   const contexts = [await browser.newContext({ viewport: { width: 1440, height: 1000 } }), await browser.newContext()];
   for (const context of contexts) {
     await context.addInitScript(speechMock);
-    context.on('page', p => { p.on('pageerror', () => errors++); p.on('request', r => { if (r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/messages')) bodies.push(r.postDataJSON()); }); });
+    context.on('page', p => { p.on('pageerror', () => errors++); p.on('console', m => { if (m.text().includes('Content Security Policy')) errors++; }); p.on('request', r => { if (r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/messages')) bodies.push(r.postDataJSON()); }); });
     await context.route('**/*', route => { if (new URL(route.request().url()).hostname !== '127.0.0.1') { external++; return route.abort(); } return route.continue(); });
   }
   page = await contexts[0].newPage(); other = await contexts[1].newPage();

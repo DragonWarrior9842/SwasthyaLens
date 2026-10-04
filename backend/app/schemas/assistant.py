@@ -139,8 +139,8 @@ class Message(BaseModel):
     content: str | None
     answer: Answer | None
     error_category: str | None
-    provider: Literal["gemini", "mock-test", "rules"] | None
-    model: Literal["gemini-3.8-flash", "deterministic-test", "rules-v1"] | None
+    provider: Literal["gemini", "openai", "mock-test", "rules"] | None
+    model: Literal["gemini-3.8-flash", "gpt-6.1-sol", "deterministic-test", "rules-v1"] | None
     prompt_version: Literal["assistant-evidence-v1", "assistant-evidence-v2"]
     schema_version: Literal["assistant-closed-v1", "assistant-closed-v2"]
     response_language: Literal["en", "hi", "hinglish"] = "en"

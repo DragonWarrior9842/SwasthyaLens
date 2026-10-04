@@ -10,7 +10,7 @@ dependencies = [
     "tesserocr @ https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.11.0-tesseract-5.5.3/tesserocr-2.11.0-cp312-cp312-win_amd64.whl#sha256=74604b65547b6e988dcdab0d6d7366964ec588a9fd28a526b2ca9b9f8b8d3dea ; sys_platform == 'win32'",
     "fastapi==0.141.1",
     "httpx==0.28.1",
-    "PyJWT[crypto]==2.14.0",
+    "PyJWT[crypto]==2.15.0",
     "email-validator==2.3.0",
     "pydantic==2.13.5",
     "pydantic-settings==2.15.0",

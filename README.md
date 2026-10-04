@@ -8,8 +8,8 @@ Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, dura
 
 ## Prerequisites
 
-- Node.js 24 or newer and npm 11 or newer. Node 24 is recommended; `.nvmrc` pins the tested 24.19.0 runtime.
-- Python 3.12 (64-bit on Windows). Phase 4 narrows support to the tested Python 3.12 runtime because the pinned Windows OCR wheel is CPython 3.12-specific.
+- Node.js 24.19.x and npm 11.19.x; tested pins are 24.19.0 (`.nvmrc`) and 11.19.0 (`packageManager`). Engine-strict rejects unsupported installations.
+- Python 3.12.14 (64-bit on Windows), pinned in `.python-version`; supported interpreter series is 3.12 because the Windows OCR wheel is CPython 3.12-specific.
 - Access to the public npm and Python package registries for the initial dependency installation.
 
 The commands below assume Windows PowerShell and a terminal starting in this project. Run the frontend and backend in separate terminals. Virtual environment activation is optional because commands use its Python executable directly.
@@ -248,6 +248,16 @@ Authentication and account persistence are real Supabase integrations. Add healt
 The email-template restriction remains a documented Phase 2 limitation; public signup is not fully verified. Machine candidates never populate health history automatically or establish clinical validity.
 
 ## Phase 7 report explanations
+
+**Current provider status (2026-10-03):** one explicitly authorized OpenAI /
+`gpt-6.1-sol` synthetic adapter request **PASSED: HTTP 200, schema/evidence/safety
+verified**, zero retries, estimated cost $0.003704. Full persisted Phase 7 and
+Phase 9 live acceptance remain pending; normal AI remains unavailable. The
+one-request authorization is consumed; no further live request is authorized.
+See the [attempt report](docs/openai-acceptance-2026-10-03.md) and
+[Phase 13 acceptance controls](docs/phase-13-operations.md#ai-provider-status-and-acceptance-controls).
+Keep `RUN_AI_INTEGRATION` unset for normal development/regression; no automatic
+retries or provider/model changes. The Gemini results and setup below are historical.
 
 Phase 7 is **implementation-complete; live-provider acceptance is blocked by
 external Gemini availability**. The bounded synthetic API/UI and Gemini adapter
