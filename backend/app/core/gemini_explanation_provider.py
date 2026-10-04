@@ -116,6 +116,10 @@ def gemini_request_body(context: list[ModelFact]) -> dict[str, object]:
 class GeminiExplanationProvider(LockedAssistantCapability):
     name = "gemini"
 
+    @property
+    def model(self) -> str:
+        return self.settings.ai_model
+
     def __init__(
         self,
         settings: GeminiSettings,

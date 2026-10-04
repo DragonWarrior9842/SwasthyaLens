@@ -57,6 +57,9 @@ class ExplanationProvider(Protocol):
     name: str
 
     @property
+    def model(self) -> str: ...
+
+    @property
     def available(self) -> bool: ...
 
     async def generate(
@@ -138,6 +141,10 @@ def request_body(
 
 class OpenAIExplanationProvider(LockedAssistantCapability):
     name = "openai"
+
+    @property
+    def model(self) -> str:
+        return self.settings.ai_model
 
     def __init__(
         self,

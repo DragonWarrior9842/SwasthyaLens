@@ -68,6 +68,7 @@ class BoundedEvaluationProvider:
     def __init__(self, provider: ExplanationProvider, max_requests: int) -> None:
         self.provider, self.max_requests = provider, max_requests
         self.name = provider.name
+        self.model = provider.model
         self.calls = 0
 
     @property

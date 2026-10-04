@@ -92,7 +92,7 @@ class ExplanationService:
                 if (
                     UUID(raw["user_id"]) != current.identity.user_id
                     or UUID(raw["report_id"]) != report
-                    or raw["model"] != PROVIDER_MODELS[raw["provider"]]
+                    or raw["model"] not in PROVIDER_MODELS[raw["provider"]]
                     or raw["prompt_version"] != PROMPT_VERSION
                     or raw["schema_version"] != SCHEMA_VERSION
                     or raw["catalog_version"] != CATALOG_VERSION
@@ -145,15 +145,25 @@ class ExplanationService:
             )
         source = [SourceEvidence.model_validate(item) for item in state["evidence"]]
         facts(source)
+        if self.provider.model not in PROVIDER_MODELS.get(self.provider.name, ()):
+            raise unavailable()
         value = await asyncio.to_thread(
             self.rpc,
             "request",
             report,
             current,
-            {"idempotency_key": str(body.idempotency_key), "provider": self.provider.name},
+            {
+                "idempotency_key": str(body.idempotency_key),
+                "provider": self.provider.name,
+                "model": self.provider.model,
+            },
         )
+        # A database with old reservation logic must fail BEFORE provider invocation.
+        reserved = self.view(value, report, current)
+        if reserved.record is None or reserved.record.model != self.provider.model:
+            raise unavailable()
         if not value["created"]:
-            return self.view(value, report, current)
+            return reserved
         # The atomic request may select a newer snapshot. Never invoke with the earlier one.
         source = [SourceEvidence.model_validate(item) for item in value["evidence"]]
         context = facts(source)

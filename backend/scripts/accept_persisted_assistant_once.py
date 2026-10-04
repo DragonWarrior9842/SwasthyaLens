@@ -34,7 +34,8 @@ from tests.integration.test_live_ownership import LiveContext, SignedInUser
 from tests.integration.test_live_reports import metadata, put_file
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT = ROOT / ".cache/phase13/openai-persisted-assistant-2"
+# Fresh user authorization for Gate C; A and B remain immutable audit history.
+AUDIT = ROOT / ".cache/phase13/openai-persisted-assistant-3"
 QUESTION = "Explain my latest uploaded report."
 MEASUREMENT_DATE = "2026-10-03"
 
@@ -99,6 +100,7 @@ class VerifiedContextBuilder(ContextBuilder):
         )
         self.verified = False
         self.safe_metadata: dict[str, object] = {}
+        self.failure_category: str | None = None
 
     def build(
         self,
@@ -109,6 +111,7 @@ class VerifiedContextBuilder(ContextBuilder):
     ) -> Context:
         context = super().build(question, history, current, language)
         try:
+            require("RUN_AI_INTEGRATION" not in os.environ, "context_gate_must_start_unset")
             require(str(current.identity.user_id) == self.owner, "context_owner")
             require(question == QUESTION and history == [] and language == "en", "context_scope")
             require(
@@ -152,8 +155,12 @@ class VerifiedContextBuilder(ContextBuilder):
             require(len(serialized.encode()) < 4000, "context_bound")
             self.provider.expected_input_digest = hashlib.sha256(serialized.encode()).hexdigest()
             self.verified, self.safe_metadata = True, context.metadata()
+            # Enable only AFTER the real context passes every authorization check.
+            # The runner clears this process-local gate immediately after the API call.
+            os.environ["RUN_AI_INTEGRATION"] = "1"
             return context
-        except CheckFailed:
+        except CheckFailed as error:
+            self.failure_category = error.category
             raise ApiProblem(
                 409, "assistant_source", "Acceptance context failed verification."
             ) from None
@@ -200,6 +207,7 @@ def execute() -> dict[str, Any]:
         "prior_openai_attempts": 1,
         "gemini_attempts": "2/20 unchanged",
         "phase8_calculation": "not_applicable_single_report",
+        "correlation_id": str(uuid4()),
     }
     values = dotenv_values(ROOT / "backend/.env.integration")
     app = create_app(config, assistant_provider=provider)
@@ -207,6 +215,7 @@ def execute() -> dict[str, Any]:
     conversation: str | None = None
     original_language: str | None = None
     users: list[SignedInUser] = []
+    guarded: VerifiedContextBuilder | None = None
     stage = "login"
     with ExitStack() as stack:
         try:
@@ -384,7 +393,6 @@ def execute() -> dict[str, Any]:
             app.state.assistant_service.builder = guarded
             result["preflight"] = "passed"
             stage = "one_live_turn"
-            os.environ["RUN_AI_INTEGRATION"] = "1"
             try:
                 response = owner.write(
                     "POST",
@@ -453,6 +461,13 @@ def execute() -> dict[str, Any]:
                 owner.client.get(f"/assistant/conversations/{conversation}"), 200, "reload"
             )
             require(reload["messages"] == thread["messages"], "same_messages_on_reload")
+            foreign_list = checked(
+                other.client.get("/assistant/conversations"), 200, "foreign_conversation_list"
+            )
+            require(
+                all(row["id"] != conversation for row in foreign_list["conversations"]),
+                "foreign_conversation_list_denied",
+            )
             for table, query in (
                 ("assistant_conversations", "id=eq." + conversation),
                 ("assistant_messages", "id=eq." + reply["id"]),
@@ -494,13 +509,39 @@ def execute() -> dict[str, Any]:
                 two_user_isolation="passed",
             )
         except CheckFailed as error:
-            result.update(result="failed", failure_stage=stage, failure_category=error.category)
-        except Exception:
             result.update(
-                result="failed", failure_stage=stage, failure_category="local_or_provider_failure"
+                result="failed",
+                failure_stage=stage,
+                failure_category=error.category,
+                exception_type="CheckFailed",
+            )
+        except Exception as error:
+            result.update(
+                result="failed",
+                failure_stage=stage,
+                failure_category="local_or_provider_failure",
+                # Class names only, never messages, args, tracebacks or request/response bodies.
+                exception_type=type(error).__name__
+                if type(error).__name__
+                in {
+                    "KeyError",
+                    "ValueError",
+                    "TypeError",
+                    "AssertionError",
+                    "ApiProblem",
+                    "ReadTimeout",
+                    "ConnectTimeout",
+                    "ConnectError",
+                    "RuntimeError",
+                }
+                else "OtherException",
             )
         finally:
             os.environ.pop("RUN_AI_INTEGRATION", None)
+            if guarded is not None:
+                result["context_authorization"] = "passed" if guarded.verified else "failed"
+                result["context_metadata"] = guarded.safe_metadata
+                result["context_failure_category"] = guarded.failure_category
             cleanup = True
             if users:
                 for route in (
@@ -529,6 +570,7 @@ def execute() -> dict[str, Any]:
         provider_error_code=provider.error_code,
         usage=provider.usage,
         new_openai_attempts=provider.transport.calls,
+        provider_invocation_started=provider.transport.calls > 0,
         total_openai_attempts=1 + provider.transport.calls,
         live_integration_final="unset",
     )

@@ -15,7 +15,7 @@ const fact = { evidence_id: 'e1', label: 'Hemoglobin', value: '13.20', unit: 'g/
 const item = { fact, source: { observation_id: id, candidate_id: id, source_run_id: id, parameter_run_id: id, revision: 1, review_revision: 1, page_number: 1, source_start: 0, source_end: 20, fields }, explanation: 'Hemoglobin is the oxygen-carrying protein in red blood cells.', notes: ['The application has not established whether this result is above, below or within a range.'], educational_source_url: 'https://medlineplus.gov/lab-tests/hemoglobin-test/' };
 const record = { id, report_id: id, status: 'ready', provider: 'mock-test', model: 'gpt-5.6-terra', prompt_version: 'report-education-v1', schema_version: 'closed-education-v1', catalog_version: 'education-en-v1', created_at: '2026-09-18T00:00:00Z', expires_at: '2026-10-18T00:00:00Z', finished_at: '2026-09-18T00:00:01Z', error_category: null, items: [item] };
 let state = { report_id: id, eligible_count: 0, evaluation_enrolled: false, provider_available: true, provider: 'mock-test', record: null };
-let browser, page, stage = 'launch', posts = 0, reads = 0, errors = 0;
+let browser, page, stage = 'launch', posts = 0, reads = 0, errors = 0, deleted = false;
 const checks = [];
 const pass = () => { checks.push(stage); console.log('PASS: ' + stage); };
 const output = path.join(root, '.cache/qa/phase7');
@@ -24,7 +24,12 @@ fs.mkdirSync(output, { recursive: true });
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   page.on('pageerror', () => errors++);
-  await page.route('**/api/reports', route => route.request().method() === 'GET' ? route.fulfill({ json: { reports: [{ id, original_filename: 'synthetic-ui-contract.pdf', media_type: 'application/pdf', size_bytes: 1000, status: 'uploaded', created_at: record.created_at, updated_at: record.created_at, error_category: null }], next_cursor: null } }) : route.continue());
+  await page.route('**/api/reports', route => route.request().method() === 'GET' ? route.fulfill({ json: { reports: deleted ? [] : [{ id, original_filename: 'synthetic-ui-contract.pdf', media_type: 'application/pdf', size_bytes: 1000, status: 'uploaded', created_at: record.created_at, updated_at: record.created_at, error_category: null }], next_cursor: null } }) : route.continue());
+  await page.route(`**/api/reports/${id}`, route => {
+    assert.equal(route.request().method(), 'DELETE');
+    deleted = true;
+    return route.fulfill({ json: { report_id: id, status: 'deleted' } });
+  });
   await page.route(`**/api/reports/${id}/explanations`, route => {
     if (route.request().method() === 'POST') {
       posts++;
@@ -105,6 +110,13 @@ fs.mkdirSync(output, { recursive: true });
   state.record = { ...record, provider: 'gemini', model: 'gemini-3.8-flash' };
   await refresh(); await region.getByText(/Gemini 3.8 Flash/).waitFor();
   assert.equal(await region.locator('strong').textContent(), '13.20');
+  assert.equal(posts, 1); pass();
+  stage = 'confirmed report deletion removes explanation and cannot regenerate';
+  await page.getByRole('button', { name: 'Delete report', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm delete', exact: true }).click();
+  await page.getByRole('heading', { name: 'synthetic-ui-contract.pdf', exact: true }).waitFor({ state: 'detached' });
+  assert.equal(await region.count(), 0);
+  assert.equal(deleted, true);
   assert.equal(posts, 1); pass();
   stage = 'clean browser runtime and sign out';
   assert.equal(errors, 0);

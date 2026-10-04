@@ -17,7 +17,11 @@ PROMPT_VERSION = "report-education-v1"
 SCHEMA_VERSION = "closed-education-v1"
 CATALOG_VERSION = "education-en-v1"
 MODEL = "gpt-5.6-terra"
-PROVIDER_MODELS = {"openai": MODEL, "mock-test": MODEL, "gemini": "gemini-3.8-flash"}
+PROVIDER_MODELS = {
+    "openai": (MODEL, "gpt-6.1-sol"),
+    "mock-test": (MODEL,),
+    "gemini": ("gemini-3.8-flash",),
+}
 MAX_CONTEXT_BYTES = 32768
 
 # Paraphrased general definitions, checked against the linked NLM pages 2026-09-18.

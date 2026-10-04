@@ -1,5 +1,13 @@
 # Phase 9 handoff — context-aware assistant
 
+Latest related Phase 7 update, 2026-10-04: Gate D stopped at offline explanation model-metadata compatibility preflight with **0 new OpenAI requests**. Its minimal local repair passed 120 backend/18 frontend tests; migration remains unapplied and full Phase 7 lifecycle pending. **Phase 9 Gate C PASS is unchanged**, as are total OpenAI **2** and Gemini **2/20**. No Phase 9 code/schema change, additional call or normal live enablement. Gate unset; mypy remains blocked. [Gate D details](openai-acceptance-2026-10-03.md#gate-d--phase-7-offline-preflight-stop).
+
+## Latest authorized persisted rerun — 2026-10-04
+
+**PASS for one synthetic English latest-report persisted live acceptance.** After the offline runner rehearsal and 692 passing backend tests (22 gated skips), the real authenticated upload/extract/review/publish/context flow dispatched exactly one OpenAI / `gpt-6.1-sol` request, HTTP 200. Schema, evidence, exact facts/date and closed educational safety passed. User/assistant messages, evidence/source association, exact provider/model and frozen `en` language persisted; reload was identical with zero new calls. The second account could not list/read the conversation/messages/evidence or send into it. Usage: 551 input + 54 output tokens, estimated $0.001642; retries/fallbacks 0/0.
+
+Total OpenAI requests **2** (A=1, B=0, C=1); Gemini history **2/20**, both 503, unchanged. Metadata migration/RLS/grants/RPC protections were reverified, not changed. Cleanup passed; process exited; gate unset; no ordinary live enablement. Full Phase 7 persisted explanation acceptance and broader production release gates remain pending. Mypy remains blocked by Windows Application Control, without bypass. Earlier failure records below remain historical evidence. [Complete Gate C report](openai-acceptance-2026-10-03.md#gate-c--authorized-persisted-phase-9-rerun-passed). The one-request authorization is consumed; no further call or Phase 14 work.
+
 ## Persisted-gate outcome — 2026-10-04
 
 **Phase 9 live acceptance remains NOT COMPLETE.** The authorized persisted flow stopped during synthetic report preparation on 2026-10-03 at 23:42 Asia/Calcutta. Recorded failure: `local_or_provider_failure` at `synthetic_report_workflow`. No conversation/provider call or persisted assistant message was reached; readback and two-user conversation isolation remain unverified. **Zero new OpenAI requests, no retry/fallback, $0 new OpenAI usage. Total OpenAI requests remain 1; Gemini remains 2/20.**

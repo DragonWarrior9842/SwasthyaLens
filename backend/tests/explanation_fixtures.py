@@ -53,6 +53,7 @@ def mock_output(context: list[ModelFact]) -> ModelExplanation:
 
 class MockExplanationProvider:
     name = "mock-test"
+    model = "gpt-5.6-terra"
     available = True
 
     def __init__(self) -> None:

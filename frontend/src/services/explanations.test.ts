@@ -8,6 +8,14 @@ const item = { fact, source: { observation_id: id, candidate_id: id, source_run_
 const record = { id, report_id: id, status: 'ready', provider: 'mock-test', model: 'gpt-5.6-terra', prompt_version: 'report-education-v1', schema_version: 'closed-education-v1', catalog_version: 'education-en-v1', created_at: '2026-09-18T00:00:00Z', expires_at: '2026-10-18T00:00:00Z', finished_at: '2026-09-18T00:00:01Z', error_category: null, items: [item] }
 const state = { report_id: id, eligible_count: 1, evaluation_enrolled: true, provider_available: true, provider: 'mock-test', record }
 describe('grounded explanation boundary', () => {
+  it('reads the selected OpenAI model and historical records without relabeling', () => {
+    for (const model of ['gpt-5.6-terra', 'gpt-6.1-sol']) {
+      expect(decodeExplanation({ ...state, provider: 'openai', record: { ...record, provider: 'openai', model } }).record?.model).toBe(model)
+    }
+    for (const provider of ['mock-test', 'gemini']) {
+      expect(() => decodeExplanation({ ...state, record: { ...record, provider, model: 'gpt-6.1-sol' } })).toThrow()
+    }
+  })
   it('accepts only approved provider/model pairs and a known active provider', () => {
     expect(decodeExplanation({ ...state, provider: 'gemini', record: { ...record, provider: 'gemini', model: 'gemini-3.8-flash' } }).record?.provider).toBe('gemini')
     for (const change of [{ provider: 'gemini', model: 'gpt-5.6-terra' }, { provider: 'openai', model: 'gemini-3.8-flash' }, { provider: 'unknown' }]) {
