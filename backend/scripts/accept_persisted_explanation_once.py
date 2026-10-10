@@ -1,10 +1,10 @@
-"""Explicit preparation only: real development APIs/storage, deterministic AI only.
+"""Exactly one authorized persisted Phase 7 OpenAI request; explicit --live only.
 
-There is no live mode. Both HTTP transports forbid AI network; a set live gate
-aborts this script. OpenAI metadata is simulated deliberately to verify reservation
-compatibility, and must never be counted as a successful provider request.
+Derived from the passed Gate H application workflow. No mock generation, retry,
+fallback or second fixture. A durable run marker also fences pre-dispatch stops.
 """
 
+import argparse
 import asyncio
 import hashlib
 import json
@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 
 from app.core.ai_config import AISettings
 from app.core.config import Settings
+from app.core.errors import ApiProblem
 from app.core.explanation_context import (
     CATALOG_VERSION,
     PROMPT_VERSION,
@@ -33,6 +34,7 @@ from app.core.explanation_context import (
 from app.core.explanation_provider import (
     GenerationPermit,
     GenerationResult,
+    OpenAIExplanationProvider,
     context_digest,
     request_body,
 )
@@ -46,13 +48,12 @@ from scripts.accept_persisted_assistant_once import (
     verify_observation_owner,
 )
 from tests import extraction_fixtures
-from tests.explanation_fixtures import mock_output
 from tests.integration.test_live_extraction import finish
 from tests.integration.test_live_ownership import LiveContext, SignedInUser
 from tests.integration.test_live_reports import metadata, put_file
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT = ROOT / ".cache/phase13/phase7-mock-lifecycle-8"
+AUDIT = ROOT / ".cache/phase13/openai-persisted-explanation-9"
 
 
 def verify_deleted_facts(
@@ -78,13 +79,20 @@ def verify_deleted_facts(
         )
 
 
-class PreparationProvider:
-    """Explicit deterministic stand-in with the selected persisted metadata pair."""
+class VerifiedLiveProvider:
+    """Verify the actual application context/reservation before enabling one dispatch."""
 
     name = "openai"
     model = "gpt-6.1-sol"
 
-    def __init__(self) -> None:
+    def __init__(self, real: OpenAIExplanationProvider) -> None:
+        require(type(real) is OpenAIExplanationProvider, "real_provider_required")
+        require(type(real._transport) is OneShotOpenAITransport, "one_shot_transport_required")
+        require(real.name == "openai" and real.model == self.model, "exact_real_provider")
+        self.real = real
+        self.preflight_passed = False
+        self.failure_category: str | None = None
+        self.usage: dict[str, object] = {}
         self.calls = 0
         self.sources: list[SourceEvidence] = []
         self.private: list[str] = []
@@ -98,7 +106,7 @@ class PreparationProvider:
     async def generate(
         self, context: list[ModelFact], permit: GenerationPermit
     ) -> GenerationResult:
-        require(self.available and self.calls < 2, "mock_only_boundary")
+        require(self.available and self.calls == 0, "single_live_boundary")
         require(context == facts(self.sources) and len(context) == 1, "exact_current_context")
         require(permit.synthetic_enrolled and permit.reserved_cents == 25, "real_reservation")
         require(permit.context_digest == context_digest(context), "reservation_context_digest")
@@ -128,13 +136,38 @@ class PreparationProvider:
                 "context_bytes": len(serialized.encode()),
             }
         )
+        require(not self.real.available, "live_gate_locked_before_preflight")
+        require(type(self.real._transport) is OneShotOpenAITransport, "no_mock_transport")
+        assert isinstance(self.real._transport, OneShotOpenAITransport)
+        require(self.real._transport.calls == 0, "authorization_not_consumed")
+        self.preflight_passed = True
         self.calls += 1
-        return GenerationResult(mock_output(context), 0, 0)
+        # This is the only live enablement. All real owner/context/reservation checks ran above.
+        os.environ["RUN_AI_INTEGRATION"] = "1"
+        try:
+            generated = await self.real.generate(context, permit)
+            self.usage = {
+                "input_tokens": generated.input_tokens,
+                "output_tokens": generated.output_tokens,
+                "total_tokens": generated.input_tokens + generated.output_tokens,
+                "estimated_cost_usd": round(
+                    (generated.input_tokens * 2 + generated.output_tokens * 10) / 1000000, 6
+                ),
+            }
+            return generated
+        except ApiProblem as error:
+            self.failure_category = error.code
+            raise
+        finally:
+            os.environ.pop("RUN_AI_INTEGRATION", None)
 
 
-def run() -> dict[str, Any]:
+def run(*, live_authorized: bool = False) -> dict[str, Any]:
+    require(live_authorized, "explicit_live_authorization_required")
     require("RUN_AI_INTEGRATION" not in os.environ, "live_gate_must_be_unset")
     require(not (AUDIT / "result.json").exists(), "preparation_already_recorded")
+    require(not (AUDIT / "run-started.json").exists(), "acceptance_already_started")
+    require(not (AUDIT / "attempt-reserved.json").exists(), "authorization_already_consumed")
     config, ai = Settings(), AISettings()
     require(config.environment == "development" and not config.secure_cookies, "development_only")
     require(config.supabase_url == "https://rbmpfgndidpzdssiicyf.supabase.co", "dedicated_project")
@@ -149,8 +182,11 @@ def run() -> dict[str, Any]:
     assert config.supabase_publishable_key is not None
     assert ai.ai_api_key is not None
     worker = config.report_processing_key.get_secret_value()
-    provider = PreparationProvider()
-    live_candidate = create_acceptance_provider(ai, AUDIT / "must-never-exist.json")
+    AUDIT.mkdir(parents=True, exist_ok=True)
+    with (AUDIT / "run-started.json").open("x", encoding="utf-8") as started:
+        started.write('{"authorized_max_requests":1,"prior_openai_requests":2}\n')
+    live_candidate = create_acceptance_provider(ai, AUDIT / "attempt-reserved.json")
+    provider = VerifiedLiveProvider(live_candidate)
     require(
         not live_candidate.available and type(live_candidate._transport) is OneShotOpenAITransport,
         "real_live_adapter_stays_locked",
@@ -163,15 +199,30 @@ def run() -> dict[str, Any]:
         )
         return original_send(transport, request)
 
-    async def no_async_network(
+    original_async = httpx.AsyncHTTPTransport.handle_async_request
+
+    async def one_openai_only(
         transport: httpx.AsyncHTTPTransport, request: httpx.Request
     ) -> httpx.Response:
-        raise CheckFailed("async_network_forbidden")
+        require(
+            isinstance(live_candidate._transport, OneShotOpenAITransport)
+            and transport is live_candidate._transport
+            and request.method == "POST"
+            and str(request.url) == "https://api.openai.com/v1/responses"
+            and provider.preflight_passed
+            and provider.calls == 1
+            and live_candidate._transport.calls == 1
+            and os.environ.get("RUN_AI_INTEGRATION") == "1",
+            "unauthorized_async_network",
+        )
+        return await original_async(transport, request)
 
     result: dict[str, Any] = {
         "timestamp_utc": datetime.now(UTC).isoformat(),
         "correlation_id": str(uuid4()),
-        "mode": "deterministic_mock_real_application",
+        "mode": "single_live_real_application",
+        "requested_model": "gpt-6.1-sol",
+        "conservative_cost_bound_usd": 0.06,
         "result": "not_started",
         "new_ai_requests": 0,
         "total_openai_live_requests": 2,
@@ -185,7 +236,7 @@ def run() -> dict[str, Any]:
     with ExitStack() as stack:
         stack.enter_context(patch.object(httpx.HTTPTransport, "handle_request", supabase_only))
         stack.enter_context(
-            patch.object(httpx.AsyncHTTPTransport, "handle_async_request", no_async_network)
+            patch.object(httpx.AsyncHTTPTransport, "handle_async_request", one_openai_only)
         )
         app = create_app(config, explanation_provider=provider)
         first = stack.enter_context(TestClient(app, base_url="http://127.0.0.1:8000"))
@@ -245,7 +296,7 @@ def run() -> dict[str, Any]:
                 )
 
             completed = []
-            for index, owner in enumerate(users):
+            for index, owner in enumerate(users[:1]):
                 other = users[1 - index]
                 stage = "synthetic_report_workflow"
                 old_lines = extraction_fixtures.LINES
@@ -264,7 +315,7 @@ def run() -> dict[str, Any]:
                     owner.write(
                         "POST",
                         "/reports",
-                        metadata("synthetic-phase7-preparation.pdf", "application/pdf", data),
+                        metadata("synthetic-phase7-live-acceptance.pdf", "application/pdf", data),
                     ),
                     201,
                     "reserve_report",
@@ -438,9 +489,20 @@ def run() -> dict[str, Any]:
                         == [],
                         "foreign_reservation_hidden",
                     )
+                    for method in ("PATCH", "DELETE"):
+                        require(
+                            live.data(
+                                other,
+                                method,
+                                "report_explanations?id=eq." + row["id"],
+                                {"status": "failed"} if method == "PATCH" else None,
+                            ).status_code
+                            == 403,
+                            "foreign_reservation_mutation_denied",
+                        )
 
                 provider.verify_reservation = verify_reserved
-                stage = "mock_generation_and_persistence"
+                stage = "live_generation_and_persistence"
                 body = {"idempotency_key": str(uuid4()), "consent": True}
                 calls_before = provider.calls
                 for response in (
@@ -450,8 +512,11 @@ def run() -> dict[str, Any]:
                     other.write("DELETE", route, {}),
                 ):
                     require(response.status_code == 404, "foreign_report_mutation_read_denied")
-                result_view = checked(owner.write("POST", path, body), 200, "mock_generation")
+                result_view = checked(owner.write("POST", path, body), 200, "live_generation")
+                require("RUN_AI_INTEGRATION" not in os.environ, "gate_cleared_after_generation")
                 record = result_view["record"]
+                if record is None or record["status"] != "ready":
+                    raise CheckFailed(provider.failure_category or "generation_not_ready")
                 require(
                     record["status"] == "ready"
                     and record["model"] == "gpt-6.1-sol"
@@ -464,10 +529,34 @@ def run() -> dict[str, Any]:
                     checked(owner.client.get(path), 200, "reload")["record"] == record,
                     "same_record_on_reload",
                 )
+                persisted = checked(
+                    live.data(owner, "GET", "report_explanations?id=eq." + record["id"]),
+                    200,
+                    "persisted_ready_row",
+                )
                 require(
-                    checked(owner.write("POST", path, body), 200, "idempotent_replay")["record"]
-                    == record,
-                    "same_record_on_replay",
+                    len(persisted) == 1
+                    and persisted[0]["user_id"] == owner.user_id
+                    and persisted[0]["report_id"] == report
+                    and persisted[0]["evidence"] == expected
+                    and persisted[0]["provider"] == "openai"
+                    and persisted[0]["model"] == "gpt-6.1-sol"
+                    and persisted[0]["prompt_version"] == PROMPT_VERSION
+                    and persisted[0]["schema_version"] == SCHEMA_VERSION
+                    and persisted[0]["catalog_version"] == CATALOG_VERSION == "education-en-v1"
+                    and persisted[0]["input_tokens"] == provider.usage["input_tokens"]
+                    and persisted[0]["output_tokens"] == provider.usage["output_tokens"],
+                    "persisted_owner_evidence_versions_usage",
+                )
+                result.update(
+                    persistence="passed",
+                    evidence_associations="passed",
+                    reload="passed",
+                    structured_validation="passed",
+                    evidence_validation="passed",
+                    response_language="fixed English catalog education-en-v1",
+                    fixture_date="not_supplied_no_fabrication",
+                    reload_additional_calls=0,
                 )
                 require(provider.calls == calls_before + 1, "reload_replay_zero_calls")
                 require(
@@ -539,6 +628,7 @@ def run() -> dict[str, Any]:
                     "only_corrected_revision_current",
                 )
                 require(revised["current"]["revision"] == 2, "published_revision_two")
+                result.update(correction_stale="passed", superseded_exclusion="passed")
                 stage = "deletion_and_manual_preservation"
                 manual = checked(
                     owner.write(
@@ -620,7 +710,7 @@ def run() -> dict[str, Any]:
                 result="passed",
                 cases=completed,
                 provider_boundaries=provider.boundaries,
-                deterministic_generations=provider.calls,
+                provider_generations=provider.calls,
                 reload_additional_calls=0,
                 correction_stale="passed",
                 deletion="passed",
@@ -628,7 +718,6 @@ def run() -> dict[str, Any]:
                 two_user_isolation="passed",
                 final_provider_boundary="passed",
                 internal_reservation_increment_cents=provider.calls * 25,
-                provider_spend_cents=0,
                 reservation_refund="none_by_design",
             )
         except Exception as error:
@@ -644,6 +733,7 @@ def run() -> dict[str, Any]:
                 else "OtherException",
             )
         finally:
+            os.environ.pop("RUN_AI_INTEGRATION", None)
             cleanup = True
             for user, report in reports:
                 try:
@@ -666,10 +756,29 @@ def run() -> dict[str, Any]:
                     cleanup = False
             result["cleanup"] = "passed" if cleanup else "failed"
     assert isinstance(live_candidate._transport, OneShotOpenAITransport)
-    require(
-        live_candidate._transport.calls == 0 and not (AUDIT / "must-never-exist.json").exists(),
-        "zero_live_dispatch",
+    require(live_candidate._transport.calls <= 1, "single_dispatch_limit")
+    result.update(
+        new_ai_requests=live_candidate._transport.calls,
+        total_openai_live_requests=2 + live_candidate._transport.calls,
+        provider_invocation_occurred=live_candidate._transport.calls == 1,
+        preflight="passed" if provider.preflight_passed else "failed_or_not_reached",
+        http_status=live_candidate.http_status,
+        provider="openai",
+        provider_reported_model="gpt-6.1-sol" if live_candidate.model_confirmed else None,
+        provider_error_code=live_candidate.error_code,
+        usage=provider.usage,
     )
+    if (
+        not provider.preflight_passed
+        and result["result"] == "failed"
+        and stage == "live_generation_and_persistence"
+    ):
+        result["failure_stage"] = "final_provider_preflight"
+    if result["result"] == "passed":
+        require(
+            live_candidate._transport.calls == 1 and live_candidate.model_confirmed,
+            "one_confirmed_response",
+        )
     asyncio.run(live_candidate._transport.aclose())
     require("RUN_AI_INTEGRATION" not in os.environ, "live_gate_final_unset")
     result["live_gate"] = "unset"
@@ -683,12 +792,25 @@ def run() -> dict[str, Any]:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--live", action="store_true")
+    args = parser.parse_args()
     logging.disable(logging.CRITICAL)
     try:
-        outcome = run()
+        outcome = run(live_authorized=args.live)
     except Exception:
+        os.environ.pop("RUN_AI_INTEGRATION", None)
+        consumed = int((AUDIT / "attempt-reserved.json").exists())
         print(
-            '{"result":"stopped","failure_category":"local_preflight_or_audit_failure","new_ai_requests":0}'
+            json.dumps(
+                {
+                    "result": "stopped",
+                    "failure_category": "local_preflight_or_audit_failure",
+                    "new_ai_requests": consumed,
+                    "total_openai_live_requests": 2 + consumed,
+                    "live_gate": "unset",
+                }
+            )
         )
         raise SystemExit(1) from None
     print(json.dumps(outcome, indent=2))

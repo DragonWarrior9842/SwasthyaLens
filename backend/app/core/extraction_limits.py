@@ -1,11 +1,11 @@
 """Hard address-space/job limits established before loading untrusted parsers."""
 
-import os
+import sys
 from importlib import import_module
 
 
 def contain_memory(megabytes: int = 768) -> object:
-    if os.name != "nt":
+    if sys.platform != "win32":
         resource = import_module("resource")
 
         size = megabytes * 1024 * 1024

@@ -49,7 +49,7 @@ def test_worker_death_expires_then_retry_succeeds(live: LiveContext) -> None:
             cwd=Path(__file__).resolve().parents[2],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         with httpx.Client(
             base_url=f"http://127.0.0.1:{port}",

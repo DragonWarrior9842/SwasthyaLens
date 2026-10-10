@@ -1,5 +1,7 @@
 # Phase 9 handoff — context-aware assistant
 
+Current related acceptance update — **Gate I, 2026-10-04:** Phase7's separately authorized single persisted synthetic OpenAI lifecycle passed, including readback/correction/deletion/manual preservation and foreign-user denials. **Phase9 Gate C remains PASS for its one persisted synthetic English turn**, with no new Phase9 generation or code/schema change in this gate. OpenAI total**3**; Gemini**2/20**, both historical503. Gate unset; authorization consumed; no additional request or Phase14 work. Mypy remains blocked by Windows Application Control. [Gate I evidence](openai-acceptance-2026-10-03.md#gate-i--one-live-persisted-phase-7-lifecycle-passed). Older checkpoint descriptions below retain their historical state.
+
 Latest related Phase 7 update, 2026-10-04: Gate D stopped at offline explanation model-metadata compatibility preflight with **0 new OpenAI requests**. Its minimal local repair passed 120 backend/18 frontend tests; migration remains unapplied and full Phase 7 lifecycle pending. **Phase 9 Gate C PASS is unchanged**, as are total OpenAI **2** and Gemini **2/20**. No Phase 9 code/schema change, additional call or normal live enablement. Gate unset; mypy remains blocked. [Gate D details](openai-acceptance-2026-10-03.md#gate-d--phase-7-offline-preflight-stop).
 
 ## Latest authorized persisted rerun — 2026-10-04

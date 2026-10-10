@@ -1,6 +1,14 @@
 # Phase 7 — grounded report explanations
 
-## Current preparation outcome — Gate H, 2026-10-04
+## Current live acceptance — Gate I, 2026-10-04
+
+**PASS: one persisted synthetic Phase7 lifecycle through OpenAI / `gpt-6.1-sol`.** One expressly authorized request returnedHTTP200 with the exact model confirmed:1242 input +122 output =1364 tokens, estimated$0.003704. The real report upload/extraction/review/publication and reservation supplied the minimized evidence; no prompt facts were manually seeded. Structured/evidence/safety validation, owner/report/reservation/evidence/version persistence and identical reload passed. Reload caused0 requests. Normal correction made the source superseded and the explanation stale; deletion, direct fact/revision absence, unrelated manual preservation and foreign-user read/mutation denials passed without regeneration.
+
+The fixture supplied no clinical date; none was fabricated. Phase7 language metadata is the fixed English catalog `education-en-v1`, preserved with prompt/schema versions; no separate multilingual acceptance is claimed. Exactly1 new OpenAI request, total**3**. Gemini remains**2/20**, both historical503. Retries0, fallbacknone; gate unset, acceptance process exited, cleanup passed. Internal reservations125→150 cents, with no refund/reset; this is not provider billing. Final DB counts:0 explanations/enrollments and0 facts/revisions for deleted reports. The one-request authorization is consumed. No further call, normal AI enablement or Phase14 work is authorized.
+
+Fresh pre-dispatch regression:100 targeted backend tests passed; Ruff/123-file formatting passed; existing Windows Application Control/mypy blocker unchanged. Gate H's full offline/UI/SQL results remain evidence, not rerun results. [Full Gate I report](openai-acceptance-2026-10-03.md#gate-i--one-live-persisted-phase-7-lifecycle-passed). This completes the bounded synthetic English live lifecycle gate, not production/broader release-scope acceptance. Phase13 can proceed to final closure work, with existing release blockers recorded separately.
+
+## Historical preparation outcome — Gate H, 2026-10-04
 
 **Full offline Phase 7 lifecycle PASSED; ready for one separately authorized live OpenAI request. No live request was made.** The harness now expects404 for deleted-report observation reads and independently checks fact/revision rows through authenticated owner-scoped Data API access. Application/API behavior was not changed. Both owner cases completed upload/extraction/review/publication, exact selected-model reservation, bounded deterministic generation, validation/persistence/reload, correction/stale/superseded exclusion, deletion, direct deleted-fact/evidence checks and unchanged unrelated manual observations. Both directions of read/mutation isolation passed. Deleted source IDs cannot regenerate or republish.
 

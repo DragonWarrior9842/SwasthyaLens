@@ -58,7 +58,7 @@ def test_encrypted_pdf_has_explicit_failure() -> None:
 def test_timeout_kills_child_and_removes_temporary_source() -> None:
     child = subprocess.Popen(
         [sys.executable, "-c", "import time; time.sleep(60)"],
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
     )
     try:
         with patch("app.core.extraction.subprocess.Popen", return_value=child) as launch:

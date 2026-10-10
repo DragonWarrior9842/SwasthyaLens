@@ -163,14 +163,23 @@ class ConfiguredOpenAIMock(MockExplanationProvider):
 
 
 class ModelRepositoryFixture(RepositoryFixture):
+    provider: ConfiguredOpenAIMock
+
     def __init__(self, *, legacy_reservation: bool = False) -> None:
         super().__init__()
         self.provider = ConfiguredOpenAIMock()
         self.legacy_reservation = legacy_reservation
 
-    def rpc(self, operation, report, current, payload=None):
+    def rpc(
+        self,
+        operation: str,
+        report: UUID,
+        current: AuthenticatedRequest,
+        payload: dict[str, object] | None = None,
+    ) -> dict[str, Any]:
         value = super().rpc(operation, report, current, payload)
         if operation == "request":
+            assert payload is not None
             assert payload["provider"] == "openai"
             assert payload["model"] == "gpt-6.1-sol"
             value["record"]["provider"] = "openai"
@@ -219,7 +228,7 @@ def test_legacy_database_reservation_stops_before_provider() -> None:
         ("mock-test", "gpt-5.6-terra"),
     ],
 )
-def test_historical_and_selected_model_records_remain_readable(provider, model) -> None:
+def test_historical_and_selected_model_records_remain_readable(provider: str, model: str) -> None:
     service = RepositoryFixture()
     asyncio.run(
         service.generate(

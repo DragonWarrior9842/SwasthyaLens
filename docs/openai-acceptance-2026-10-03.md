@@ -1,6 +1,6 @@
 # OpenAI acceptance record
 
-Latest preparation checkpoint — **Gate H, 2026-10-04: FULL OFFLINE PHASE7 LIFECYCLE PASSED.** Deletion/manual preservation, both directions of user isolation and final provider preflight passed. Ready for one separately authorized Phase7 live OpenAI request; **no live request made or authorized by this preparation**. Migration `20261004130141_explanation_model_metadata` remains applied. OpenAI **2 total**, Gemini **2/20**, gate unset. See [Gate H](#gate-h--full-offline-phase-7-lifecycle-passed); Gate G's failed harness run and all earlier outcomes remain preserved below.
+Latest acceptance checkpoint — **Gate I, 2026-10-04: ONE LIVE PERSISTED PHASE7 LIFECYCLE PASSED.** Exactly1 authorized OpenAI / `gpt-6.1-sol` request, HTTP200,1242 input/122 output tokens, estimated$0.003704. Validation/persistence/readback/correction/stale/deletion/manual preservation/isolation passed;0 reload calls. OpenAI **3 total**, Gemini **2/20**, gate unset, cleanup passed. Authorization consumed; no further request or Phase14 authorized. [Gate I](#gate-i--one-live-persisted-phase-7-lifecycle-passed). All earlier outcomes below remain historical.
 
 Latest Phase 7 checkpoint, 2026-10-04: **Gate D stopped at offline model-metadata preflight, before any provider request.** Minimal local compatibility fixes and targeted regression are complete; the new migration is **prepared, not applied**. OpenAI count remains **2**; Phase 9 Gate C PASS is unchanged. See [Gate D](#gate-d--phase-7-offline-preflight-stop).
 
@@ -320,3 +320,56 @@ Budget interpretation: `reserved_cents` is a conservative permanent authorizatio
 Final cleanup DB check: zero explanation rows, zero enrollment rows, zero facts/revisions attached to deleted reports. Synthetic manual observations were explicitly deleted only after proving preservation. Browser sign-out passed. The browser artifact `.cache/qa/phase7/browser-results.json` records13 passed groups and0 AI calls; its report/AI responses are routed fixtures with real test-user authentication, not a live AI/UI claim. No retry/fallback, live AI request, commit/push/deployment or Phase14 work occurred. Earlier gates remain historical evidence.
 
 Final H audit: zero findings across nonignored working files,716 reachable Git blobs,21 bundle files and six privately compared configured values (three reviewed public-alphabet exemptions). Ten acceptance/preparation JSON artifacts plus the browser result passed the separate secret/header/token scan. The live dispatch marker does not exist. No acceptance runner or temporary API/frontend server remains. `.env.ai` remains ignored/untracked, the live gate unset and `git diff --check` clean. This is readiness for a separately authorized live attempt, not completed live Phase7 acceptance.
+
+## Gate I — one live persisted Phase 7 lifecycle passed
+
+2026-10-04, run started17:23:29 UTC /22:53:29 Asia/Calcutta. The user explicitly authorized exactly one live Phase7 OpenAI request, followed by persistence/readback, correction/stale, deletion/manual preservation and second-user security checks without regeneration. **PASS for this one synthetic English report lifecycle.** Correlation `7ef742d3-c6b6-484f-b104-a742a20d21c1`; immutable evidence directory `.cache/phase13/openai-persisted-explanation-9/` contains `run-started.json`, `attempt-reserved.json` and `result.json`. Both start and dispatch markers prohibit reusing this run/authorization. All A–H artifacts and failures remain preserved.
+
+The dedicated runner derives from Gate H's passed real application workflow and accepts only explicit `--live`. It creates one owned synthetic report using the existing upload/extraction/review/publication path; model input is server-built from the persisted evidence. The second account is used only for denial checks. Immediately before dispatch, the wrapper verifies current evidence, real persisted owner/report/reservation, exact selected model and versions, 25-cent permit/digest, bounded one-fact context, opaque IDs and absence of credentials/internal IDs. Foreign reservation read/PATCH/DELETE attempts are denied while the gate is still unset. Only after these pass does it temporarily set the process-local live gate and call the existing exact-model one-shot transport. Its transport permits only one Responses POST, with zero retries, redirects or alternate AI hosts. No mock provider or transport is admitted by this runner. The gate is cleared in `finally` immediately after generation, before subsequent lifecycle checks.
+
+Pre-dispatch verification: **100 targeted offline backend tests passed**, including7 new runner-boundary tests for rejected context/reservations, successful synthetic HTTP response, provider503, invalid output, second-call refusal, explicit opt-in and mock-transport rejection. These tests used mocked HTTP, no private credentials or provider network. Ruff and123-file format verification passed; two existing dependency deprecation warnings remained. Read-only DB checks confirmed the migration, six relevant tables' forced RLS, grants, RPC grants and restricted search paths. Gate H's broader backend/frontend/browser/SQL evidence is retained; it was not rerun or relabeled as new. Mypy was not rerun.
+
+| # | Requested report | Observed result |
+|---|---|---|
+| 1 | Final preflight | **PASS**, completed against actual authenticated owner, persisted reservation and current published evidence before enabling live gate. |
+| 2 | New OpenAI requests | **Exactly1**, durable marker and transport count agree. |
+| 3 | HTTP result | **200**. |
+| 4 | Provider | **OpenAI**. |
+| 5 | Model | **`gpt-6.1-sol`**, exact provider-reported model validated. |
+| 6 | Input tokens | **1242**. |
+| 7 | Output tokens | **122**; total**1364**. |
+| 8 | Estimated provider cost | **$0.003704**, existing uncached standard-price estimate; not a billing receipt. |
+| 9 | Context authorization/minimization | **PASS**, one current reviewed/published fact; context2577 UTF-8 bytes, opaque `e1`; private/internal values excluded. |
+| 10 | Structured output | **PASS**, strict educational schema and independent service validator. |
+| 11 | Evidence validation | **PASS**, exact authorized fact/evidence mapping; no extra IDs. |
+| 12 | Fact/date preservation | **PASS**,18 /ng/mL /30–100 unchanged. Fixture contains no genuine clinical date; no date was supplied or fabricated. |
+| 13 | Safety | **PASS within closed educational contract**, catalog codes/notes only; no freeform fabricated facts, diagnosis, medication changes or unsupported certainty accepted. |
+| 14 | Explanation persistence | **PASS**, ready record verified under owner/report/reservation. |
+| 15 | Evidence associations | **PASS**, exact source/revision associations persisted and reloaded. |
+| 16 | Provider/model metadata | **PASS**, `openai`/`gpt-6.1-sol`; prompt `report-education-v1`, schema `closed-education-v1`, catalog `education-en-v1`, usage persisted. Language is fixed English catalog metadata, not a separate language column. |
+| 17 | Reload/readback | **PASS**, identical record through normal owner GET and verified database read. |
+| 18 | Reload provider calls | **0**. |
+| 19 | Correction | **PASS**, normal review revision changed18→19 and republished revision2. |
+| 20 | Stale invalidation | **PASS**, prior explanation stale, output hidden; not represented as current. |
+| 21 | Superseded exclusion | **PASS**, old fact superseded; no context before republication, only corrected revision afterward. No regeneration. |
+| 22 | Report deletion | **PASS**, normal owner deletion; subsequent report/file reads404. |
+| 23 | Deleted evidence | **PASS**, observation/revision and explanation rows absent through owner-scoped queries; context unavailable; deleted IDs cannot generate or republish. Final privileged aggregate confirms no facts/revisions for deleted reports. |
+| 24 | Manual preservation | **PASS**, unrelated synthetic manual observation unchanged before/after report deletion, then explicitly cleaned up. |
+| 25 | Two-user isolation | **PASS for the live owner's resources**, second account denied report/reservation/explanation/evidence reads and applicable generation/PATCH/DELETE operations, including after deletion. Gate H independently passed both owner directions. |
+| 26 | Retry/fallback | **0 / none**, one fixture, no parallel generation or model/provider switch. |
+| 27 | Cleanup | **PASS**, synthetic report/manual cleanup and session closure, runner exited; final DB has0 explanations/enrollments and0 deleted-report facts/revisions. |
+| 28 | Final live gate | **Unset**. |
+| 29 | Secret audit | Final finite-pattern/known-value audit recorded below; key never printed, `.env.ai` ignored/untracked. |
+| 30 | Total OpenAI requests | **3**: A1+C1+I1; all intervening stopped/mock gates0. |
+| 31 | Gemini history | **2/20**, both historical HTTP503, unchanged. |
+| 32 | Phase7 status | **Bounded persisted synthetic English live lifecycle PASS.** No broader production/clinical claim. |
+| 33 | Phase9 status | **Gate C bounded persisted synthetic English PASS unchanged**; no new Phase9 request. |
+| 34 | Remaining AI release blockers | Broader release-scope acceptance and production enablement/operational controls remain open; ordinary app AI stays unavailable. No further live requests authorized. |
+| 35 | Windows Application Control/mypy | Existing **BLOCKED** state retained, no invocation, bypass or typing PASS. |
+| 36 | Phase13 final closure work | **Ready to proceed to closure work; not declared closed or production-ready.** Remaining regression/operational checklist gates must be reconciled separately. Phase14 remains unstarted. |
+
+Cost basis:1242×$2/M +122×$10/M =$0.003704, using the documented standard input/output rates, reconfirmed against [OpenAI's exact model page](https://developers.openai.com/api/docs/models/gpt-6.1-sol). The one-shot limits stayed10000 request bytes/1536 output tokens, low reasoning, standard service tier, no tools and `store=false`; prior conservative bound$0.06 retained. No model-list, token-count or follow-up usage request was sent. Combined A+C+I estimate is$0.009050; actual billing can differ.
+
+Internal reservation bookkeeping is separate:125→150 cents after one25-cent reservation. Deletion/cleanup do not refund by design; no reset/edit to the ledger. This is a conservative capacity cap, not measured spend or account balance. Gemini's counter remains2. No application default, schema/RLS/grant/RPC definition, billing, provider selection or model setting changed during I. No commit/push/deployment or Phase14 work occurred.
+
+Final Gate I audit: **zero findings** across nonignored working files,717 reachable Git blobs,21 release-bundle files and six privately compared configured values (three reviewed public-alphabet exemptions). Thirteen acceptance/preparation JSON artifacts plus the browser result passed the separate secret/header/token audit. `.env.ai` remains ignored/untracked; `RUN_AI_INTEGRATION` is unset; no acceptance process remains; `git diff --check` passed. The consumed dispatch marker remains intact. Stop: no second request is authorized.

@@ -1,10 +1,12 @@
 # SwasthyaLens
 
+**Phase 13 closure review (2026-10-10): verification remains open; no production deployment or Phase 14 work.** See the [current readiness checklist](docs/production-readiness-checklist.md) and [closure report](docs/phase-13-closure.md). Phase 7's persisted explanation lifecycle and Phase 9's bounded persisted assistant acceptance passed with synthetic English fixtures. OpenAI has **3 authorized successful requests**, zero automatic retries/fallbacks; Gemini retains **2/20 historical HTTP 503 attempts**. Normal AI remains unavailable, `RUN_AI_INTEGRATION` stays unset, and voice is disabled in the default release build.
+
 SwasthyaLens uses React/TypeScript/Vite/Tailwind and FastAPI. Supabase authentication runs through backend-managed HttpOnly cookies, protected navigation, and private profile/language/timezone settings. Reports support private upload, extraction and personal review. Phase 6 adds explicitly published health observations, manual weight/heart-rate entry, revision history and a dashboard backed by actual owned records. Phase 8 adds deterministic measurement trends with real-point charts and exact-value tables. Phase 9 adds private persisted conversations, bounded evidence retrieval and a structured assistant contract; live AI answers remain unavailable.
 
 **Phase 2's confirmed-account authentication and ownership checks passed.** Real two-user API/RLS tests, profile/settings persistence, browser flows and Phase 1 regressions are verified. **Known limitation, confirmed by the owner:** the current Supabase Free project uses the built-in sender and locks the Confirm signup template, so it cannot be changed to display `{{ .Token }}`. Actual signup-email delivery and OTP-code verification remain unverified. See the [Phase 2 handoff](docs/phase-2-handoff.md) for that limitation and the [Phase 3 handoff](docs/phase-3-handoff.md) for report-storage verification and operational limits.
 
-Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with live acceptance still pending as described below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its mock-only acceptance boundary. Phase 10 adds English/Hindi interface copy and independent English/Hindi/Hinglish assistant preferences. Phase 11 adds private exports and operational notifications. Phase 12 adds optional local-only browser speech with editable transcripts; hardware and speech quality require manual verification. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
+Phase 4 adds native PDF text extraction and local scanned-PDF/JPEG/PNG OCR, durable attempts, page provenance and a private extracted-text view. English and a small Hindi/English fixture set are evaluated; source files remain authoritative. See the [Phase 4 handoff](docs/phase-4-handoff.md) for setup, measured quality and development limits. Phase 5 adds deterministic parameter candidates, source inspection and append-only personal review/corrections; see the [Phase 5 handoff](docs/phase-5-handoff.md). Phase 6 adds curated observations and real history; see the [Phase 6 handoff](docs/phase-6-handoff.md). Phase 7 implements bounded synthetic report explanations, with persisted live acceptance passed within the scope below. Phase 8 adds deterministic trends independently of AI availability; see the [Phase 8 handoff](docs/phase-8-handoff.md). The [Phase 9 handoff](docs/phase-9-handoff.md) describes the context-aware assistant and its bounded persisted live acceptance. Phase 10 adds English/Hindi interface copy and independent English/Hindi/Hinglish assistant preferences. Phase 11 adds private exports and operational notifications. Phase 12 adds optional local-only browser speech with editable transcripts; hardware and speech quality require manual verification. No service-role key or browser-managed Supabase session is used. Git publishing remains with the project owner.
 
 ## Prerequisites
 
@@ -249,18 +251,21 @@ The email-template restriction remains a documented Phase 2 limitation; public s
 
 ## Phase 7 report explanations
 
-**Current provider status (2026-10-03):** one explicitly authorized OpenAI /
-`gpt-6.1-sol` synthetic adapter request **PASSED: HTTP 200, schema/evidence/safety
-verified**, zero retries, estimated cost $0.003704. Full persisted Phase 7 and
-Phase 9 live acceptance remain pending; normal AI remains unavailable. The
-one-request authorization is consumed; no further live request is authorized.
+**Current provider status (2026-10-05):** OpenAI / `gpt-6.1-sol` passed the isolated
+adapter, persisted Phase 9 assistant turn and full persisted Phase 7 explanation
+lifecycle: **3 authorized successful requests**, no retries or fallback. Phase 7
+covered validation, persistence/readback, zero-call reload, correction/stale
+invalidation, deletion/manual-data preservation and two-user isolation. These
+are bounded synthetic English cases, not broad multilingual or clinical validation.
+Normal AI remains unavailable. All three authorizations are consumed; no further
+live request is authorized. Aggregate estimated provider cost is $0.009050;
+the internal 150-cent reservation ledger is separate from actual billing.
 See the [attempt report](docs/openai-acceptance-2026-10-03.md) and
 [Phase 13 acceptance controls](docs/phase-13-operations.md#ai-provider-status-and-acceptance-controls).
 Keep `RUN_AI_INTEGRATION` unset for normal development/regression; no automatic
 retries or provider/model changes. The Gemini results and setup below are historical.
 
-Phase 7 is **implementation-complete; live-provider acceptance is blocked by
-external Gemini availability**. The bounded synthetic API/UI and Gemini adapter
+**Historical Gemini evaluation was blocked by external availability.** The bounded synthetic API/UI and Gemini adapter
 are verified with mock/synthetic tests. Two explicitly authorized live requests
 returned HTTP 503 UNAVAILABLE (high demand), without authentication or explicit
 quota failures. Attempts are 2/20; the remaining 18 are preserved. No further
@@ -272,11 +277,13 @@ Gemini Free Tier may use submitted inputs/outputs to improve Google products,
 including human review. Only generated synthetic fixtures are permitted. This is
 not a production healthcare-provider decision. Billing must remain unlinked.
 
-The server loads ignored `backend/.env.ai.gemini` with `AI_PROVIDER=gemini`,
-`AI_MODEL=gemini-3.8-flash`, and locally set `AI_API_KEY`. Never put keys in `VITE_*`
-variables. No SDK dependency or provider fallback was added. OpenAI retains its
-separate `.env.ai` and in-memory contract tests, but all live OpenAI calls are
-blocked. The historical $0.50 reservation and $5 cap remain unchanged.
+Historical Gemini acceptance used ignored `backend/.env.ai.gemini` with
+`AI_PROVIDER=gemini` and `AI_MODEL=gemini-3.8-flash`. The owner's current private
+OpenAI selection is stored in ignored `backend/.env.ai`. Never put API keys in
+`VITE_*` variables. Release startup loads neither file and rejects integration
+flags; enabling production AI requires a separate implementation/release decision.
+No SDK dependency or provider fallback was added. Preserve both attempt ledgers;
+the internal reservation ceiling remains $5 and is not a provider billing control.
 
 Ordinary tests inject deterministic mock AI, clear live flags/credentials and
 block both provider network hosts. To run the real Supabase synthetic lifecycle
@@ -300,7 +307,7 @@ The evaluator creates new synthetic PDFs, reviews/publishes through owner APIs,
 enrolls only those fixtures and deletes them afterward. It accepts no arbitrary
 report ID or personal file. Generation is explicit with consent; never automatic
 on page load. Source corrections invalidate output; report deletion removes it.
-Phases 8 and 9 were separately authorized and retain this provider blocker. Phase 9
+Phases 8 and 9 were separately authorized; Phase 9's bounded OpenAI acceptance passed. Phase 9
 does not retry Gemini or reuse a Phase 7 single-report permit for conversation generation.
 
 ## Phase 8 deterministic trends
@@ -427,4 +434,4 @@ The synthetic browser harness is `backend/tests/browser_voice.cjs`; it uses the
 existing dedicated A/B accounts and loopback backend. Keep `RUN_AI_INTEGRATION`
 unset. See [the architecture decision](docs/phase-12-decision.md) and
 [Phase 12 handoff](docs/phase-12-handoff.md) for exact acceptance scope, physical-device
-checklist, browser/language limitations and reproduction. Phase 13 remains unstarted.
+checklist, browser/language limitations and reproduction. Phase 13 closure status is tracked in the [current checklist](docs/production-readiness-checklist.md); Phase 14 remains unstarted.

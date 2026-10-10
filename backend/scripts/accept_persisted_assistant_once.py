@@ -193,6 +193,8 @@ def offline_preflight() -> tuple[Settings, AISettings]:
 
 def execute() -> dict[str, Any]:
     config, ai = offline_preflight()
+    assert config.supabase_url is not None
+    assert config.supabase_publishable_key is not None
     AUDIT.mkdir(parents=True, exist_ok=True)
     provider = OpenAIAssistantAcceptance(ai, AUDIT / "attempt-reserved.json")
     require(not provider.assistant_available, "live_default_disabled")

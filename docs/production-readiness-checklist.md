@@ -1,75 +1,79 @@
 # Production readiness checklist — Phase 13
 
-2026-10-03. **Production release is BLOCKED. No deployment is authorized or performed.** Phase 13 hardening verification is in progress; pending rows must not be treated as PASS. See [handoff](phase-13-handoff.md), [operations/environment contract](phase-13-operations.md), and [security matrix](phase-13-security-matrix.md).
+2026-10-10. **Phase 13 closure is BLOCKED by unresolved code verification. Production release is BLOCKED; Phase 14 remains unstarted.** No deployment or additional provider request is authorized. See the [closure report](phase-13-closure.md), [security matrix](phase-13-security-matrix.md), [operations contract](phase-13-operations.md) and [prepared deployment instructions](../deploy/README.md).
 
-PASS means observed within the stated scope. FAIL means a verification actually failed. BLOCKED means an identified dependency prevents acceptance. PENDING means not yet performed. NOT APPLICABLE means deliberately outside this release scope. P0 critical; P1 serious release gate; P2 should resolve or explicitly scope out before release; P3 improvement. Severity applies to unresolved release exposure, not simply a vendor advisory label.
+Each status is exactly PASS, FAIL, BLOCKED, PENDING or NOT APPLICABLE. PASS is limited to its stated evidence. FAIL records an observed failure; BLOCKED identifies a dependency preventing acceptance; PENDING is unperformed; NOT APPLICABLE is excluded from the proposed release scope. Historical results stay in the handoff; they do not substitute for current final checks. Final checklist: **34 PASS, 1 FAIL, 5 BLOCKED, 9 PENDING, 5 NOT APPLICABLE** (54 rows). Completion is **34/49 applicable items = 69.4%**; 34/54 of all rows are PASS. This measures checklist acceptance, not implementation progress or production readiness.
 
-| Area | Status | Priority / evidence / remaining action |
+| Item | Status | Evidence / remaining gate |
 |---|---|---|
-| Pre-change complete baseline | PASS | FE371, BE635, OCR9, live13, SQL22, browser139 |
-| Release config, test/mock separation | PASS | Explicit environments/hosts; placeholder and integration flag rejection; injected and stored mocks rejected; AI disabled |
-| Local secure cookie/Origin/CSRF/Host contract | PASS | HttpOnly, Secure, host-only, Lax; every mutation rejects missing CSRF; deployment HTTPS verification remains separate |
-| Auth/session refresh/revocation and two-user isolation | PENDING | Full final live/browser regressions still running; baseline and local suites passed |
-| Private Storage and forced public-table RLS | PASS | Read-only metadata audit plus baseline real A/B and SQL tests; private processing-key ACL exception documented |
-| Final live Supabase + SQL regression | PENDING | Must finish all 13 live tests and 22 rollback scripts |
-| Upload/OCR bounds | PASS | Final OCR9; adversarial units; new total read deadline and upload capacity cleanup |
-| Numeric/source grounding and stale/delete behavior | PASS | Deterministic local regression; final live/browser closure tracked separately |
-| Export and notification privacy | PASS | Existing owner-bound nonpersistent exports/generic notices; local tests pass; final live/browser closure tracked separately |
-| Actual local frontend CSP/header behavior | PASS | Seven new Chrome groups; no unsafe-eval/unsafe-inline; no localhost HSTS; no third-party requests |
-| Route failure/network recovery | PASS | Missing lazy chunk and blocked actual session endpoint fail visibly and recover explicitly |
-| FE final lint/types/tests/build | PASS | 371/16; pinned Node24.19.0/npm11.19.0; default voice-disabled build |
-| BE final local tests | PASS | 665 passed, 22 explicitly gated skips; 30 new local security cases |
-| BE final lint/format/types | PENDING | Recheck after final audit-script formatting |
-| Established browser139 final regression | PENDING | Acceptance artifact explicitly enables voice simulation; default release remains disabled |
-| Fresh frontend install | PASS | npm ci from reviewed lock on supported Node; no known full-lock audit findings |
-| Fresh backend runtime-only install | PASS | Separate Python3.12.14 venv, hash-verified runtime lock, pip check and native/runtime imports |
-| Package advisory fixes | PASS | PyJWT2.15.0 and brace-expansion5.0.12; no bulk/major upgrades; native image scan remains separate |
-| Secret/history/bundle audit | PASS | 665 reachable blobs, six local values compared privately, 21 bundle files; three reviewed public-alphabet false positives; no actual findings |
-| Test account credential hygiene | P2 / PENDING | Use strong unique disposable credentials; a short test credential required false-positive triage. Do not promote/reuse test accounts for production. No rotation performed |
-| License inventory | PASS | Engineering inventory only; LGPL/MPL/native redistribution obligations need image-specific review |
-| CI source configuration | PASS | Immutable action references, runtime pins, no live AI or production credentials |
-| Hosted CI/branch protections | PENDING | P2; no push or remote workflow execution performed |
-| Migration versions/history review | PASS | Seventeen applied versions now match the repository; latest `20261004130141_explanation_model_metadata`, assigned by the migration service from prepared `20261004070111`; no unrelated migration/history rewrite |
-| Fresh complete migration replay | BLOCKED | P1; no Docker/Postgres here; isolated local replay and all22 SQL checks required; never reset shared dev |
-| Isolated staging | BLOCKED | P1; no separate environment authorized/provisioned; dev acceptance is not production-equivalent |
-| Backup + restore exercise | PENDING | P1; no scheduled backup/restore test claimed; DB and Storage objects need separate recovery |
-| HTTPS gateway/origins/edge limits | PENDING | P1; no actual release URL/host; install and verify headers, TLS, no-store, body/time/concurrency limits |
-| Production OCR isolation/private temp storage | PENDING | P1 before real PHI; subprocess bounds are not an OS sandbox; validate low privilege, filesystem/egress boundaries and crash cleanup |
-| Supported single-instance topology | PASS (design only) | One BFF process; distributed refresh/rate coordination not implemented; multi-instance release unsupported |
-| Managed Postgres security maintenance | PENDING | P1 review before release; observed17.6, provider17.11 announcement; no upgrade performed |
-| Supabase production Auth/SMTP | BLOCKED | P1 for public signup; actual email delivery/OTP acceptance unverified; default development sender insufficient; no SMTP purchase/configuration |
-| Leaked-password protection review | PENDING | P2; provider advisor reports disabled; confirm plan/support and intended launch control |
-| AI implementation | PASS | COMPLETE; adapters/schema/evidence/safety controls preserved |
-| AI mock/synthetic acceptance | PASS | COMPLETE within deterministic tests |
-| Previous AI provider evaluation: Gemini | BLOCKED (historical) | Two HTTP 503 UNAVAILABLE responses; 2/20 used,18 remain; preserve attempts and ledgers |
-| OpenAI / `gpt-6.1-sol` single-fixture live adapter acceptance | PASS (bounded scope) | One explicitly authorized request, HTTP 200; exact model/schema/evidence/safety passed; no retry; estimated $0.003704; no DB/Storage access. [Attempt report](openai-acceptance-2026-10-03.md) |
-| Full Phase 7 persisted live application acceptance | PENDING / offline preparation PASS | Gate H completed both real application/Supabase lifecycles using deterministic generation; deletion/direct facts checks/manual preservation/isolation/preflight PASS. BE270/2 gated skips, FE111 plus13 browser groups, SQL6, lint/format/types PASS. No new live AI authorization or dispatch. [Gate H](openai-acceptance-2026-10-03.md#gate-h--full-offline-phase-7-lifecycle-passed); prior Gate G failure preserved |
-| Phase 7 selected-model metadata migration | PASS / applied | Applied unchanged through migration service as `20261004130141` (prepared `20261004070111`). Seventeen migrations aligned; data preserved at application; forced RLS/grants/RPC security unchanged; seven rollback SQL scripts passed |
-| Phase 7 readiness for one live request | READY / awaiting separate authorization | Gate H full offline lifecycle/deletion/manual/isolation/final boundary passed. Cleanup passed. OpenAI2, Gemini2/20 historical503, gate unset, Phase14 unstarted. Two deterministic generations added50 internal reservation cents (125 total), zero provider spend; permanent nonrefund cap behavior verified, no ledger reset |
-| Phase 9 live assistant acceptance | PASS (one persisted synthetic turn) | Freshly authorized Gate C: exact OpenAI model, HTTP 200, facts/evidence/safety, messages/evidence/metadata persistence, identical reload (0 new calls), A/B list/read/send isolation. 551 input +54 output tokens, estimated $0.001642. Broader release-scope acceptance remains open. [Gate C](openai-acceptance-2026-10-03.md#gate-c--authorized-persisted-phase-9-rerun-passed); failed zero-call [Gate B](openai-acceptance-2026-10-03.md#gate-2--persisted-phase-9-flow-stopped-before-openai) preserved |
-| OpenAI persisted metadata support | PASS (bounded live case) | Exact `openai` / `gpt-6.1-sol` pair persisted/read back in Gate C; migration `20261003180952` applied; forced RLS/grants/RPC protections reverified unchanged |
-| Latest offline regression / backend typing | PASS / type check BLOCKED | Gate C: BE692 with22 skips, Ruff/format PASS; whole-runner offline rehearsal plus wrong-owner rejection PASS. Earlier FE372/lint/types/build and B's212 targeted PASS retained. Windows Application Control blocks mypy's compiled module; no bypass or typing PASS claimed |
-| AI default production behavior | PASS | Explicit unavailable; no release key load or mock fallback. Enabling later requires separate acceptance/approval |
-| Voice implementation/simulated acceptance | PASS (baseline) | COMPLETE implementation; established20 browser/48 unit simulation baseline; final suite pending |
-| Physical voice: Windows Chrome | PENDING | P2 optional feature gate; user/device acceptance required before enabling |
-| Physical voice: Windows Edge | PENDING | Same; do not infer from simulation |
-| Physical voice: Android Chrome | PENDING | If device available; not claimed tested |
-| Voice default release state | PASS | Build flag false and visible typed fallback; separate acceptance artifact only |
-| Accessibility/English/Hindi | PASS (targeted) | Landmarks, headings, labels, keyboard, mobile, contrast review; baseline language suite passed; full final regression pending; no WCAG certification |
-| Observability / sanitized exceptions | PASS (code) | Coarse request/category/timing logs; no third-party monitoring installed; deployment log policy still requires configuration |
-| Operations alerts/SLO/on-call drill | PENDING | P2; configure controlled logs/aggregates and incident owner at deployment |
-| HSTS preload/custom-domain ownership | NOT APPLICABLE | No domain or deployment selected; no preload/includeSubDomains assumptions |
-| Full account deletion / Phase14 deployment | NOT APPLICABLE | Not authorized in Phase13 |
+| Release configuration and mock separation | PASS | Staging/production fail closed, reject test flags/injected providers/stored mocks; no dotenv/key loading |
+| Local session/cookie security contract | PASS | Offline signature/expiry/current-session/revocation coverage; HttpOnly, environment-correct Secure, host-only, SameSite=Lax |
+| CSRF coverage | PASS | Authenticated missing-token denial enumerates every mutation; exact Origin and signed nonce binding |
+| CORS/Host configuration | PASS | Explicit production allowlists; no credentialed wildcard or spoofed forwarding trust |
+| Local frontend headers and failure recovery | PASS | Default release7 groups passed: actual CSP/headers/no local HSTS, failures/recovery and logout |
+| Deployed HTTPS/HSTS/cookies/edge limits | PENDING | No deployed URL; localhost checks cannot establish this |
+| Final owned-resource and Storage isolation | PASS | All 13 real A/B integration tests and 24 whole SQL verification scripts passed; private Storage and owner-scoped RPC/Data API checks |
+| Upload/OCR hardening | PASS | MIME/magic/size/page/pixel/time/attempt limits, adversarial tests and native OCR9 |
+| Source facts, correction and deletion contracts | PASS | Offline deterministic checks plus preserved bounded Phase7/9 live acceptance |
+| Export/notification privacy contract | PASS | Current-data owner exports, no-store/nonpersistent; generic notices, idempotency and bounded retention |
+| Application log privacy | PASS | Coarse categories/IDs/routes/timing; sanitized failure tests; actual host/proxy logs separately pending |
+| Environment and secret scan | PASS | 736 reachable blobs, six private known values, 21 bundle files, zero findings and zero alphabet matches; .env.ai ignored/untracked. Earlier false-positive review preserved in closure history |
+| Disposable test credential hygiene | PENDING | Owner replaced account A privately; original account preserved. Strong unique credentials for both disposable accounts remain an operator hygiene check; credentials never displayed |
+| Frontend final regression | PASS | Lint/types/build;373 tests/16 files; Node24.19.0/npm11.19.0 |
+| Backend final offline regression | PASS | 715 passed,22 gated skips; two existing upstream deprecation warnings |
+| Backend Ruff/format | PASS | Ruff clean;123 files formatted |
+| Native OCR final acceptance | PASS | Nine exact cases with hash-verified best models; wrong-cache failure and selector error preserved in report |
+| Windows mypy | BLOCKED | Application Control blocks compiled module; no security bypass |
+| Existing Linux CI mypy | BLOCKED | Historical run37219802610 failed37 errors/8 files; diagnostics retrieved and local corrections tested offline. Final Linux typing rerun awaits owner-published changes; no typing PASS claimed |
+| Final real Supabase integration | PASS | 13 passed in 517.04s with fresh owner-provided A. Earlier outage (1 failed/12 errors) and exhausted-account run (10 passed/3 failed) retained; no quota/history reset |
+| Final SQL verification | PASS | All24 whole scripts passed;14 public tables forced RLS; private reports bucket; reservation150 preserved |
+| Final browser regression | PASS | 140 groups across all 11 established suites + 7 default release groups = 147. One initial extraction launch timeout is preserved; remaining nine suites passed on explicit resumption |
+| Deterministic dependency/runtime install | PASS | Pinned locks; runtime-only Python3.12.14 venv pip check; current Linux CI hash install and frontend npm ci passed |
+| Package advisory audit | PASS | npm249 entries and OSV42 Python pairs; zero known findings; no blind upgrades |
+| Engineering license inventory | PASS | MIT/BSD/Apache/MPL/LGPL/native obligations recorded; not legal certification |
+| Production native image/worker isolation | PENDING | Image-specific vulnerability/license review, low privilege, private temp and filesystem/egress/crash cleanup before real PHI |
+| CI configuration | PASS | Immutable actions, runtime pins, offline synthetic execution without live/production secrets |
+| Required branch protections | FAIL | Read-only GitHub branch metadata reports main unprotected and required status checks off; owner configuration/acceptance is required before release |
+| Applied migration history consistency | PASS | All17 versions/names match; latest20261004130141; no historical rewrite |
+| Fresh complete migration replay | BLOCKED | No approved usable Docker/WSL/Postgres here;17 migrations and24 SQL scripts must run on an empty approved target |
+| Isolated staging | BLOCKED | Shared dev is not production-equivalent; no separate target provisioned |
+| Backup/restore exercise | PENDING | DB, private objects and configuration recovery documented; no paid backup/PITR or successful drill claimed |
+| Public signup/recovery SMTP | BLOCKED | Default/dev sender and confirmation-template limitation; no owned domain/custom SMTP or reliable email acceptance |
+| Leaked-password protection | PENDING | Provider advisor reports disabled; operator must assess supported plan/control |
+| Managed Postgres maintenance | PENDING | Review provider-supported security maintenance before release; no upgrade authorized |
+| Single-instance deployment contract | PASS | One BFF process; distributed refresh/rate coordination unsupported and not proposed |
+| OpenAI adapter acceptance | PASS | Gate A: one authorized synthetic English request, exact model/schema/evidence/safety |
+| Phase7 persisted live lifecycle | PASS | Gate I: structured/fact/evidence validation, persistence/readback, zero-call reload, stale/correction/deletion/manual preservation and two-user isolation |
+| Phase9 bounded persisted live turn | PASS | Gate C: authorized context, facts/evidence/model metadata, persistence/reload and two-user isolation |
+| Provider history and no-call regression policy | PASS | OpenAI3 successful authorized requests, no retry/fallback; Gemini2/20 historical503; AI gate unset |
+| Internal reservation bookkeeping | PASS | Read150 cents; permanent25-cent reservations toward500; separate from $0.009050 provider estimate; no reset/refund |
+| Production AI disabled behavior | PASS | Truthful unavailable, no mock fallback, key loading or provider dispatch |
+| Production AI enablement | NOT APPLICABLE | Proposed release keeps AI disabled; no supported production enable switch exists; future enabled scope requires reviewed implementation/policy |
+| Broader live multilingual/provider evaluation | NOT APPLICABLE | Disabled-AI proposal only; bounded English live evidence does not establish broad quality; no more requests authorized |
+| Voice implementation/simulation | PASS | 48 unit tests and final 20 browser simulation groups passed; no physical-device result inferred |
+| Windows Chrome physical voice | PENDING | No user/device results; exact manual checklist prepared |
+| Windows Edge physical voice | PENDING | No user/device results; no inference from Chrome or simulation |
+| Android Chrome physical voice | NOT APPLICABLE | Optional device extension not required for the proposed voice-disabled scope |
+| Default voice release state | PASS | Build defaults disabled; acceptance artifact is separate |
+| Targeted accessibility/browser review | PASS | Final route/landmark/label/keyboard/focus/error/status/Hindi/mobile and simulated voice checks passed. Physical screen-reader/device review remains manual; no formal WCAG claim |
+| Hosting logs/alerts/incident ownership | PENDING | Code logging is sanitized; actual host configuration and operational drill not performed |
+| Deployment/staging artifacts | PASS | Runtime pins, environment template, build/start/health/origin/cookie/feature/rollback instructions prepared |
+| HSTS preload | NOT APPLICABLE | No owned production domain or preload decision |
+| Phase14 execution/production deployment | NOT APPLICABLE | Explicitly outside authorized Phase13 closure work |
 
-## Release blockers, separated
+## Four blocker groups and release proposal
 
-**Code verification blockers:** none identified in the already-passing runtime/security tests; final full regression and audit-script checks are still pending. Multi-instance deployment is unsupported and must not be selected without further implementation. Native parser isolation must be satisfied by the chosen runtime boundary before real-data release.
+**CODE BLOCKERS:** Linux CI typing corrections await a green run of the final changes; historical37 errors/8 files are documented. No runtime/security P0/P1 failure was found in passing checks, but code verification is not complete. AI-enabled production and multi-instance operation require additional implementation if selected; neither is proposed.
 
-**External blockers:** production SMTP/email acceptance, isolated staging/runtime infrastructure and managed Postgres upgrade assessment. Historical Gemini evaluation remains blocked by two HTTP 503 responses (2/20). OpenAI / `gpt-6.1-sol` passed A's isolated adapter request and C's separately authorized single persisted Phase 9 turn; B stopped before OpenAI. **2 total OpenAI requests**, no retries/fallbacks. Full Phase 7 persisted acceptance, broader release-scope AI acceptance and production enablement remain open; normal AI stays unavailable. C's authorization is consumed; cleanup passed, gate unset, no further request/provider/model change or Phase 14 authorized. Mypy remains blocked by Windows Application Control. See [Gate C evidence](openai-acceptance-2026-10-03.md#gate-c--authorized-persisted-phase-9-rerun-passed) and [acceptance controls](phase-13-operations.md#ai-provider-status-and-acceptance-controls).
+**EXTERNAL BLOCKERS:** fresh disposable account A supplied and all 13 live tests passed; old exhausted account preserved; isolated staging/hosting/URLs, public email SMTP, an approved fresh-replay environment, managed provider/security-control review. Historical Gemini503 remains recorded without authorizing retries.
 
-**Manual/operational acceptance blockers:** clean migration replay, backup/restore drill, deployed HTTPS/proxy/edge limits and log privacy, OS parser/temp isolation, Auth production URLs/settings, hosted CI, physical voice before optional enablement. Phase13 does not claim these performed.
+**MANUAL ACCEPTANCE BLOCKERS:** physical Chrome/Edge voice if enabled; Windows mypy tooling (use safe CI); fresh replay, backup/restore, actual HTTPS/gateway/logs, native OCR isolation/license review and incident operations.
 
-**Non-blocking limitations within the disabled-feature/single-instance scope:** no live AI results, voice hardware pending, OCR accuracy limitations from Phase4/5, no diagnostic/clinical validation, no formal accessibility/legal/security certification, two upstream test-client deprecation warnings, registry scans do not cover every native/managed component.
+**NON-BLOCKING LIMITATIONS:** within synthetic single-instance staging with AI/voice disabled, bounded English live evidence, physical voice pending, OCR/speech platform limits, two upstream warnings, no clinical/formal WCAG/legal/security certification and incomplete native/managed coverage of package scans.
+
+Proposed Phase14 feature state: isolated synthetic staging, one BFF, AI disabled, voice disabled. Public signup/recovery requires reliable SMTP acceptance or an explicitly restricted Auth/UI scope; the current dev project was not reconfigured. Before Phase14: explicit authorization, resolve mypy/green CI, fresh17-migration/24-script replay, approved target/URLs/secrets, configured and verified gateway/runtime/logs, recovery drill and conditional email/voice/AI gates. [Detailed prerequisites](../deploy/README.md). Phase13 is not marked complete while current code verification remains unresolved.
+
+[Exact physical voice checklist](phase-13-manual-acceptance.md). All previous provider failures and consumed authorizations remain in the [acceptance history](openai-acceptance-2026-10-03.md).
 
 ## Exact developer manual smoke procedure
 

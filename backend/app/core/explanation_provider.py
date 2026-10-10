@@ -71,7 +71,9 @@ class AssistantProvider(Protocol):
     """Phase 9 capability on the same stateless provider boundary."""
 
     name: str
-    assistant_available: bool
+
+    @property
+    def assistant_available(self) -> bool: ...
 
     async def generate_assistant(self, request: "AssistantRequest") -> object: ...
 

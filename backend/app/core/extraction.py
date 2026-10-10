@@ -78,7 +78,7 @@ def extract(data: bytes, media_type: str, settings: Settings) -> ExtractionOutpu
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         deadline = time.monotonic() + settings.report_processing_timeout_seconds
         try:

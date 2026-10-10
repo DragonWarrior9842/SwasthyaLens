@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, Never, cast
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
@@ -22,9 +23,11 @@ from app.core.extraction import extract
 from app.core.identity import VerifiedIdentity
 from app.core.observations import ObservationService
 from app.core.parameter_parser import fields, parse
+from app.core.parameters import ParameterService
 from app.schemas.parameters import RawFields
 from scripts import accept_persisted_assistant_once as runner
 from tests.auth_support import auth_settings
+from tests.integration.test_live_ownership import LiveContext, SignedInUser
 from tests.test_openai_acceptance import settings
 
 
@@ -38,11 +41,11 @@ def test_whole_runner_reaches_guarded_provider_boundary_offline(
     current = AuthenticatedRequest(
         VerifiedIdentity(UUID(owner), uuid4(), "a@test.invalid", 1), token, 1
     )
-    state: dict = {}
+    state: dict[str, Any] = {}
     steps: list[str] = []
     database = Mock()
 
-    def gateway(method, route, **kwargs):
+    def gateway(method: str, route: str, **kwargs: Any) -> Any:
         assert kwargs["access_token"] == token
         if route == "/rest/v1/reports":
             assert kwargs["params"]["user_id"] == "eq." + owner
@@ -58,8 +61,13 @@ def test_whole_runner_reaches_guarded_provider_boundary_offline(
 
     database.request.side_effect = gateway
     observations = ObservationService(
-        SimpleNamespace(
-            extraction=SimpleNamespace(settings=config, reports=SimpleNamespace(gateway=database))
+        cast(
+            ParameterService,
+            SimpleNamespace(
+                extraction=SimpleNamespace(
+                    settings=config, reports=SimpleNamespace(gateway=database)
+                )
+            ),
         )
     )
     app = SimpleNamespace(
@@ -73,7 +81,8 @@ def test_whole_runner_reaches_guarded_provider_boundary_offline(
         is_other = "sl_access=synthetic-other-session" in request.headers.get("cookie", "")
         signed_in = "sl_access=" in request.headers.get("cookie", "")
         body = json.loads(request.content) if request.content and method != "PUT" else {}
-        status, output = 200, {}
+        status = 200
+        output: dict[str, Any] = {}
         # Every preparation request must run while the live gate is absent.
         assert "RUN_AI_INTEGRATION" not in os.environ
         if path == "/auth/csrf":
@@ -180,7 +189,13 @@ def test_whole_runner_reaches_guarded_provider_boundary_offline(
             raise AssertionError((method, path))
         return httpx.Response(status, json=output)
 
-    def data(live, user, method, route, body=None):
+    def data(
+        live: LiveContext,
+        user: SignedInUser,
+        method: str,
+        route: str,
+        body: dict[str, object] | None = None,
+    ) -> httpx.Response:
         assert "RUN_AI_INTEGRATION" not in os.environ
         if route.startswith("health_observations?"):
             assert user.user_id == owner and user.access == token
@@ -195,7 +210,7 @@ def test_whole_runner_reaches_guarded_provider_boundary_offline(
         return httpx.Response(200, json=rows)
 
     # Any accidental non-mock I/O fails before connecting, including Supabase.
-    def forbid_network(*args, **kwargs):
+    def forbid_network(*args: object, **kwargs: object) -> Never:
         raise AssertionError("Unexpected external I/O in offline rehearsal")
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", forbid_network)
@@ -214,7 +229,7 @@ def test_whole_runner_reaches_guarded_provider_boundary_offline(
             base_url=base_url, transport=httpx.MockTransport(handle)
         ),
     )
-    monkeypatch.setattr(runner.LiveContext, "data", data)
+    monkeypatch.setattr(LiveContext, "data", data)
     result = runner.execute()
     assert result["new_openai_attempts"] == 0
     assert result["provider_invocation_started"] is False
