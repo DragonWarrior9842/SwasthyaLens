@@ -1,8 +1,8 @@
 # Production readiness checklist — Phase 13
 
-2026-10-10. **Phase 13 closure is BLOCKED by unresolved code verification. Production release is BLOCKED; Phase 14 remains unstarted.** No deployment or additional provider request is authorized. See the [closure report](phase-13-closure.md), [security matrix](phase-13-security-matrix.md), [operations contract](phase-13-operations.md) and [prepared deployment instructions](../deploy/README.md).
+2026-10-10. **PHASE 13 COMPLETE. Production operational acceptance remains BLOCKED; Phase 14 remains unstarted.** Code/security release-readiness conditions are satisfied for the supported AI-off/voice-off scope. External/manual gates remain explicit. See the [closure report](phase-13-closure.md), [security matrix](phase-13-security-matrix.md), [operations contract](phase-13-operations.md) and [deployment instructions](../deploy/README.md).
 
-Each status is exactly PASS, FAIL, BLOCKED, PENDING or NOT APPLICABLE. PASS is limited to its stated evidence. FAIL records an observed failure; BLOCKED identifies a dependency preventing acceptance; PENDING is unperformed; NOT APPLICABLE is excluded from the proposed release scope. Historical results stay in the handoff; they do not substitute for current final checks. Final checklist: **34 PASS, 1 FAIL, 5 BLOCKED, 9 PENDING, 5 NOT APPLICABLE** (54 rows). Completion is **34/49 applicable items = 69.4%**; 34/54 of all rows are PASS. This measures checklist acceptance, not implementation progress or production readiness.
+Each status is exactly PASS, FAIL, BLOCKED, PENDING or NOT APPLICABLE. PASS is limited to its stated evidence. FAIL records an observed failure; BLOCKED identifies a dependency preventing acceptance; PENDING is unperformed; NOT APPLICABLE is excluded from the proposed release scope. Historical results stay in the handoff; they do not substitute for current final checks. Final checklist: **35 PASS, 1 FAIL, 3 BLOCKED, 9 PENDING, 6 NOT APPLICABLE** (54 rows). Completion is **35/48 applicable items = 72.9%**; 35/54 of all rows are PASS. This measures checklist acceptance, not implementation progress or production readiness.
 
 | Item | Status | Evidence / remaining gate |
 |---|---|---|
@@ -20,11 +20,11 @@ Each status is exactly PASS, FAIL, BLOCKED, PENDING or NOT APPLICABLE. PASS is l
 | Environment and secret scan | PASS | 736 reachable blobs, six private known values, 21 bundle files, zero findings and zero alphabet matches; .env.ai ignored/untracked. Earlier false-positive review preserved in closure history |
 | Disposable test credential hygiene | PENDING | Owner replaced account A privately; original account preserved. Strong unique credentials for both disposable accounts remain an operator hygiene check; credentials never displayed |
 | Frontend final regression | PASS | Lint/types/build;373 tests/16 files; Node24.19.0/npm11.19.0 |
-| Backend final offline regression | PASS | 715 passed,22 gated skips; two existing upstream deprecation warnings |
+| Backend final offline regression | PASS | Local715 passed/22 gated skips; authoritative Linux CI724 passed/13 skipped/2 warnings, including native OCR |
 | Backend Ruff/format | PASS | Ruff clean;123 files formatted |
 | Native OCR final acceptance | PASS | Nine exact cases with hash-verified best models; wrong-cache failure and selector error preserved in report |
-| Windows mypy | BLOCKED | Application Control blocks compiled module; no security bypass |
-| Existing Linux CI mypy | BLOCKED | Historical run37219802610 failed37 errors/8 files; diagnostics retrieved and local corrections tested offline. Final Linux typing rerun awaits owner-published changes; no typing PASS claimed |
+| Windows local mypy requirement | NOT APPLICABLE | Local execution remained constrained by Application Control; no bypass or local PASS. Approved Linux CI is authoritative, so Windows tooling is historical context rather than a code blocker |
+| Authoritative Linux CI mypy | PASS | Commit e867260158143d9606765f5536242f844d9ea800; workflow38065434615; backend job114251994354: Success: no issues found in113 source files. Historical37-error and intermediate3-error runs remain in the closure report |
 | Final real Supabase integration | PASS | 13 passed in 517.04s with fresh owner-provided A. Earlier outage (1 failed/12 errors) and exhausted-account run (10 passed/3 failed) retained; no quota/history reset |
 | Final SQL verification | PASS | All24 whole scripts passed;14 public tables forced RLS; private reports bucket; reservation150 preserved |
 | Final browser regression | PASS | 140 groups across all 11 established suites + 7 default release groups = 147. One initial extraction launch timeout is preserved; remaining nine suites passed on explicit resumption |
@@ -63,15 +63,15 @@ Each status is exactly PASS, FAIL, BLOCKED, PENDING or NOT APPLICABLE. PASS is l
 
 ## Four blocker groups and release proposal
 
-**CODE BLOCKERS:** Linux CI typing corrections await a green run of the final changes; historical37 errors/8 files are documented. No runtime/security P0/P1 failure was found in passing checks, but code verification is not complete. AI-enabled production and multi-instance operation require additional implementation if selected; neither is proposed.
+**CODE BLOCKERS: NONE** for the supported single-process, AI-disabled, voice-disabled scope. Authoritative Linux typing passed. No unresolved P0/P1 code/security blocker was identified. AI-enabled production and multi-instance operation require separately reviewed implementation and approval.
 
-**EXTERNAL BLOCKERS:** fresh disposable account A supplied and all 13 live tests passed; old exhausted account preserved; isolated staging/hosting/URLs, public email SMTP, an approved fresh-replay environment, managed provider/security-control review. Historical Gemini503 remains recorded without authorizing retries.
+**EXTERNAL BLOCKERS:** fresh disposable account A supplied and all 13 live tests passed; old exhausted account preserved; required branch protections/checks remain unconfigured; isolated staging/hosting/URLs, public email SMTP, an approved fresh-replay environment, managed provider/security-control review. Historical Gemini503 remains recorded without authorizing retries.
 
-**MANUAL ACCEPTANCE BLOCKERS:** physical Chrome/Edge voice if enabled; Windows mypy tooling (use safe CI); fresh replay, backup/restore, actual HTTPS/gateway/logs, native OCR isolation/license review and incident operations.
+**MANUAL ACCEPTANCE BLOCKERS:** physical Chrome/Edge voice if enabled; fresh replay, backup/restore, actual HTTPS/gateway/logs, native OCR isolation/license review and incident operations.
 
 **NON-BLOCKING LIMITATIONS:** within synthetic single-instance staging with AI/voice disabled, bounded English live evidence, physical voice pending, OCR/speech platform limits, two upstream warnings, no clinical/formal WCAG/legal/security certification and incomplete native/managed coverage of package scans.
 
-Proposed Phase14 feature state: isolated synthetic staging, one BFF, AI disabled, voice disabled. Public signup/recovery requires reliable SMTP acceptance or an explicitly restricted Auth/UI scope; the current dev project was not reconfigured. Before Phase14: explicit authorization, resolve mypy/green CI, fresh17-migration/24-script replay, approved target/URLs/secrets, configured and verified gateway/runtime/logs, recovery drill and conditional email/voice/AI gates. [Detailed prerequisites](../deploy/README.md). Phase13 is not marked complete while current code verification remains unresolved.
+Proposed Phase 14: isolated synthetic staging, one backend process; core authenticated application, reports/OCR/history/trends and exports/notifications eligible for deployment acceptance. AI OFF; voice OFF; unrestricted signup/recovery OFF unless reliable SMTP/email acceptance passes, otherwise use an explicitly restricted pilot. No real health data. Follow the single [Phase 14 prerequisite list](../deploy/README.md#phase-14-prerequisites). Phase 13 completion does not authorize Phase 14, deployment, feature enablement or bypassing a release gate.
 
 [Exact physical voice checklist](phase-13-manual-acceptance.md). All previous provider failures and consumed authorizations remain in the [acceptance history](openai-acceptance-2026-10-03.md).
 
@@ -103,4 +103,4 @@ Record device/browser/OS version and whether an already installed local language
 
 ## Phase 14 prerequisites
 
-Explicit user authorization; a selected hosting/HTTPS topology and URL; approved isolated synthetic staging; clean migration replay plus successful restore drill; hardened private worker/temp environment; tested edge rate limits and cookie/header/Origin behavior; managed Postgres maintenance decision; verified production Auth/email configuration; hosted CI green; final Phase13 regressions closed. Keep live AI and voice disabled unless their separate acceptance gates and explicit enablement decisions are completed. A custom domain is optional. Do not deploy or begin Phase14 from this checklist.
+Use the single authoritative [Phase 14 prerequisite list](../deploy/README.md#phase-14-prerequisites). Its setup and deployed-acceptance gates remain required. This checklist authorizes no Phase 14 execution or deployment.

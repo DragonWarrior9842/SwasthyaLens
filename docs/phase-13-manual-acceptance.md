@@ -1,6 +1,6 @@
 # Phase 13 manual acceptance still required
 
-2026-10-05. **VOICE PHYSICAL ACCEPTANCE = PENDING.** Simulated tests do not establish physical recognition, microphone permission or device speech quality. Default release proposal: `VITE_ENABLE_VOICE=false`; typed input remains available. No physical results were supplied. No Phase 14 work is authorized.
+2026-10-10. **Phase 13 is complete; VOICE PHYSICAL ACCEPTANCE = PENDING.** Voice implementation and automated simulation passed. These device/deployment checks remain open after formal closure. Simulated tests do not establish physical recognition, microphone permission or device speech quality. Default release proposal: `VITE_ENABLE_VOICE=false`; typed input remains available. No physical results were supplied. No Phase 14 work is authorized.
 
 Use synthetic phrases only. Record date, browser/OS version, device, installed local English/Hindi packs and each PASS/FAIL/unsupported result. Never record audio, health information, credentials or tokens in evidence. Test Windows Chrome and Windows Edge separately; Android Chrome is optional when a device is available. Use a separately approved voice-enabled acceptance build, never silently replace the voice-disabled release artifact.
 
@@ -23,4 +23,4 @@ Use synthetic phrases only. Record date, browser/OS version, device, installed l
 
 Screen-reader and physical keyboard review remains a manual complement to automated accessibility checks. Review authentication, Dashboard, Reports and review, History, Trends, Assistant, Settings, Exports and Notifications in English and long Hindi content. Verify heading/landmark order, error association, focus after navigation/dialogs/errors and status announcements. Automated results are scoped checks, not WCAG certification.
 
-Production acceptance separately requires HTTPS/headers/cookies, exact Auth URLs, reliable signup/recovery delivery where enabled, isolated staging, full migration replay, backup/restore, OCR worker/private-temp isolation, sanitized gateway logs and incident ownership. Follow the [operations runbook](phase-13-operations.md); none of those deployed controls is established by a localhost browser run.
+Production acceptance separately requires HTTPS/headers/cookies, exact Auth URLs, reliable signup/recovery delivery where enabled, isolated staging, full migration replay, backup/restore, OCR worker/private-temp isolation, sanitized gateway logs and incident ownership. Follow the [single Phase 14 prerequisite list](../deploy/README.md#phase-14-prerequisites) and [operations runbook](phase-13-operations.md); none of those deployed controls is established by a localhost browser run.
