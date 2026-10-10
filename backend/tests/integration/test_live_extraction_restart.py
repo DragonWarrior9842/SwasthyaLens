@@ -44,12 +44,15 @@ def test_worker_death_expires_then_retry_succeeds(live: LiveContext) -> None:
             "extraction.extract=lambda *args: time.sleep(300); "
             "uvicorn.run('app.main:app',host='127.0.0.1',port=" + str(port) + ")"
         )
+        creation_flags = 0
+        if sys.platform == "win32":
+            creation_flags = subprocess.CREATE_NO_WINDOW
         process = subprocess.Popen(
             [sys.executable, "-c", script],
             cwd=Path(__file__).resolve().parents[2],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            creationflags=creation_flags,
         )
         with httpx.Client(
             base_url=f"http://127.0.0.1:{port}",

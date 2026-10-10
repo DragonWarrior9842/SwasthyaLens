@@ -71,6 +71,9 @@ def extract(data: bytes, media_type: str, settings: Settings) -> ExtractionOutpu
             str(output),
             str(config),
         ]
+        creation_flags = 0
+        if sys.platform == "win32":
+            creation_flags = subprocess.CREATE_NO_WINDOW
         process = subprocess.Popen(
             command,
             cwd=Path(__file__).resolve().parents[2],
@@ -78,7 +81,7 @@ def extract(data: bytes, media_type: str, settings: Settings) -> ExtractionOutpu
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            creationflags=creation_flags,
         )
         deadline = time.monotonic() + settings.report_processing_timeout_seconds
         try:
