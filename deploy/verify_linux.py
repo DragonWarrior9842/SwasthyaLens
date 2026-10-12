@@ -148,6 +148,67 @@ def main() -> None:
             finally:
                 conn.close()
 
+        def check_rejection(
+            case: str,
+            server_name: str | None,
+            request: bytes | None,
+            expected_transport: str,
+            expected_status: int | None = None,
+        ) -> None:
+            # Raw bytes prevent automatic Host insertion/normalization. Loopback only.
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            before = len(requests)
+            transport, status, body = "http", None, b""
+            handshake_complete = False
+            try:
+                if request is None:
+                    # Preserve the original valid-SNI / forged-Host request and strict closure.
+                    status, _, body = get("/api/health", {"Host": "forged.invalid"})
+                else:
+                    with socket.create_connection(("127.0.0.1", https_port), timeout=5) as tcp:
+                        with context.wrap_socket(tcp, server_hostname=server_name) as tls:
+                            handshake_complete = True
+                            tls.sendall(request)
+                            with http.client.HTTPResponse(tls) as response:
+                                response.begin()
+                                status = response.status
+                                body = response.read(8193)  # One beyond the diagnostic bound.
+            except http.client.RemoteDisconnected:
+                transport = "closed"
+            except ssl.SSLError as error:
+                transport = (
+                    "tls_rejected"
+                    if not handshake_complete and error.reason == "TLSV1_UNRECOGNIZED_NAME"
+                    else "tls_error"
+                )
+            except TimeoutError:
+                transport = "timeout"
+            except OSError:
+                transport = "socket_error"
+            except http.client.HTTPException:
+                transport = "http_error"
+            delta = len(requests) - before
+            if (
+                transport != expected_transport
+                or status != expected_status
+                or len(body) > 8192
+                or b"synthetic SPA" in body
+                or delta != 0
+            ):
+                raise AssertionError(
+                    json.dumps(
+                        {
+                            "case": case,
+                            "transport": transport,
+                            "status": status,
+                            "response_bytes": min(len(body), 8193),
+                            "upstream_delta": delta,
+                        }
+                    )
+                )
+
         try:
             for _ in range(50):
                 if nginx.poll() is not None:
@@ -162,14 +223,30 @@ def main() -> None:
             assert response_headers["Cache-Control"] == "no-store"
             assert response_headers["Strict-Transport-Security"] == "max-age=31536000"
             assert "frame-ancestors 'none'" in response_headers["Content-Security-Policy"]
-            before = len(requests)
-            try:
-                get("/api/health", {"Host": "forged.invalid"})
-            except http.client.RemoteDisconnected:
-                pass  # Nginx 444 closes the connection without an HTTP response.
-            else:
-                raise AssertionError("Unexpected Host was not rejected with a closed connection")
-            assert len(requests) == before
+            check_rejection("valid_sni_forged_host", "staging.invalid", None, "closed")
+            valid_request = b"GET /api/health HTTP/1.1\r\nHost: staging.invalid\r\n\r\n"
+            for case, server_name in (("unknown_sni", "forged.invalid"), ("missing_sni", None)):
+                check_rejection(case, server_name, valid_request, "tls_rejected")
+            for case, host_lines in (
+                ("missing_host", b""),
+                ("empty_host", b"Host:\r\n"),
+                ("malformed_host", b"Host: bad/host\r\n"),
+                ("duplicate_host", b"Host: staging.invalid\r\nHost: forged.invalid\r\n"),
+            ):
+                # Parser-level 400 is distinct from the strict forged-Host 444 policy.
+                check_rejection(
+                    case,
+                    "staging.invalid",
+                    b"GET /api/health HTTP/1.1\r\n" + host_lines + b"\r\n",
+                    "http",
+                    400,
+                )
+            check_rejection(
+                "http10_missing_host",
+                "staging.invalid",
+                b"GET /api/health HTTP/1.0\r\n\r\n",
+                "closed",
+            )
             status, response_headers, _ = get(
                 "/api/health",
                 {
