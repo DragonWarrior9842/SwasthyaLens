@@ -1,5 +1,99 @@
 # Phase 14 — isolated synthetic staging preparation
 
+## Current status — 2026-10-12, Gate D1
+
+Phase 13 is **COMPLETE within its formally accepted scope**. Phase 14 repository
+deployment preparation is complete; no public deployment occurred. Phase 14A's
+read-only alternative-hosting assessment is complete: **NO-GO for approving
+Vercel + Render + Supabase under the assessed constraints**, not a finding of
+technical impossibility. Phase 14B planning and its **CI-only Linux verification
+sub-scope are complete**. Full local Linux runtime validation, hosted staging
+acceptance and production acceptance are **NOT complete**.
+
+The reference architecture remains one Ubuntu 24.04 LTS VM, native systemd,
+Nginx serving the React/Vite build and same-origin `/api/`, one FastAPI process
+on `127.0.0.1:8000`, Python 3.12.14, local PDFium/Tesseract OCR and dedicated
+Supabase staging. This is a reference design, not an approved purchase.
+
+Current policy: **strict ₹0 additional spending, no payment card requirement,
+no trials, no automatic paid upgrades, no feature removal or security weakening**.
+Public deployment is deferred: no suitable permanent, free, no-card, full-featured
+public Linux host has been verified. DigitalOcean provisioning was paused; no
+Droplet was purchased and no paid VM was created. Historical planning listed a
+$24/month base VM and a $30/month ceiling including taxes. Those figures remain
+historical estimates/authorization context, not current pricing evidence or
+permission to spend; the ₹0 policy replaces that ceiling for future decisions.
+
+The owner previously confirmed creation of `swasthyalens-staging`, project ref
+`afbpscbdgvezrbwehsdv`, Singapore `ap-southeast-1`, Free plan at last confirmation
+($0/month). This documentation gate did not query the project. No staging
+migrations or application deployment occurred; Auth configuration, RLS, private
+Storage and integration acceptance remain pending. Project existence is not
+acceptance evidence. The development project must remain untouched; never copy
+development credentials, identities, reports or objects into staging.
+
+### Verified CI and retained failure history
+
+Accepted code baseline: [commit 5db0a16df6547f479afec717b7110756dfa446ad](https://github.com/DragonWarrior9842/SwasthyaLens/commit/5db0a16df6547f479afec717b7110756dfa446ad).
+[Workflow 38258935511](https://github.com/DragonWarrior9842/SwasthyaLens/actions/runs/38258935511)
+completed successfully on attempt 1. These are existing results, not reruns in D1.
+
+| Verified evidence | Result |
+|---|---|
+| [Backend job 114844155949](https://github.com/DragonWarrior9842/SwasthyaLens/actions/runs/38258935511/job/114844155949) | PASS — 749 passed, 13 skipped, 2 warnings |
+| [Frontend job 114844155502](https://github.com/DragonWarrior9842/SwasthyaLens/actions/runs/38258935511/job/114844155502) | PASS — 382 tests across 17 files; lint, typecheck and build |
+| Backend Ruff/format and Linux mypy | PASS — 115 source files typed |
+| Nginx configuration and systemd syntax | PASS — configuration verification only |
+| Synthetic loopback gateway | PASS — Host/SNI and malformed-Host rejection, zero upstream dispatch for rejected hosts, routing, headers, upload boundaries and mutation-dispatch checks |
+| Native OCR model setup and backend tests | PASS — includes synthetic native extraction/OCR; not measured two-slot hosting capacity |
+
+The two backend warnings are dependency deprecations involving Starlette/httpx
+and AnyIO's `BlockingPortal` alias. Skipped tests are not accepted integrations.
+Synthetic gateway stubs do not establish Supabase integration or public HTTPS;
+systemd syntax/policy checks do not establish runtime enforcement.
+
+Preserved **FAIL**: [CI-2 workflow 38251514825](https://github.com/DragonWarrior9842/SwasthyaLens/actions/runs/38251514825),
+commit `7a3321cb898bcfb705fd594918043fc4b71462dd`, backend job `114818759796`,
+failed at `deploy/verify_linux.py:171` with
+`AssertionError: Unexpected Host was not rejected with a closed connection`.
+Frontend passed 382 tests and Linux mypy passed 115 files; OCR model setup and
+backend pytest were skipped after failure. CI-3A diagnosed incomplete HTTP-level
+Host rejection in the default HTTPS server. CI-3B added `return 444;` alongside
+the retained `ssl_reject_handshake on;`, preserved the named-server Host check,
+and added focused synthetic regressions. The accepted commit/run above verifies
+that correction; it does not change the failed run's outcome.
+
+### Outstanding gates and evidence limits
+
+**PASS** means verified evidence; **FAIL** means a confirmed unmet requirement;
+**BLOCKED** means required infrastructure is unavailable; **NOT RUN** means the
+acceptance was not executed. A blocked runtime requirement can also be not run.
+
+| Gate | Current status / required evidence |
+|---|---|
+| Local Linux environment | BLOCKED — WSL access denied, Docker Linux engine unavailable, no usable existing Ubuntu host identified; no Windows security-policy changes authorized |
+| Native systemd runtime | NOT RUN; target infrastructure BLOCKED — identity/permissions, cgroups, filesystem protections, loopback listener, restart and shutdown enforcement |
+| Two-slot OCR capacity and containment | NOT RUN — measured CPU/RAM/temp storage, filesystem/network containment and process-tree cleanup; shared Unix identity/network namespace is not complete hostile-document isolation |
+| Fresh isolated database acceptance | NOT RUN — all 17 migrations, all 24 whole SQL verification scripts, grants/RLS, private Storage and two-user isolation on the approved target |
+| Restricted direct Supabase Auth | NOT RUN — app-level signup/recovery restrictions do not establish direct provider settings or exact Auth redirects |
+| Public HTTPS and secure cookies | NOT RUN; hosting BLOCKED — DNS/certificates, exact origins, Secure/HttpOnly/SameSite cookies, CSRF and session revocation |
+| Backup and isolated restoration | NOT RUN — approved destination/target, RPO/RTO, database/object/configuration recovery and verification |
+| Privacy-safe deployed logs and operational ownership | NOT RUN — host/provider logging, alerts, incident and maintenance responsibilities |
+| GitHub main branch protection | FAIL — GitHub reported `protected: false` on 2026-10-12; owner configuration and verification remain required |
+| Hosted availability, recovery and compatible artifact rollback | NOT RUN; hosting BLOCKED |
+
+AI OFF; voice OFF; restricted signup/recovery; synthetic data only; no production
+promotion or live AI-provider requests. `RUN_AI_INTEGRATION` remains unset.
+OpenAI history remains **3 authorized successful requests**; Gemini remains
+**2/20 historical attempts, both HTTP 503**. All detailed release prerequisites
+below remain in force. D1 changes documentation only and grants no execution or
+resource-creation authority. Commit/push and automatic CI require a separate gate.
+
+## Historical preparation baseline — 2026-10-11 to 2026-10-12
+
+The following baseline and its original evidence are retained as history; the
+current-status section above supersedes its provisioning and CI status.
+
 2026-10-11. **Repository preparation only. No cloud provisioning or deployment.**
 Final pre-commit review resumed2026-10-12; staged-state secret scan also passed
 (771 reachable blobs,6 private comparisons,21 bundle files,zero findings).
@@ -14,8 +108,9 @@ the dated Phase13 history. Preparation does not establish operational acceptance
 One Ubuntu24.04 LTS VM; Nginx serves only `frontend/dist` and forwards same-origin
 `/api/` to one FastAPI process on `127.0.0.1:8000`. Native systemd was selected to
 keep process ownership, resource controls and OS package maintenance explicit,
-without Docker orchestration. A dedicated Supabase staging project is required
-later: the shared development Auth/DB/Storage project is not an isolated target.
+without Docker orchestration. The dedicated staging project has since been
+created as recorded above; its configuration and acceptance remain pending.
+The shared development Auth/DB/Storage project is not an isolated target.
 
 Core confirmed-user login, reports, local OCR, review/publish, history, trends,
 exports and notifications are candidates for synthetic deployed acceptance.
@@ -271,7 +366,11 @@ remain PENDING. Include DB data, private report objects/checksums, configuration
 migration versions and deletion/tombstone/stale-evidence state. No managed backup,
 PITR, RPO or RTO is claimed. Restore only after that mechanism is approved.
 
-## Verification and manual gates
+## Historical preparation verification and manual gates
+
+This is the original preparation snapshot, not the current acceptance table.
+In particular, its CI-pending and resource-creation statuses are superseded by
+the dated current-status section above; original counts and failures are retained.
 
 | Gate | Status |
 |---|---|
@@ -299,6 +398,12 @@ before checks; using the installed Chrome channel, as existing harnesses do,
 passed all12 cases. Linux CI now explicitly targets Ubuntu24.04 for the backend
 and adds syntax plus synthetic loopback gateway checks. Actual systemd runtime,
 TLS certificates, native installation and cloud controls remain unverified.
+
+### Historical proposed provisioning order
+
+The following was the preparation-era proposal, not a current instruction.
+The empty Supabase project was subsequently created; no VM was purchased.
+The current ₹0/no-card policy and separate authorization gates take precedence.
 
 After focused commit and green CI, STOP at manual isolated-resource creation.
 Before that action confirm provider, current price/budget and region. Proposed

@@ -1,5 +1,56 @@
 # Deployment preparation — not authorization to deploy
 
+## Current status — 2026-10-12, Gate D1
+
+Phase 13 remains complete within its accepted scope. Phase 14 repository
+preparation is complete; no public deployment occurred. Phase 14A's read-only
+assessment is complete: Vercel + Render + Supabase is **NO-GO for approval under
+the assessed constraints**, not proven technically impossible. Phase 14B planning
+and the **CI-only Linux verification sub-scope are complete**; full local Linux
+runtime, hosted staging and production acceptance remain incomplete.
+
+**Strict ₹0 additional spending; no payment card requirement, trials, automatic
+paid upgrades, feature removal or security weakening.** The original single-VM,
+Nginx/systemd, loopback FastAPI and native OCR architecture remains the reference,
+not a purchase authorization. DigitalOcean provisioning is paused; no Droplet or
+paid VM was purchased. The historical $24/month base VM estimate and $30/month
+tax-inclusive ceiling are retained as history and superseded by ₹0 for future
+decisions. No suitable permanent free, no-card, full-featured public Linux host
+has been verified; public deployment is deferred.
+
+The owner confirmed the separate `swasthyalens-staging` Supabase project,
+`afbpscbdgvezrbwehsdv`, Singapore `ap-southeast-1`, Free at last confirmation.
+No staging migrations or deployment occurred. Auth, RLS, private Storage and
+integration acceptance remain pending; the development project stays untouched.
+
+[The current staging evidence and blocker register](../docs/phase-14-staging.md#current-status--2026-10-12-gate-d1)
+records commit `5db0a16df6547f479afec717b7110756dfa446ad` and successful
+[workflow 38258935511](https://github.com/DragonWarrior9842/SwasthyaLens/actions/runs/38258935511):
+backend job `114844155949` **749 passed, 13 skipped, 2 warnings**; frontend job
+`114844155502` **382 passed across 17 files**; Linux mypy **115 files PASS**;
+Ruff/format, Nginx/systemd syntax, synthetic gateway and native OCR setup PASS.
+The record preserves failed CI-2 workflow `38251514825` and the CI-3B default-HTTPS
+Host rejection repair. These results do not prove runtime systemd enforcement,
+Supabase integration, two-slot OCR capacity or hosted acceptance.
+
+Local Linux remains **BLOCKED**: WSL access denied, no Docker Linux engine and no
+usable existing Ubuntu host identified; no Windows security-policy changes are
+authorized. GitHub `main` branch protection remains **FAIL** (`protected: false`
+on 2026-10-12). All runtime, migration, direct Auth, containment, HTTPS/cookie,
+backup/restore, privacy-safe logging, operational ownership and hosted recovery
+gates in the prerequisite list remain open and **NOT RUN** on the staging target.
+
+AI OFF; voice OFF; restricted signup/recovery; synthetic data only; no production
+promotion or live provider requests. `RUN_AI_INTEGRATION` stays unset. OpenAI:
+**3 authorized successful requests**; Gemini: **2/20 historical HTTP 503 attempts**.
+D1 authorizes documentation edits only; publishing them requires a separate
+commit/push-and-CI gate. No provisioning or deployment is authorized.
+
+## Historical preparation baseline
+
+The dated paragraph below is retained as the original snapshot. Its statement
+about no provisioned resource predates the owner-confirmed staging project.
+
 2026-10-11. **Phase 13 code/security release-readiness is complete; Phase 14 repository preparation is authorized.** No cloud resource has been provisioned and nothing has been deployed. The preparation target is an **isolated synthetic staging environment** on Ubuntu24.04, native systemd with one loopback API process and Nginx serving the static frontend, **AI disabled and voice disabled**. The [Phase14 staging record](../docs/phase-14-staging.md) documents packaging, environment categories, installation/rollback and all outstanding manual/deployed gates. Public signup/verification/resend default OFF; release configuration rejects enabling them. Recovery routes remain absent. The app restriction does not change Supabase's direct Auth settings, which require a separate manual staging gate.
 
 Prepared templates: [systemd](systemd/swasthyalens.service), [Nginx](nginx/staging.conf.template), [frontend headers](nginx/security-headers.conf), [API proxy](nginx/api-location.conf), [blank staging environment](staging.env.example). Hostname and certificate-path placeholders must be replaced only after approval. `verify_linux.py` runs disposable offline checks; it is not an installer or deployment command.
@@ -33,6 +84,11 @@ Before rollout, approve RPO/RTO and separately back up database data, private re
 ## Phase 14 prerequisites
 
 This is the single authoritative prerequisite list. Closing Phase 13 grants no authority to execute it. Items1–4 establish authorization and scope; remaining setup/acceptance gates must be satisfied on the approved staging candidate before promoting the affected scope. Unverified controls stay open.
+
+2026-10-12 status: preparation authorization and empty staging-project creation
+have been recorded above. This list preserves the remaining acceptance criteria;
+it is not an instruction to create another project or resume provisioning.
+Any future hosting decision must satisfy the current ₹0/no-card policy.
 
 1. Obtain explicit user authorization to begin Phase 14 and agree the feature/authentication scope. Use synthetic data only; real health data needs a separate acceptance decision.
 2. Approve hosting target(s), runtime and the initial single-backend-process topology; do not provision paid infrastructure without approval.
