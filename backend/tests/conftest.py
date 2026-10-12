@@ -36,6 +36,18 @@ def clear_cors_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name.lower(), raising=False)
 
 
+@pytest.fixture
+def isolate_release_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Opt-in release isolation; other tests retain native OCR evaluation flags."""
+    for name in (
+        "RUN_AI_INTEGRATION",
+        "RUN_SUPABASE_INTEGRATION",
+        "RUN_OCR_EVALUATION",
+        "DISPOSABLE_TEST_ACCOUNTS_CONFIRMED",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture(autouse=True)
 def forbid_ai_network(monkeypatch: pytest.MonkeyPatch) -> None:
     """Normal pytest can NEVER spend credits, even when live flags leak into its shell."""

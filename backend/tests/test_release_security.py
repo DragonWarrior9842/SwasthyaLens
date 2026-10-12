@@ -17,15 +17,7 @@ from app.core.http_security import BrowserSecurityMiddleware
 from app.factory import create_app
 from tests.explanation_fixtures import MockExplanationProvider
 
-
-@pytest.fixture(autouse=True)
-def isolate_release_flags(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (
-        "RUN_SUPABASE_INTEGRATION",
-        "RUN_OCR_EVALUATION",
-        "DISPOSABLE_TEST_ACCOUNTS_CONFIRMED",
-    ):
-        monkeypatch.delenv(name, raising=False)
+pytestmark = pytest.mark.usefixtures("isolate_release_flags")
 
 
 def release_settings(**overrides: Any) -> Settings:
@@ -65,6 +57,8 @@ def test_release_invalid_configuration(environment: str, field: str, value: Any)
         release_settings(environment=environment, **{field: value})
 
 
+@pytest.mark.parametrize("environment", ["staging", "production"])
+@pytest.mark.parametrize("value", ["0", "1"])
 @pytest.mark.parametrize(
     "flag",
     [
@@ -74,12 +68,14 @@ def test_release_invalid_configuration(environment: str, field: str, value: Any)
         "DISPOSABLE_TEST_ACCOUNTS_CONFIRMED",
     ],
 )
-def test_release_rejects_test_flags_even_when_zero(
-    monkeypatch: pytest.MonkeyPatch, flag: str
+def test_release_rejects_test_flags(
+    monkeypatch: pytest.MonkeyPatch, flag: str, value: str, environment: str
 ) -> None:
-    monkeypatch.setenv(flag, "0")
-    with pytest.raises(ValidationError):
-        release_settings()
+    monkeypatch.setenv(flag, value)
+    with pytest.raises(
+        ValidationError, match="Release environments cannot enable integration test flags"
+    ):
+        release_settings(environment=environment)
 
 
 def test_release_rejects_provider_injection() -> None:

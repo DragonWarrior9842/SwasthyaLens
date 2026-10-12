@@ -5,6 +5,7 @@ import re
 import shlex
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.factory import create_app
@@ -33,6 +34,7 @@ def test_gateway_preserves_frontend_build_policy() -> None:
     assert headers["cache-control"] == "no-store"
 
 
+@pytest.mark.usefixtures("isolate_release_flags")
 def test_gateway_preserves_api_policy_including_error_responses() -> None:
     settings = release_settings()
     expected = nginx_headers("api-location.conf")

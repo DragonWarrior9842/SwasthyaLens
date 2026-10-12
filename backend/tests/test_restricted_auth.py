@@ -15,6 +15,7 @@ def test_public_registration_defaults_closed() -> None:
     assert not Settings(_env_file=None).public_signup_enabled
 
 
+@pytest.mark.usefixtures("isolate_release_flags")
 @pytest.mark.parametrize("environment", ["staging", "production"])
 def test_release_registration_and_recovery_do_not_dispatch(
     environment: str, monkeypatch: pytest.MonkeyPatch
