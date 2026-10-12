@@ -10,7 +10,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr, ValidationError
-from starlette.types import Message
+from starlette.types import Message, Receive, Scope, Send
 
 from app.core.config import Settings
 from app.core.http_security import BrowserSecurityMiddleware
@@ -177,3 +177,50 @@ def test_slow_body_deadline_is_total_not_per_chunk(monkeypatch: pytest.MonkeyPat
         )
     )
     assert received == 1
+
+
+@pytest.mark.parametrize(
+    "size,expected_status", [(5_242_879, 204), (5_242_880, 204), (5_242_881, 413)]
+)
+def test_streamed_upload_body_boundary_without_content_length(
+    size: int, expected_status: int
+) -> None:
+    """Exercise the real body guard with synthetic chunks, not report validation or Storage."""
+    remaining = size
+    consumed = 0
+    output: list[Message] = []
+
+    async def receive() -> Message:
+        nonlocal remaining
+        chunk_size = min(remaining, 65_536)
+        remaining -= chunk_size
+        return {"type": "http.request", "body": b"x" * chunk_size, "more_body": remaining > 0}
+
+    async def consume(scope: Scope, recv: Receive, send: Send) -> None:
+        nonlocal consumed
+        while True:
+            message = await recv()
+            consumed += len(message["body"])
+            if not message["more_body"]:
+                break
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def send(message: Message) -> None:
+        output.append(message)
+
+    asyncio.run(
+        BrowserSecurityMiddleware(consume)(
+            {
+                "type": "http",
+                "method": "PUT",
+                "headers": [],
+                "path": "/reports/11111111-1111-4111-8111-111111111111/file",
+            },
+            receive,
+            send,
+        )
+    )
+    assert output[0]["status"] == expected_status
+    assert consumed == min(size, 5_242_880)
+    assert dict(output[0]["headers"])[b"cache-control"] == b"no-store"

@@ -63,8 +63,8 @@ def main() -> None:
 
             def do_PUT(self) -> None:
                 data = self.rfile.read(int(self.headers.get("Content-Length", "0")))
-                requests.append({"path": self.path, "bytes": len(data)})
-                self.send_response(200)
+                requests.append({"method": "PUT", "path": self.path, "bytes": len(data)})
+                self.send_response(503 if self.path == "/synthetic-failure" else 200)
                 self.end_headers()
 
             def log_message(self, format: str, *args: object) -> None:
@@ -162,11 +162,24 @@ def main() -> None:
             assert response_headers["Cache-Control"] == "no-store"
             assert response_headers["Strict-Transport-Security"] == "max-age=31536000"
             assert "frame-ancestors 'none'" in response_headers["Content-Security-Policy"]
+            before = len(requests)
+            try:
+                get("/api/health", {"Host": "forged.invalid"})
+            except http.client.RemoteDisconnected:
+                pass  # Nginx 444 closes the connection without an HTTP response.
+            else:
+                raise AssertionError("Unexpected Host was not rejected with a closed connection")
+            assert len(requests) == before
             status, response_headers, _ = get(
                 "/api/health",
                 {
                     "Authorization": "synthetic-never-forward",
                     "X-Forwarded-Host": "forged.invalid",
+                    "Forwarded": "for=192.0.2.1;proto=https;host=forged.invalid",
+                    "X-Forwarded-For": "192.0.2.1",
+                    "X-Forwarded-Proto": "https",
+                    "X-Real-IP": "192.0.2.1",
+                    "X-Request-ID": "synthetic-forged-id",
                     "Cookie": "synthetic-cookie",
                     "X-CSRF-Token": "synthetic-csrf",
                     "Origin": "https://staging.invalid",
@@ -177,17 +190,46 @@ def main() -> None:
             assert forwarded["host"] == "staging.invalid"
             assert forwarded["cookie"] == "synthetic-cookie"
             assert forwarded["x-csrf-token"] == "synthetic-csrf"
-            assert "authorization" not in forwarded and "x-forwarded-host" not in forwarded
+            assert forwarded["origin"] == "https://staging.invalid"
+            assert (
+                not {
+                    "authorization",
+                    "forwarded",
+                    "x-forwarded-host",
+                    "x-forwarded-for",
+                    "x-forwarded-proto",
+                    "x-real-ip",
+                    "x-request-id",
+                }
+                & forwarded.keys()
+            )
             assert "script-src" not in response_headers["Content-Security-Policy"]
-            for path in ("/.env", "/assets/missing.js", "/api/missing", "/security-headers.json"):
+            assert response_headers["Cache-Control"] == "no-store"
+            for path in (
+                "/.env",
+                "/assets/missing.js",
+                "/api",
+                "/api/missing",
+                "/security-headers.json",
+            ):
                 status, response_headers, body = get(path)
                 assert status == 404 and b"synthetic SPA" not in body
                 assert response_headers["X-Content-Type-Options"] == "nosniff"
-            assert (
-                get("/api/reports/synthetic/file", method="PUT", body=b"x" * (5 * 1024 * 1024))[0]
-                == 200
-            )
-            assert requests[-1]["bytes"] == 5 * 1024 * 1024
+                assert response_headers["Cache-Control"] == "no-store"
+                assert response_headers["X-Frame-Options"] == "DENY"
+            before = len(requests)
+            status, response_headers, body = get("/auth/sign-in", method="POST", body=b"")
+            assert status == 403 and b"synthetic SPA" not in body
+            assert response_headers["Cache-Control"] == "no-store"
+            assert len(requests) == before
+            # Stub acceptance tests gateway allowance only, not the application's 5 MiB limit.
+            for size in (5_242_880, 6_291_456):
+                assert get("/api/reports/synthetic/file", method="PUT", body=b"x" * size)[0] == 200
+                assert requests[-1] == {
+                    "method": "PUT",
+                    "path": "/reports/synthetic/file",
+                    "bytes": size,
+                }
             # Expect prevents sending a rejected body, avoiding client broken-pipe races.
             before = len(requests)
             assert (
@@ -199,6 +241,15 @@ def main() -> None:
                 == 413
             )
             assert len(requests) == before
+            # One observed dispatch plus the explicit policy; not a multi-node failover test.
+            assert "proxy_next_upstream off;" in render("api-location.conf").splitlines()
+            before = len(requests)
+            status, response_headers, _ = get("/api/synthetic-failure", method="PUT", body=b"x")
+            assert status == 503 and len(requests) == before + 1
+            assert requests[-1] == {"method": "PUT", "path": "/synthetic-failure", "bytes": 1}
+            assert response_headers["Cache-Control"] == "no-store"
+            assert response_headers["X-Content-Type-Options"] == "nosniff"
+            assert response_headers["Content-Security-Policy"].startswith("default-src 'none'")
             plain = http.client.HTTPConnection("127.0.0.1", http_port, timeout=5)
             try:
                 plain.request(
