@@ -1,0 +1,49 @@
+[Unit]
+Description=SwasthyaLens restricted synthetic staging API
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=exec
+User=swasthyalens
+Group=swasthyalens
+WorkingDirectory=/opt/swasthyalens/current/backend
+EnvironmentFile=/etc/swasthyalens/staging.env
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 TMPDIR=/tmp TEMP=/tmp TMP=/tmp
+ExecStart=/opt/swasthyalens/current/backend/.venv/bin/python -m uvicorn app.release:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log --no-proxy-headers --no-server-header
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=135
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/tmp
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Fresh private bounded tmpfs per service start; no application-directory writes.
+TemporaryFileSystem=/tmp:rw,nosuid,nodev,noexec,size=256M,mode=1777 /var/tmp:ro
+# PID 1 reads EnvironmentFile before establishing this service's namespace.
+InaccessiblePaths=/etc/swasthyalens
+MemoryMax=2560M
+CPUQuota=200%
+TasksMax=64
+LimitNOFILE=1024
+LimitCORE=0
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=swasthyalens
+
+[Install]
+WantedBy=multi-user.target

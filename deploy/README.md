@@ -1,6 +1,8 @@
 # Deployment preparation — not authorization to deploy
 
-2026-10-10. **Phase 13 code/security release-readiness is complete; Phase 14 remains unstarted.** No host, paid service, production domain or staging project has been selected or provisioned. The proposed first target is an **isolated synthetic staging environment**, one backend process, **AI disabled and voice disabled**. Public signup/recovery requires reliable SMTP/email acceptance. Until then, the proposed closed pilot must explicitly restrict the Auth/UI scope and make those public flows unavailable. This proposal does not itself disable public signup in the existing development project.
+2026-10-11. **Phase 13 code/security release-readiness is complete; Phase 14 repository preparation is authorized.** No cloud resource has been provisioned and nothing has been deployed. The preparation target is an **isolated synthetic staging environment** on Ubuntu24.04, native systemd with one loopback API process and Nginx serving the static frontend, **AI disabled and voice disabled**. The [Phase14 staging record](../docs/phase-14-staging.md) documents packaging, environment categories, installation/rollback and all outstanding manual/deployed gates. Public signup/verification/resend default OFF; release configuration rejects enabling them. Recovery routes remain absent. The app restriction does not change Supabase's direct Auth settings, which require a separate manual staging gate.
+
+Prepared templates: [systemd](systemd/swasthyalens.service), [Nginx](nginx/staging.conf.template), [frontend headers](nginx/security-headers.conf), [API proxy](nginx/api-location.conf), [blank staging environment](staging.env.example). Hostname and certificate-path placeholders must be replaced only after approval. `verify_linux.py` runs disposable offline checks; it is not an installer or deployment command.
 
 ## Artifacts and environment
 

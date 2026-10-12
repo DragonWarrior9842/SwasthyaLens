@@ -8,7 +8,7 @@ import { LoadingState } from '../components/LoadingState'
 import { useAuth } from '../features/auth/auth-context'
 import { safeReturnTo } from '../features/auth/redirect'
 import { ApiError, errorMessage } from '../services/api-client'
-import { resendVerification, signIn, signUp, verifyEmail } from '../services/auth'
+import { readAuthPolicy, resendVerification, signIn, signUp, verifyEmail } from '../services/auth'
 
 type AuthMode = 'sign-in' | 'sign-up' | 'verify-email'
 
@@ -34,6 +34,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   const [confirmationNeeded, setConfirmationNeeded] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [resendAfter, setResendAfter] = useState(0)
+  const [publicSignupEnabled, setPublicSignupEnabled] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   const location = useLocation()
   const navigate = useNavigate()
@@ -43,6 +44,13 @@ function AuthForm({ mode }: { mode: AuthMode }) {
 
   useEffect(() => { heading.current?.focus() }, [])
   useEffect(() => {
+    const controller = new AbortController()
+    void readAuthPolicy(controller.signal).then(policy => {
+      if (!controller.signal.aborted) setPublicSignupEnabled(policy.publicSignupEnabled)
+    }).catch(() => { /* Unknown policy stays restricted; confirmed users can still sign in. */ })
+    return () => controller.abort()
+  }, [])
+  useEffect(() => {
     if (resendAfter <= 0) return
     const timer = window.setTimeout(() => setResendAfter(resendAfter - 1), 1_000)
     return () => window.clearTimeout(timer)
@@ -50,7 +58,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy) return
+    if (busy || (mode !== 'sign-in' && !publicSignupEnabled)) return
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -80,7 +88,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   }
 
   async function resend() {
-    if (busy || resendAfter > 0 || !email.trim()) return
+    if (!publicSignupEnabled || busy || resendAfter > 0 || !email.trim()) return
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -112,13 +120,15 @@ function AuthForm({ mode }: { mode: AuthMode }) {
         <div className="auth-mobile-brand auth-brand"><Brand /></div>
         <section className="auth-card" aria-labelledby="auth-heading">
           <p className="eyebrow">{t("SWASTHYALENS · YOUR ACCOUNT")}</p>
-          <h1 ref={heading} tabIndex={-1} id="auth-heading">{copy(headings[mode])}</h1>
+          <h1 ref={heading} tabIndex={-1} id="auth-heading">{mode !== 'sign-in' && !publicSignupEnabled ? t('Registration unavailable') : copy(headings[mode])}</h1>
           <p className="auth-description">
-            {mode === 'sign-in' ? t("Sign in to your personal workspace.") : mode === 'sign-up' ? t("Create an account with your email and a strong password.") : t("Enter the six-digit code sent to your email to finish confirming your account.")}
+            {mode !== 'sign-in' && !publicSignupEnabled ? t('Public registration and password recovery are unavailable. Contact the administrator.') : mode === 'sign-in' ? t("Sign in to your personal workspace.") : mode === 'sign-up' ? t("Create an account with your email and a strong password.") : t("Enter the six-digit code sent to your email to finish confirming your account.")}
           </p>
           {notice && <div className="form-notice" role="status">{copy(notice)}</div>}
           {state.status === 'checking' ? <LoadingState title={t("Checking your session…")} /> : state.status === 'unavailable' ? (
             <ErrorState title={t("Account service unavailable")} description={copy(state.message)} onRetry={() => { void checkSession() }} />
+          ) : mode !== 'sign-in' && !publicSignupEnabled ? (
+            <Link className="text-link" to="/auth/sign-in" state={routeState}>{t('Sign in')}</Link>
           ) : (
             <>
               <form className="account-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy} aria-describedby={error ? 'auth-error' : undefined}>
@@ -141,7 +151,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
                 )}
                 {error && <div id="auth-error" className="form-error" role="alert">{copy(error)}</div>}
                 {message && <div className="form-success" role="status">{copy(message)}</div>}
-                {confirmationNeeded && <Link className="text-link" to="/auth/verify-email" state={routeState} onClick={() => setPendingEmail(email.trim())}>{t("Enter your email confirmation code")}</Link>}
+                {confirmationNeeded && publicSignupEnabled && <Link className="text-link" to="/auth/verify-email" state={routeState} onClick={() => setPendingEmail(email.trim())}>{t("Enter your email confirmation code")}</Link>}
                 <Button type="submit" disabled={busy} className="auth-submit">
                   {busy ? t("Please wait…") : mode === 'sign-in' ? t("Sign in") : mode === 'sign-up' ? t("Create account") : t("Confirm email")}
                 </Button>
@@ -152,9 +162,9 @@ function AuthForm({ mode }: { mode: AuthMode }) {
                   <p>{t("Development email delivery is limited to eligible project addresses. If no code arrives, contact the project administrator.")}</p>
                 </div>
               )}
-              <div className="auth-switch">
+              {(mode !== 'sign-in' || publicSignupEnabled) && <div className="auth-switch">
                 {mode === 'sign-in' ? <>{"" + t("New here?") + " "}<Link className="text-link" to="/auth/sign-up" state={routeState}>{t("Create an account")}</Link></> : <>{"" + t("Already have an account?") + " "}<Link className="text-link" to="/auth/sign-in" state={routeState}>{t("Sign in")}</Link></>}
-              </div>
+              </div>}
               {mode === 'sign-in' && <p className="auth-help">{t("Need help signing in? Contact the project administrator.")}</p>}
             </>
           )}

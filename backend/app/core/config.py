@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     supabase_publishable_key: SecretStr | None = None
     csrf_signing_key: SecretStr | None = None
     auth_rate_limit_mode: Literal["local", "edge"] = "local"
+    public_signup_enabled: bool = False
     report_max_upload_bytes: int = Field(default=5_242_880, ge=1, le=5_242_880)
     report_processing_max_pages: int = Field(default=20, ge=1, le=20)
     report_processing_timeout_seconds: int = Field(default=120, ge=5, le=120)
@@ -62,6 +63,8 @@ class Settings(BaseSettings):
     def validate_release(self) -> Self:
         if not self.secure_cookies:
             return self
+        if self.public_signup_enabled:
+            raise ValueError("Release public signup requires a separately accepted email policy")
         if any(
             name in os.environ
             for name in (

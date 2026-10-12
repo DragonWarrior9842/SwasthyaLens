@@ -1,0 +1,84 @@
+# http-context include. NOT an installable config until all placeholders are replaced.
+# TLS_CERTIFICATE_FILE / TLS_PRIVATE_KEY_FILE must be actual approved certificate paths.
+# Do not enable the default Ubuntu site or expose port 8000.
+limit_conn_zone $binary_remote_addr zone=sl_peer:1m;
+limit_conn_zone $server_name zone=sl_total:1m;
+map "$request_method:$uri" $sl_auth_key {
+    default '';
+    ~^POST:/api/auth/ $binary_remote_addr;
+}
+limit_req_zone $sl_auth_key zone=sl_auth:1m rate=6r/m;
+limit_req_zone $binary_remote_addr zone=sl_requests:1m rate=10r/s;
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    server_tokens off;
+    access_log off;
+    error_log /dev/null crit;
+    return 444;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name STAGING_HOSTNAME;
+    server_tokens off;
+    access_log off;
+    error_log /dev/null crit;
+    # Discard any query/path on HTTP; never forward credentials received over plaintext.
+    return 308 https://STAGING_HOSTNAME/;
+}
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+    ssl_reject_handshake on;
+    access_log off;
+    error_log /dev/null crit;
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name STAGING_HOSTNAME;
+    if ($host != STAGING_HOSTNAME) { return 444; }
+    ssl_certificate TLS_CERTIFICATE_FILE;
+    ssl_certificate_key TLS_PRIVATE_KEY_FILE;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_tickets off;
+    server_tokens off;
+    root /opt/swasthyalens/current/frontend/dist;
+    autoindex off;
+    access_log off;
+    # Nginx error logs can include request URLs, filenames and upstream details.
+    error_log /dev/null crit;
+    include /etc/nginx/snippets/swasthyalens-security.conf;
+
+    # Bounded allowance above 5 MiB; application retains exact 5 MiB raw-file validation.
+    client_max_body_size 6m;
+    client_body_buffer_size 16k;
+    client_body_timeout 60s;
+    client_header_timeout 15s;
+    send_timeout 60s;
+    keepalive_timeout 15s;
+    reset_timedout_connection on;
+    limit_conn sl_peer 10;
+    limit_conn sl_total 40;
+    limit_conn_status 429;
+    limit_req zone=sl_auth burst=10 nodelay;
+    limit_req zone=sl_requests burst=20 nodelay;
+    limit_req_status 429;
+
+    location = /api { return 404; }
+    location ^~ /api/ {
+        include /etc/nginx/snippets/swasthyalens-api.conf;
+    }
+    location ~ (^|/)\. { return 404; }
+    location ~* \.(?:env|ini|log|pem|key|py|sql|map)$ { return 404; }
+    location = /security-headers.json { return 404; }
+    location /assets/ { try_files $uri =404; }
+    location / {
+        limit_except GET HEAD { deny all; }
+        try_files $uri $uri/ /index.html;
+    }
+}

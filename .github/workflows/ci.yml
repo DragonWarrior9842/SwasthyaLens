@@ -31,7 +31,7 @@ jobs:
       - run: npm run build
 
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
@@ -50,6 +50,12 @@ jobs:
       - run: python -m ruff check .
       - run: python -m ruff format --check .
       - run: python -m mypy
+      - name: Offline Linux deployment templates
+        run: |
+          python -m ruff check ../deploy/verify_linux.py
+          python -m ruff format --check ../deploy/verify_linux.py
+          sudo apt-get update && sudo apt-get install -y nginx
+          python ../deploy/verify_linux.py
       - run: python scripts/setup_ocr_models.py .cache/ocr-models
       - run: python -m pytest
         env:

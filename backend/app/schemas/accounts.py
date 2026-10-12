@@ -32,6 +32,11 @@ class EmptyInput(InputModel):
     pass
 
 
+class AuthPolicy(BaseModel):
+    public_signup_enabled: bool
+    public_recovery_enabled: Literal[False] = False
+
+
 class ProfilePatch(InputModel):
     display_name: Annotated[str | None, Field(max_length=80)] = None
 

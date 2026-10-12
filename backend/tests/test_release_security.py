@@ -53,6 +53,7 @@ def release_settings(**overrides: Any) -> Settings:
         ("allowed_hosts", ("app.release-unit.org:443",)),
         ("app_origin", "http://app.release-unit.org"),
         ("auth_rate_limit_mode", "local"),
+        ("public_signup_enabled", True),
         ("csrf_signing_key", SecretStr("replace-me-" * 8)),
         ("report_processing_key", None),
         ("ocr_tessdata_dir", "relative/models"),

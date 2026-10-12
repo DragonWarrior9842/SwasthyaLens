@@ -1,6 +1,7 @@
 import { resolveApiBaseUrl } from '../lib/config'
 
 const publicErrors = {
+  public_auth_disabled: 'Public registration is unavailable. Contact the administrator.',
   export_unavailable: 'The export could not be verified. Please try again.',
   export_timeout: 'The export took too long. Choose a smaller period or source.',
   export_capacity: 'Export limit reached: choose at most 200 observations from 20 reports and a smaller period.',

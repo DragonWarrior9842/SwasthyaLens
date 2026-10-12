@@ -1,5 +1,8 @@
 /** Application copy only. Never translate source evidence or historical messages. */
 export const hindi = {
+  "Registration unavailable": "पंजीकरण उपलब्ध नहीं है",
+  "Public registration and password recovery are unavailable. Contact the administrator.": "सार्वजनिक पंजीकरण और पासवर्ड पुनर्प्राप्ति उपलब्ध नहीं हैं। व्यवस्थापक से संपर्क करें।",
+  "Public registration is unavailable. Contact the administrator.": "सार्वजनिक पंजीकरण उपलब्ध नहीं है। व्यवस्थापक से संपर्क करें।",
   "Transcript ready. Review and edit it before use.": "बोला गया पाठ तैयार है। उपयोग से पहले उसकी समीक्षा करें और सुधारें।",
   "Playback finished.": "वाचन पूरा हुआ।",
   "Enable optional voice for this visit": "इस बार वैकल्पिक आवाज़ सुविधाएँ चालू करें",

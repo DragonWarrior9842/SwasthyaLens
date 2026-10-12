@@ -5,6 +5,17 @@ const REFRESH_MARGIN_SECONDS = 60
 let refreshPromise: Promise<Session | null> | null = null
 let localQueue: Promise<unknown> = Promise.resolve()
 
+export type AuthPolicy = { publicSignupEnabled: boolean; publicRecoveryEnabled: false }
+
+export function decodeAuthPolicy(payload: unknown): AuthPolicy {
+  if (!payload || typeof payload !== 'object' || !('public_signup_enabled' in payload) || typeof payload.public_signup_enabled !== 'boolean' || !('public_recovery_enabled' in payload) || payload.public_recovery_enabled !== false) throw new Error('Invalid account policy')
+  return { publicSignupEnabled: payload.public_signup_enabled, publicRecoveryEnabled: false }
+}
+
+export function readAuthPolicy(signal?: AbortSignal): Promise<AuthPolicy> {
+  return accountRead('/auth/policy', decodeAuthPolicy, signal)
+}
+
 export function decodeSession(payload: unknown): Session {
   if (!payload || typeof payload !== 'object' || !('user' in payload) || !('expires_at' in payload)) throw new Error('Invalid session')
   const { user, expires_at } = payload

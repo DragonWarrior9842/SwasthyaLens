@@ -24,6 +24,7 @@ class IsolatedSettings(Settings):
 
 def auth_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
+        "public_signup_enabled": True,  # Explicitly exercise the development email flow.
         "cors_allowed_origins": (ORIGIN,),
         "app_origin": ORIGIN,
         "supabase_url": PROJECT,

@@ -6,6 +6,7 @@ from app.api.dependencies import Auth, CurrentUser, auth_attempt
 from app.core.browser_security import clear_session_cookies
 from app.core.errors import ApiProblem, unavailable
 from app.schemas.accounts import (
+    AuthPolicy,
     CsrfResponse,
     EmailInput,
     EmptyInput,
@@ -20,6 +21,24 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 writes = [Depends(auth_attempt)]
 
 
+def require_public_signup(auth: Auth) -> None:
+    if not auth.settings.public_signup_enabled:
+        raise ApiProblem(
+            403,
+            "public_auth_disabled",
+            "Public registration is unavailable. Contact the administrator.",
+        )
+
+
+registration_writes = [*writes, Depends(require_public_signup)]
+
+
+@router.get("/policy", response_model=AuthPolicy)
+def policy(auth: Auth) -> AuthPolicy:
+    # Public capability only: no provider request, identities or configuration values.
+    return AuthPolicy(public_signup_enabled=auth.settings.public_signup_enabled)
+
+
 @router.get("/csrf", response_model=CsrfResponse)
 def csrf(request: Request, response: Response, auth: Auth) -> CsrfResponse:
     peer = request.client.host if request.client is not None else "unknown"
@@ -27,7 +46,9 @@ def csrf(request: Request, response: Response, auth: Auth) -> CsrfResponse:
     return CsrfResponse(csrf_token=auth.csrf.issue(request, response))
 
 
-@router.post("/signup", status_code=202, response_model=MessageResponse, dependencies=writes)
+@router.post(
+    "/signup", status_code=202, response_model=MessageResponse, dependencies=registration_writes
+)
 def signup(body: SignupInput, auth: Auth) -> MessageResponse:
     data = auth.gateway.object(
         "POST",
@@ -47,7 +68,7 @@ def signup(body: SignupInput, auth: Auth) -> MessageResponse:
     "/resend-verification",
     status_code=202,
     response_model=MessageResponse,
-    dependencies=writes,
+    dependencies=registration_writes,
 )
 def resend(body: EmailInput, auth: Auth) -> MessageResponse:
     auth.gateway.object(
@@ -71,7 +92,7 @@ def login(body: LoginInput, response: Response, auth: Auth) -> SessionResponse:
     return auth.set_session(response, auth.accept_tokens(data))
 
 
-@router.post("/verify-email", response_model=SessionResponse, dependencies=writes)
+@router.post("/verify-email", response_model=SessionResponse, dependencies=registration_writes)
 def verify_email(body: VerificationInput, response: Response, auth: Auth) -> SessionResponse:
     data = auth.gateway.object(
         "POST",
